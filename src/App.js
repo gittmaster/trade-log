@@ -299,10 +299,12 @@ export default function App() {
     await loadTrades();
   };
 
+  const getWeekRange = () => { const now = new Date(); const day = now.getDay(); const diffToMon = day === 0 ? -6 : 1 - day; const monday = new Date(now); monday.setDate(now.getDate() + diffToMon); monday.setHours(0,0,0,0); const sunday = new Date(monday); sunday.setDate(monday.getDate() + 6); sunday.setHours(23,59,59,999); return {monday, sunday}; };
   const filteredTrades = () => {
     if (activeFilter === 'all') return trades;
     if (activeFilter === 'win') return trades.filter(t => t.pnl > 0);
     if (activeFilter === 'loss') return trades.filter(t => t.pnl < 0);
+    if (activeFilter === 'week') { const {monday, sunday} = getWeekRange(); return trades.filter(t => { if (!t.date) return false; const d = new Date(t.date + 'T12:00:00'); return d >= monday && d <= sunday; }); }
     if (activeFilter === 'A1' || activeFilter === 'A2') return trades.filter(t => t.account === activeFilter);
     if (['aplus', 'a', 'aminus'].includes(activeFilter)) return trades.filter(t => t.grade === activeFilter);
     if (['MGC', 'MNQ'].includes(activeFilter)) return trades.filter(t => t.symbol === activeFilter);
@@ -377,9 +379,9 @@ export default function App() {
           <h2>Trade History ({ft.length})</h2>
         </div>
         <div className="filter-row">
-          {['all', 'A1', 'A2', 'MGC', 'MNQ', 'aplus', 'a', 'aminus', 'win', 'loss'].map(f => (
+          {['all', 'A1', 'A2', 'MGC', 'MNQ', 'aplus', 'a', 'aminus', 'win', 'loss', 'week'].map(f => (
             <button key={f} className={`filter-btn ${activeFilter === f ? 'active' : ''}`} onClick={() => setActiveFilter(f)}>
-              {f === 'aplus' ? 'A+' : f === 'aminus' ? 'A-' : f.charAt(0).toUpperCase() + f.slice(1)}
+              {f === 'aplus' ? 'A+' : f === 'aminus' ? 'A-' : f === 'week' ? 'This Week' : f.charAt(0).toUpperCase() + f.slice(1)}
             </button>
           ))}
         </div>
