@@ -207,6 +207,19 @@ export default function App() {
   const [uploading, setUploading] = useState(false);
   const [msg, setMsg] = useState('');
   const [chartModal, setChartModal] = useState(null);
+  const [sortCol, setSortCol] = useState('date');
+  const [sortDir, setSortDir] = useState('desc');
+
+  const handleSort = (col) => {
+    if (sortCol === col) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    else { setSortCol(col); setSortDir('asc'); }
+  };
+
+  const nextTradeNumber = () => {
+    if (!trades.length) return 1;
+    const nums = trades.map(t => t.trade_number).filter(Boolean);
+    return nums.length ? Math.max(...nums) + 1 : trades.length + 1;
+  };
 
   const loadTrades = useCallback(async () => {
     const { data, error } = await supabase.from('trades').select('*').order('date', { ascending: false }).order('time', { ascending: false });
@@ -293,6 +306,12 @@ export default function App() {
     setForm({ ...EMPTY_FORM });
   };
 
+  const openNewTradeForm = () => {
+    cancelForm();
+    setForm({ ...EMPTY_FORM, trade_number: nextTradeNumber() });
+    setShowForm(true);
+  };
+
   const deleteTrade = async (id) => {
     if (!window.confirm('Delete this trade?')) return;
     await supabase.from('trades').delete().eq('id', id);
@@ -326,7 +345,24 @@ export default function App() {
     return { label: l, wr: Math.round(w / ts.length * 100), net: Math.round(ts.reduce((s, t) => s + t.pnl, 0)) };
   }).filter(Boolean);
 
-  const ft = filteredTrades();
+  const ft = (() => {
+    const base = filteredTrades();
+    return [...base].sort((a, b) => {
+      let av = a[sortCol], bv = b[sortCol];
+      if (av === null || av === undefined) av = '';
+      if (bv === null || bv === undefined) bv = '';
+      if (typeof av === 'number' && typeof bv === 'number') return sortDir === 'asc' ? av - bv : bv - av;
+      return sortDir === 'asc' ? String(av).localeCompare(String(bv)) : String(bv).localeCompare(String(av));
+    });
+  })();
+
+  const weekTrades = filteredTrades().filter(t => {
+    if (activeFilter !== 'week') return false;
+    return t.pnl !== null;
+  });
+  const weekNet = weekTrades.reduce((s, t) => s + (t.pnl || 0), 0);
+  const weekWins = weekTrades.filter(t => t.pnl > 0).length;
+  const weekLosses = weekTrades.filter(t => t.pnl < 0).length;
 
   return (
     <div className="app">
@@ -342,7 +378,7 @@ export default function App() {
               {seeding ? 'Loading...' : 'Load 61 trades'}
             </button>
           )}
-          <button className="btn-primary" onClick={() => { if (showForm && !editingTrade) { cancelForm(); } else { cancelForm(); setShowForm(true); } }}>
+          <button className="btn-primary" onClick={() => { if (showForm && !editingTrade) { cancelForm(); } else { openNewTradeForm(); } }}>
             {showForm && !editingTrade ? 'Cancel' : '+ New Trade'}
           </button>
         </div>
@@ -377,6 +413,16 @@ export default function App() {
       <div className="table-card">
         <div className="table-header">
           <h2>Trade History ({ft.length})</h2>
+          {activeFilter === 'week' && weekTrades.length > 0 && (
+            <div style={{ fontSize: 13, fontFamily: 'var(--mono)', display: 'flex', gap: 16, alignItems: 'center' }}>
+              <span style={{ color: weekNet >= 0 ? '#1D9E75' : '#E24B4A', fontWeight: 600 }}>
+                {weekNet >= 0 ? '+$' : '-$'}{Math.abs(Math.round(weekNet))} net
+              </span>
+              <span style={{ color: '#1D9E75' }}>{weekWins}W</span>
+              <span style={{ color: '#E24B4A' }}>{weekLosses}L</span>
+              <span style={{ color: '#888' }}>{weekTrades.length > 0 ? Math.round(weekWins/weekTrades.length*100) : 0}%</span>
+            </div>
+          )}
         </div>
         <div className="filter-row">
           {['all', 'A1', 'A2', 'MGC', 'MNQ', 'aplus', 'a', 'aminus', 'win', 'loss', 'week'].map(f => (
@@ -394,9 +440,12 @@ export default function App() {
             <table>
               <thead>
                 <tr>
-                  <th>#</th><th>Date</th><th>Time</th><th>Acct</th><th>Symbol</th>
-                  <th>Dir</th><th>Grade</th><th>AL</th><th>SL</th>
-                  <th>Entry</th><th>Exit</th><th>P&L</th><th>Result</th><th>Session</th><th>Chart</th><th>Edit</th><th>Del</th>
+                  {[['trade_number','#'],['date','Date'],['time','Time'],['account','Acct'],['symbol','Symbol'],['direction','Dir'],['grade','Grade'],['al_strength','AL'],['sl_quality','SL'],['entry','Entry'],['exit_price','Exit'],['pnl','P&L'],['exit_reason','Result'],['session','Session']].map(([col, label]) => (
+                    <th key={col} onClick={() => handleSort(col)} style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}>
+                      {label} {sortCol === col ? (sortDir === 'asc' ? '↑' : '↓') : ''}
+                    </th>
+                  ))}
+                  <th>Chart</th><th>Edit</th><th>Del</th>
                 </tr>
               </thead>
               <tbody>

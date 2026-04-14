@@ -15,7 +15,7 @@ You have access to the trader's complete trade history. Analyze it and give spec
 
 function formatTradesForAI(trades) {
   if (!trades || trades.length === 0) return 'No trades logged yet.';
-  const summary = trades.map(t => 
+  const summary = trades.map(t =>
     `T${t.trade_number}|${t.date}|${t.time}|${t.account}|${t.symbol}|${t.direction}|Grade:${t.grade}|AL:${t.al_strength}(${t.al_touches}t,${t.al_age})|SL:${t.sl_quality}(${t.sl_touches}t,${t.sl_age})|Entry:${t.entry}|Exit:${t.exit_price}|P&L:${t.pnl}|Result:${t.exit_reason}|Session:${t.session}|Notes:${t.notes||''}`
   ).join('\n');
   return `TRADE DATA (${trades.length} trades):\n${summary}`;
@@ -28,6 +28,7 @@ export default function AIChat({ trades }) {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
+  const [maximized, setMaximized] = useState(false);
   const bottomRef = useRef(null);
   const inputRef = useRef(null);
 
@@ -94,6 +95,8 @@ export default function AIChat({ trades }) {
     'Compare my two accounts',
   ];
 
+  const panelClass = maximized ? 'ai-panel ai-panel-max' : 'ai-panel';
+
   return (
     <>
       <button className="ai-fab" onClick={() => setOpen(o => !o)} title="Ask AI about your trades">
@@ -101,13 +104,18 @@ export default function AIChat({ trades }) {
       </button>
 
       {open && (
-        <div className="ai-panel">
+        <div className={panelClass}>
           <div className="ai-header">
             <div>
               <div className="ai-title">Trading Coach AI</div>
               <div className="ai-subtitle">{trades.length} trades in context</div>
             </div>
-            <button className="ai-close" onClick={() => setOpen(false)}>×</button>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <button className="ai-maximize" onClick={() => setMaximized(m => !m)} title={maximized ? 'Minimize' : 'Maximize'}>
+                {maximized ? '⊡' : '⊞'}
+              </button>
+              <button className="ai-close" onClick={() => { setOpen(false); setMaximized(false); }}>×</button>
+            </div>
           </div>
 
           <div className="ai-messages">
