@@ -130,3 +130,7 @@ tr:hover td { background: #1e1e1e; }
 .ai-panel-max .ai-messages { max-height: calc(100vh - 280px) !important; }
 .ai-maximize { background: none; border: none; color: #666; font-size: 18px; cursor: pointer; padding: 0 4px; line-height: 1; }
 .ai-maximize:hover { color: #ccc; }
+
+/* Export button */
+.btn-export { padding: 8px 16px; background: transparent; color: #1D9E75; border: 0.5px solid #1D9E75; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.15s; font-family: inherit; }
+.btn-export:hover { background: #1D9E75; color: #fff; }
