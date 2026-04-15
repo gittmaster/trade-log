@@ -229,25 +229,25 @@ export default function App() {
 
   useEffect(() => { loadTrades(); }, [loadTrades]);
 
+
+
   const exportCSV = () => {
+    if (!trades.length) { alert('No trades to export'); return; }
     const headers = ['trade_number','date','time','account','symbol','direction','entry','exit_price','stop','target','exit_reason','al_strength','al_touches','al_age','sl_quality','sl_touches','sl_age','sl_price','grade','session','yellow_levels','confirmations','notes','pnl'];
     const rows = trades.map(t => headers.map(h => {
       const v = t[h];
       if (v === null || v === undefined) return '';
-      if (typeof v === 'string' && v.includes(',')) return '"' + v.replace(/"/g, '""') + '"';
+      if (typeof v === 'string' && v.includes(',')) return '"' + v.replace(/"/g,'""') + '"';
       return v;
     }).join(','));
-    const csv = [headers.join(','), ...rows].join('
-');
+    const csv = [headers.join(','), ...rows].join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'trades-' + new Date().toISOString().split('T')[0] + '.csv';
+    a.download = 'trades_' + new Date().toISOString().split('T')[0] + '.csv';
     a.click();
     URL.revokeObjectURL(url);
-    setMsg('Exported ' + trades.length + ' trades!');
-    setTimeout(() => setMsg(''), 3000);
   };
 
   const seedDatabase = async () => {
@@ -399,7 +399,7 @@ export default function App() {
               {seeding ? 'Loading...' : 'Load 61 trades'}
             </button>
           )}
-          <button className="btn-export" onClick={exportCSV} title="Download all trades as CSV">⬇ Export CSV</button>
+          <button className="btn-export" onClick={exportCSV}>↓ Export CSV</button>
           <button className="btn-primary" onClick={() => { if (showForm && !editingTrade) { cancelForm(); } else { openNewTradeForm(); } }}>
             {showForm && !editingTrade ? 'Cancel' : '+ New Trade'}
           </button>
