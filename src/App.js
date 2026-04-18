@@ -26,6 +26,15 @@ function getSession(time) {
   return 'Overnight';
 }
 
+function autoGrade(al_strength, al_touches, al_age, sl_quality, sl_touches, sl_age) {
+  const alStrong = al_strength === 'strong' && parseInt(al_touches) >= 3 && al_age === '1wk+';
+  const slStrong = sl_quality === 'strong' && parseInt(sl_touches) >= 3 && sl_age === '1wk+';
+  if (alStrong && slStrong) return 'aplus';
+  if (alStrong && !slStrong) return 'a';
+  if (!alStrong && slStrong) return 'a';
+  return 'aminus';
+}
+
 const EMPTY_FORM = {
   trade_number: '', date: new Date().toISOString().split('T')[0], time: '',
   account: 'A1', symbol: 'MGC', direction: 'long', entry: '', exit_price: '',
@@ -130,39 +139,51 @@ function TradeForm({ form, setForm, onSubmit, onCancel, uploading, isEdit }) {
             {['target', 'stop', 'manual', 'open'].map(r => <button key={r} className={`tog ${form.exit_reason === r ? 'tog-blue' : ''}`} onClick={() => setForm(f => ({ ...f, exit_reason: r }))}>{r}</button>)}
           </div>
         </div>
-        <div className="field"><label>Grade</label>
-          <div className="toggle-row">
-            <button className={`tog ${form.grade === 'aplus' ? 'tog-green' : ''}`} onClick={() => setForm(f => ({ ...f, grade: 'aplus' }))}>A+</button>
-            <button className={`tog ${form.grade === 'a' ? 'tog-blue' : ''}`} onClick={() => setForm(f => ({ ...f, grade: 'a' }))}>A</button>
-            <button className={`tog ${form.grade === 'aminus' ? 'tog-amber' : ''}`} onClick={() => setForm(f => ({ ...f, grade: 'aminus' }))}>A-</button>
+        <div className="field">
+          <label>Grade <span style={{ fontSize: 11, color: '#888', fontWeight: 400 }}>(auto-calculated)</span></label>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 4 }}>
+            <span className="grade-badge" style={{
+              background: GRADE_COLORS[form.grade] + '33',
+              color: GRADE_COLORS[form.grade],
+              fontSize: 18,
+              fontWeight: 700,
+              padding: '6px 18px',
+              borderRadius: 8,
+              border: '1.5px solid ' + GRADE_COLORS[form.grade]
+            }}>
+              {GRADES[form.grade] || form.grade}
+            </span>
+            <span style={{ fontSize: 12, color: '#888' }}>
+              {form.grade === 'aplus' ? '~80% win rate' : form.grade === 'a' ? '~55% win rate' : '~40% win rate'}
+            </span>
           </div>
         </div>
       </div>
       <div className="form-grid-3">
         <div className="field"><label>Action Line</label>
           <div className="toggle-row">
-            <button className={`tog ${form.al_strength === 'strong' ? 'tog-green' : ''}`} onClick={() => setForm(f => ({ ...f, al_strength: 'strong' }))}>★ Strong</button>
-            <button className={`tog ${form.al_strength === 'standard' ? 'tog-blue' : ''}`} onClick={() => setForm(f => ({ ...f, al_strength: 'standard' }))}>Standard</button>
+            <button className={`tog ${form.al_strength === 'strong' ? 'tog-green' : ''}`} onClick={() => setForm(f => { const updated = { ...f, al_strength: 'strong' }; return { ...updated, grade: autoGrade('strong', updated.al_touches, updated.al_age, updated.sl_quality, updated.sl_touches, updated.sl_age) }; })}>★ Strong</button>
+            <button className={`tog ${form.al_strength === 'standard' ? 'tog-blue' : ''}`} onClick={() => setForm(f => { const updated = { ...f, al_strength: 'standard' }; return { ...updated, grade: autoGrade('standard', updated.al_touches, updated.al_age, updated.sl_quality, updated.sl_touches, updated.sl_age) }; })}>Standard</button>
           </div>
         </div>
-        <div className="field"><label>AL Touches</label><input type="number" value={form.al_touches || ''} onChange={e => setForm(f => ({ ...f, al_touches: e.target.value }))} /></div>
+        <div className="field"><label>AL Touches</label><input type="number" value={form.al_touches || ''} onChange={e => setForm(f => { const updated = { ...f, al_touches: e.target.value }; return { ...updated, grade: autoGrade(updated.al_strength, updated.al_touches, updated.al_age, updated.sl_quality, updated.sl_touches, updated.sl_age) }; })} /></div>
         <div className="field"><label>AL Age</label>
           <div className="toggle-row">
-            {['<1day', '<1wk', '1wk+'].map(a => <button key={a} className={`tog ${form.al_age === a ? 'tog-blue' : ''}`} onClick={() => setForm(f => ({ ...f, al_age: a }))}>{a}</button>)}
+            {['<1day', '<1wk', '1wk+'].map(a => <button key={a} className={`tog ${form.al_age === a ? 'tog-blue' : ''}`} onClick={() => setForm(f => { const updated = { ...f, al_age: a }; return { ...updated, grade: autoGrade(updated.al_strength, updated.al_touches, a, updated.sl_quality, updated.sl_touches, updated.sl_age) }; })}>{a}</button>)}
           </div>
         </div>
       </div>
       <div className="form-grid-3">
         <div className="field"><label>Safety Line</label>
           <div className="toggle-row">
-            <button className={`tog ${form.sl_quality === 'strong' ? 'tog-green' : ''}`} onClick={() => setForm(f => ({ ...f, sl_quality: 'strong' }))}>★ Strong</button>
-            <button className={`tog ${form.sl_quality === 'weak' ? 'tog-red' : ''}`} onClick={() => setForm(f => ({ ...f, sl_quality: 'weak' }))}>Weak</button>
+            <button className={`tog ${form.sl_quality === 'strong' ? 'tog-green' : ''}`} onClick={() => setForm(f => { const updated = { ...f, sl_quality: 'strong' }; return { ...updated, grade: autoGrade(updated.al_strength, updated.al_touches, updated.al_age, 'strong', updated.sl_touches, updated.sl_age) }; })}>★ Strong</button>
+            <button className={`tog ${form.sl_quality === 'weak' ? 'tog-red' : ''}`} onClick={() => setForm(f => { const updated = { ...f, sl_quality: 'weak' }; return { ...updated, grade: autoGrade(updated.al_strength, updated.al_touches, updated.al_age, 'weak', updated.sl_touches, updated.sl_age) }; })}>Weak</button>
           </div>
         </div>
-        <div className="field"><label>SL Touches</label><input type="number" value={form.sl_touches || ''} onChange={e => setForm(f => ({ ...f, sl_touches: e.target.value }))} /></div>
+        <div className="field"><label>SL Touches</label><input type="number" value={form.sl_touches || ''} onChange={e => setForm(f => { const updated = { ...f, sl_touches: e.target.value }; return { ...updated, grade: autoGrade(updated.al_strength, updated.al_touches, updated.al_age, updated.sl_quality, updated.sl_touches, updated.sl_age) }; })} /></div>
         <div className="field"><label>SL Age</label>
           <div className="toggle-row">
-            {['<1day', '<1wk', '1wk+'].map(a => <button key={a} className={`tog ${form.sl_age === a ? 'tog-blue' : ''}`} onClick={() => setForm(f => ({ ...f, sl_age: a }))}>{a}</button>)}
+            {['<1day', '<1wk', '1wk+'].map(a => <button key={a} className={`tog ${form.sl_age === a ? 'tog-blue' : ''}`} onClick={() => setForm(f => { const updated = { ...f, sl_age: a }; return { ...updated, grade: autoGrade(updated.al_strength, updated.al_touches, updated.al_age, updated.sl_quality, updated.sl_touches, a) }; })}>{a}</button>)}
           </div>
         </div>
       </div>
