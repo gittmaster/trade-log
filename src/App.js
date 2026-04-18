@@ -229,15 +229,16 @@ export default function App() {
 
   useEffect(() => { loadTrades(); }, [loadTrades]);
 
-
-
   const exportCSV = () => {
     if (!trades.length) { alert('No trades to export'); return; }
     const headers = ['trade_number','date','time','account','symbol','direction','entry','exit_price','stop','target','exit_reason','al_strength','al_touches','al_age','sl_quality','sl_touches','sl_age','sl_price','grade','session','yellow_levels','confirmations','notes','pnl'];
     const rows = trades.map(t => headers.map(h => {
       const v = t[h];
       if (v === null || v === undefined) return '';
-      if (typeof v === 'string' && v.includes(',')) return '"' + v.replace(/"/g,'""') + '"';
+      if (typeof v === 'string' && v.includes(',')) {
+        const escaped = v.replace(/"/g, '""');
+        return '"' + escaped + '"';
+      }
       return v;
     }).join(','));
     const csv = [headers.join(','), ...rows].join('\n');
@@ -340,6 +341,7 @@ export default function App() {
   };
 
   const getWeekRange = () => { const now = new Date(); const day = now.getDay(); const diffToMon = day === 0 ? -6 : 1 - day; const monday = new Date(now); monday.setDate(now.getDate() + diffToMon); monday.setHours(0,0,0,0); const sunday = new Date(monday); sunday.setDate(monday.getDate() + 6); sunday.setHours(23,59,59,999); return {monday, sunday}; };
+
   const filteredTrades = () => {
     if (activeFilter === 'all') return trades;
     if (activeFilter === 'win') return trades.filter(t => t.pnl > 0);
