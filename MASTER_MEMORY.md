@@ -1,7 +1,8 @@
 # TRADING MASTER MEMORY FILE
 **Created:** April 19, 2026
+**Last Updated:** April 19, 2026
 **Purpose:** Resume trading coaching session in a new conversation
-**Instructions:** Paste this entire file at the start of a new conversation and say "read this and pick up where we left off"
+**Instructions:** Upload this file at the start of a new conversation and say "read this and pick up where we left off"
 
 ---
 
@@ -25,10 +26,12 @@
 - **GitHub repo:** https://github.com/gittmaster/trade-log
 - **Supabase project:** https://tsfmzgndcsgntortbnku.supabase.co
 - **Stack:** React + Supabase + Vercel (free tier all)
+- **Local repo path:** C:\Users\lax46\Downloads\trade-log\trade-log
 
 **Environment variables in Vercel:**
 - `REACT_APP_SUPABASE_ANON_KEY` — Supabase anon key
 - `REACT_APP_ANTHROPIC_API_KEY` — Anthropic API key
+- `REACT_APP_PASSWORD` — App login password (added April 19, 2026)
 
 **Supabase storage:**
 - Bucket: `trade-charts` — PUBLIC — policy: allow all operations (SELECT, INSERT, UPDATE, DELETE)
@@ -45,6 +48,24 @@
 - Export CSV — ↓ Export CSV button downloads all trades with today's date in filename
 - Sortable columns — click any column header, arrow shows sort direction
 - Exit reason defaults to blank — must select before saving
+- **Password login screen — NEW April 19** — Login.js added, App.js updated with auth gate
+
+**Source files:**
+- `src/App.js` — main app (updated April 19 with Login import + auth state)
+- `src/Login.js` — NEW file added April 19, password screen component
+- `src/AIChat.js` — AI chat panel
+- `src/supabase.js` — Supabase client
+- `src/seedData.js` — historical trade seed data
+
+**PENDING as of April 19 — needs git push:**
+The Login.js and updated App.js were provided to the user as copy-paste content.
+User needs to run:
+```
+git add src/Login.js src/App.js
+git commit -m "add password login screen"
+git push origin main
+```
+If already pushed, the app at trendline-trades.vercel.app will show a dark login screen with 📈 icon before loading the app.
 
 **Supabase table schema — trades:**
 ```sql
@@ -66,6 +87,12 @@ notes, chart_url, pnl, created_at
 ### Safety Line (SL) — the opposing trendline where stop is placed
 - **★ Strong** = 3+ touches AND 1 week+ data AND low risk distance — ALL required
 - **Weak** = 2 touches OR under 1 week — either one drops it
+
+### Trendline Color Convention
+- **Red lines** = descending trendlines
+- **Green lines** = ascending trendlines
+- **Thicker lines** = higher timeframe (HTF)
+- **Thinner lines** = 60-min timeframe (trading timeframe)
 
 ### Setup Grades
 | AL | SL | Grade | Win Rate |
@@ -251,7 +278,7 @@ notes, chart_url, pnl, created_at
 
 ---
 
-## DOCUMENTS CREATED (available in Vercel outputs)
+## DOCUMENTS CREATED
 - TradeSetupReference_v2.docx
 - CheatSheet_v2.docx
 - NextWeek_TradingPlaybook.docx
@@ -261,6 +288,7 @@ notes, chart_url, pnl, created_at
 - TrendlineBreakAlerts.ts (ThinkScript)
 - TradeTemplate_v3.docx
 - SetupGrades.docx
+- MASTER_MEMORY.md — this file, stored in GitHub repo root
 
 ---
 
@@ -296,9 +324,8 @@ notes, chart_url, pnl, created_at
 ## HOW TO RESUME THIS SESSION
 
 When starting a new conversation:
-1. Upload or paste this entire file
-2. Say: "This is my trading memory file. I trade futures using the Trendline Break Strategy. Pick up where we left off — I need coaching, trade logging and grading help."
+1. Upload this file
+2. Say: "read this and pick up where we left off"
 3. Share any new charts or trades since April 9, 2026
 
 The AI coach will have full context of your 72 trades, strategy rules, web app, lessons learned, and chart bias immediately.
-
