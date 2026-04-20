@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from './supabase';
 import { seedTrades } from './seedData';
 import AIChat from './AIChat';
+import Login from './Login';
 import './App.css';
 
 const GRADES = { aplus: 'A+', a: 'A', aminus: 'A-' };
@@ -218,6 +219,7 @@ function TradeForm({ form, setForm, onSubmit, onCancel, uploading, isEdit }) {
 }
 
 export default function App() {
+  const [authed, setAuthed] = useState(() => sessionStorage.getItem('tl_auth') === '1');
   const [trades, setTrades] = useState([]);
   const [loading, setLoading] = useState(true);
   const [seeding, setSeeding] = useState(false);
@@ -410,6 +412,8 @@ export default function App() {
 
   return (
     <div className="app">
+      {!authed && <Login onSuccess={() => setAuthed(true)} />}
+      {authed && (<>
       <div className="header">
         <div>
           <h1>Trade Log</h1>
@@ -532,6 +536,7 @@ export default function App() {
 
       <ChartModal url={chartModal} onClose={() => setChartModal(null)} />
       <AIChat trades={trades} />
+      </>)}
     </div>
   );
 }
