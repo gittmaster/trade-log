@@ -97,6 +97,10 @@
 3. If neither AL nor SL has 4 touches → SKIP the trade
 4. Same-day touch does NOT count toward touch count
 5. If the confirming touch happened today → downgrade that line's strength
+6. **LONG trades require A+ grade minimum — longs are net –$1,736 all-time, never take A- or A longs**
+7. **No trades on Thursday unless A+ grade — Thursday is only losing day (–$1,210)**
+8. **After any loss → mandatory 30-minute break before next entry — no exceptions**
+9. **Best trading window is 09:00–13:00 EST (+$2,886) — prioritize this window**
 
 ### Exit Rules (NEW — May 1, 2026)
 1. **Tertiary SL cross on 1-hour close → EXIT. No exceptions.**
@@ -165,9 +169,28 @@
 - Trade 84: removed stop = large loss
 - **Rule: Never remove stop. Use discretion at the level but keep stop in platform**
 
-### 6. Tertiary SL Trades
-- April: Tertiary SL trades cost –$460
-- **Rule: Avoid Tertiary SL trades. If taken, exit at first Tertiary cross.**
+### 7. Trading Longs (NEW — May 1, 2026)
+- All-time: longs are net –$1,736, shorts are net +$4,820
+- You are a short trader — your edge is on the short side
+- **Rule: Only take longs at A+ grade. Never A or A- longs.**
+
+### 8. Revenge Trading After a Loss (NEW — May 1, 2026)
+- 44 trades taken after a loss: 39% WR, –$1,052 combined
+- 24 out of 44 revenge trades were A- grade — standards drop after loss
+- 7 consecutive losses in March cost –$2,443 — all driven by revenge cycle
+- **Rule: Mandatory 30-minute break after any loss. No exceptions.**
+
+### 9. Trading on Thursday (NEW — May 1, 2026)
+- Thursday: 18 trades, 44% WR, –$1,210 — only losing day of the week
+- Likely driven by Thursday news events (jobless claims, Fed speakers)
+- **Rule: No trades on Thursday unless A+ grade setup**
+
+### 10. Trading Outside 09:00–15:00 Window (NEW — May 1, 2026)
+- Late session 15:00–19:00: 11 trades, 27% WR, –$944
+- Dead zone 23:00–07:00: 2 trades, 0% WR, –$490
+- Combined outside-window losses: –$1,434 (more than entire April profit)
+- Best window 09:00–13:00: +$2,886 combined
+- **Rule: No new entries after 15:00 EST. Stick to 09:00–13:00 as primary window.**
 
 ---
 
@@ -194,12 +217,31 @@
 | A trades | 18 trades, 61% WR, +$984 |
 | A- trades | 19 trades, 42% WR, +$136 |
 
-### April Exit Analysis
-| Exit Type | Trades | Avg P&L |
-|---|---|---|
-| Target hit | 6 | +$483 ✅ |
-| Manual exit | 20 | +$98 ⚠️ |
-| Stop hit | 12 | –$289 ❌ |
+### Direction Bias (All-time)
+| Direction | Trades | WR | P&L |
+|---|---|---|---|
+| Short | 49 | 51% | **+$4,820** ✅ |
+| Long | 40 | 45% | **–$1,736** ❌ |
+
+### Day of Week (All-time)
+| Day | Trades | WR | P&L |
+|---|---|---|---|
+| Mon | 12 | 42% | +$734 |
+| Tue | 18 | 50% | +$745 |
+| Wed | 25 | 48% | +$1,696 |
+| **Thu** | **18** | **44%** | **–$1,210** ❌ |
+| Fri | 12 | 58% | +$1,007 |
+
+### Time of Day (All-time)
+| Window | Trades | WR | P&L |
+|---|---|---|---|
+| 07–09 Pre-open | 9 | 56% | +$407 |
+| **09–11 Open** | **17** | **53%** | **+$1,768** ✅ |
+| **11–13 Mid-AM** | **17** | **59%** | **+$1,118** ✅ |
+| 13–15 Mid-PM | 9 | 44% | +$722 |
+| 15–19 Late | 11 | 27% | –$944 ❌ |
+| 19–23 Overnight | 23 | 52% | +$625 |
+| 23–07 Dead | 2 | 0% | –$490 ❌ |
 
 ---
 
