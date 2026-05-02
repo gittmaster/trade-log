@@ -295,3 +295,6 @@
 | May 1, 2026 | Added weekly/monthly progress chart with Chart.js |
 | May 1, 2026 | Progress chart tooltips show trade count, WR%, W/L on hover |
 | May 1, 2026 | Summary cards show trades breakdown (e.g. 38 trades, 20W/18L) |
+| May 2, 2026 | Made Progress section collapsible |
+| May 2, 2026 | Made Key Levels & Pre-Trade Check section collapsible |
+| May 2, 2026 | Added pagination to trade table — 25 trades per page |
