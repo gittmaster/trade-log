@@ -478,6 +478,222 @@ function TradeForm({ form, setForm, onSubmit, onCancel, uploading, isEdit }) {
   );
 }
 
+// ─── Manage Levels + Pre-Trade Checklist ──────────────────────────────────────
+const DEFAULT_LEVELS = [
+  { id: 1, name: 'W($4900)', price: 4900, symbol: 'MGC' },
+  { id: 2, name: '4($4642.1)', price: 4642.1, symbol: 'MGC' },
+  { id: 3, name: 'W($4600)', price: 4600, symbol: 'MGC' },
+  { id: 4, name: 'M($4600)', price: 4600, symbol: 'MGC' },
+  { id: 5, name: 'M($4400)', price: 4400, symbol: 'MGC' },
+];
+
+function ManageLevels() {
+  const storageKey = 'tl_key_levels';
+  const [levels, setLevels] = useState(() => {
+    try { const s = localStorage.getItem(storageKey); return s ? JSON.parse(s) : DEFAULT_LEVELS; } catch { return DEFAULT_LEVELS; }
+  });
+  const [newName, setNewName] = useState('');
+  const [newPrice, setNewPrice] = useState('');
+  const [newSymbol, setNewSymbol] = useState('MGC');
+  const [editId, setEditId] = useState(null);
+  const [editPrice, setEditPrice] = useState('');
+
+  // Pre-trade checklist state
+  const [ptSymbol, setPtSymbol] = useState('MGC');
+  const [ptDirection, setPtDirection] = useState('short');
+  const [ptEntry, setPtEntry] = useState('');
+  const [ptStop, setPtStop] = useState('');
+  const [ptTarget, setPtTarget] = useState('');
+  const [ptResult, setPtResult] = useState(null);
+
+  const save = (updated) => {
+    setLevels(updated);
+    try { localStorage.setItem(storageKey, JSON.stringify(updated)); } catch {}
+  };
+
+  const addLevel = () => {
+    if (!newName || !newPrice) return;
+    const updated = [...levels, { id: Date.now(), name: newName, price: parseFloat(newPrice), symbol: newSymbol }];
+    save(updated);
+    setNewName(''); setNewPrice('');
+  };
+
+  const deleteLevel = (id) => save(levels.filter(l => l.id !== id));
+
+  const startEdit = (l) => { setEditId(l.id); setEditPrice(String(l.price)); };
+  const saveEdit = (id) => {
+    save(levels.map(l => l.id === id ? { ...l, price: parseFloat(editPrice) } : l));
+    setEditId(null); setEditPrice('');
+  };
+
+  const checkTrade = () => {
+    const entry = parseFloat(ptEntry);
+    const stop = parseFloat(ptStop);
+    const target = parseFloat(ptTarget);
+    if (!entry || !stop || !target) return;
+
+    const mult = ptSymbol === 'MGC' ? 10 : 2;
+    const isShort = ptDirection === 'short';
+
+    const stopDist = isShort ? stop - entry : entry - stop;
+    const targetDist = isShort ? entry - target : target - entry;
+    const rr = stopDist > 0 ? Math.round((targetDist / stopDist) * 100) / 100 : 0;
+    const maxGain = Math.round(targetDist * mult);
+    const maxLoss = Math.round(stopDist * mult);
+
+    // Find nearest level to target
+    const symLevels = levels.filter(l => l.symbol === ptSymbol);
+    let nearest = null;
+    let nearestDist = Infinity;
+    symLevels.forEach(l => {
+      const d = Math.abs(l.price - target);
+      if (d < nearestDist) { nearestDist = d; nearest = l; }
+    });
+
+    const warnings = [];
+    if (rr > 2.5) warnings.push(`R:R is ${rr} — above 2.5, target may be too wide`);
+    if (nearestDist > 20) warnings.push(`Target is ${Math.round(nearestDist)} pts from nearest level (${nearest ? nearest.name : 'none'}) — not sitting at a key level`);
+    if (stopDist <= 0) warnings.push('Stop is on wrong side of entry');
+    if (targetDist <= 0) warnings.push('Target is on wrong side of entry');
+
+    setPtResult({ rr, maxGain, maxLoss, nearest, nearestDist: Math.round(nearestDist), warnings, stopDist: Math.round(stopDist), targetDist: Math.round(targetDist) });
+  };
+
+  const symLevels = levels.filter(l => l.symbol === ptSymbol).sort((a, b) => b.price - a.price);
+  const otherLevels = levels.filter(l => l.symbol !== ptSymbol).sort((a, b) => b.price - a.price);
+
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 24 }}>
+
+      {/* Key Levels Manager */}
+      <div className="table-card" style={{ marginBottom: 0 }}>
+        <div className="table-header" style={{ marginBottom: 16 }}>
+          <h2>Key Levels</h2>
+        </div>
+
+        {/* Add new level */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 80px 70px auto', gap: 8, marginBottom: 16 }}>
+          <input placeholder="Name (e.g. W$4900)" value={newName} onChange={e => setNewName(e.target.value)}
+            style={{ background: '#111', border: '1px solid #2a2a2a', borderRadius: 6, padding: '6px 10px', color: '#ccc', fontSize: 13 }} />
+          <input placeholder="Price" type="number" step="0.1" value={newPrice} onChange={e => setNewPrice(e.target.value)}
+            style={{ background: '#111', border: '1px solid #2a2a2a', borderRadius: 6, padding: '6px 10px', color: '#ccc', fontSize: 13 }} />
+          <select value={newSymbol} onChange={e => setNewSymbol(e.target.value)}
+            style={{ background: '#111', border: '1px solid #2a2a2a', borderRadius: 6, padding: '6px 8px', color: '#ccc', fontSize: 13 }}>
+            <option>MGC</option><option>MNQ</option>
+          </select>
+          <button onClick={addLevel} style={{ background: '#185FA5', border: 'none', borderRadius: 6, padding: '6px 14px', color: '#fff', fontSize: 13, cursor: 'pointer', fontWeight: 500 }}>+ Add</button>
+        </div>
+
+        {/* MGC levels */}
+        {['MGC', 'MNQ'].map(sym => {
+          const sLevels = levels.filter(l => l.symbol === sym).sort((a, b) => b.price - a.price);
+          if (!sLevels.length) return null;
+          return (
+            <div key={sym} style={{ marginBottom: 14 }}>
+              <div style={{ fontSize: 11, color: '#888', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>{sym}</div>
+              {sLevels.map(l => (
+                <div key={l.id} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, background: '#111', borderRadius: 6, padding: '6px 10px' }}>
+                  <span style={{ flex: 1, fontSize: 13, color: '#ccc' }}>{l.name}</span>
+                  {editId === l.id ? (
+                    <>
+                      <input type="number" step="0.1" value={editPrice} onChange={e => setEditPrice(e.target.value)}
+                        style={{ width: 80, background: '#1a1a1a', border: '1px solid #185FA5', borderRadius: 4, padding: '3px 6px', color: '#ccc', fontSize: 12 }} />
+                      <button onClick={() => saveEdit(l.id)} style={{ background: '#1D9E75', border: 'none', borderRadius: 4, padding: '3px 10px', color: '#fff', fontSize: 12, cursor: 'pointer' }}>Save</button>
+                      <button onClick={() => setEditId(null)} style={{ background: '#333', border: 'none', borderRadius: 4, padding: '3px 8px', color: '#888', fontSize: 12, cursor: 'pointer' }}>×</button>
+                    </>
+                  ) : (
+                    <>
+                      <span style={{ fontSize: 13, color: '#1D9E75', fontWeight: 500, minWidth: 60, textAlign: 'right' }}>{l.price}</span>
+                      <button onClick={() => startEdit(l)} style={{ background: '#222', border: 'none', borderRadius: 4, padding: '3px 8px', color: '#888', fontSize: 11, cursor: 'pointer' }}>Edit</button>
+                      <button onClick={() => deleteLevel(l.id)} style={{ background: 'none', border: 'none', color: '#E24B4A', fontSize: 14, cursor: 'pointer', padding: '0 4px' }}>×</button>
+                    </>
+                  )}
+                </div>
+              ))}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Pre-Trade Checklist */}
+      <div className="table-card" style={{ marginBottom: 0 }}>
+        <div className="table-header" style={{ marginBottom: 16 }}>
+          <h2>Pre-Trade Check</h2>
+        </div>
+
+        <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+          {['MGC', 'MNQ'].map(s => (
+            <button key={s} onClick={() => { setPtSymbol(s); setPtResult(null); }}
+              style={{ padding: '5px 16px', borderRadius: 6, fontSize: 13, fontWeight: 500, cursor: 'pointer', border: '1px solid', borderColor: ptSymbol === s ? '#185FA5' : '#2a2a2a', background: ptSymbol === s ? '#185FA522' : 'transparent', color: ptSymbol === s ? '#185FA5' : '#888' }}>{s}</button>
+          ))}
+          {['short', 'long'].map(d => (
+            <button key={d} onClick={() => { setPtDirection(d); setPtResult(null); }}
+              style={{ padding: '5px 16px', borderRadius: 6, fontSize: 13, fontWeight: 500, cursor: 'pointer', border: '1px solid', borderColor: ptDirection === d ? (d === 'short' ? '#E24B4A' : '#1D9E75') : '#2a2a2a', background: ptDirection === d ? (d === 'short' ? '#E24B4A22' : '#1D9E7522') : 'transparent', color: ptDirection === d ? (d === 'short' ? '#E24B4A' : '#1D9E75') : '#888' }}>{d.charAt(0).toUpperCase() + d.slice(1)}</button>
+          ))}
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 12 }}>
+          {[['Entry', ptEntry, setPtEntry], ['Stop', ptStop, setPtStop], ['Target', ptTarget, setPtTarget]].map(([label, val, setter]) => (
+            <div key={label} className="field" style={{ marginBottom: 0 }}>
+              <label style={{ fontSize: 11 }}>{label}</label>
+              <input type="number" step="0.1" value={val} onChange={e => { setter(e.target.value); setPtResult(null); }}
+                style={{ width: '100%', background: '#111', border: '1px solid #2a2a2a', borderRadius: 6, padding: '6px 10px', color: '#ccc', fontSize: 13 }} />
+            </div>
+          ))}
+        </div>
+
+        <button onClick={checkTrade} style={{ width: '100%', background: '#185FA5', border: 'none', borderRadius: 8, padding: '10px', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer', marginBottom: 16 }}>
+          Check Setup
+        </button>
+
+        {ptResult && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {/* R:R and stats */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
+              {[
+                { label: 'R:R', value: ptResult.rr + ':1', color: ptResult.rr > 2.5 ? '#E24B4A' : '#1D9E75' },
+                { label: 'Max Gain', value: '+$' + ptResult.maxGain, color: '#1D9E75' },
+                { label: 'Max Loss', value: '-$' + ptResult.maxLoss, color: '#E24B4A' },
+              ].map((c, i) => (
+                <div key={i} style={{ background: '#111', borderRadius: 8, padding: '8px 12px', textAlign: 'center' }}>
+                  <div style={{ fontSize: 11, color: '#666', marginBottom: 3 }}>{c.label}</div>
+                  <div style={{ fontSize: 16, fontWeight: 600, color: c.color }}>{c.value}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Nearest level */}
+            <div style={{ background: '#111', borderRadius: 8, padding: '10px 12px' }}>
+              <div style={{ fontSize: 11, color: '#666', marginBottom: 4 }}>Nearest Key Level to Target</div>
+              {ptResult.nearest ? (
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ color: '#ccc', fontWeight: 500 }}>{ptResult.nearest.name} @ {ptResult.nearest.price}</span>
+                  <span style={{ fontSize: 12, color: ptResult.nearestDist <= 10 ? '#1D9E75' : ptResult.nearestDist <= 20 ? '#BA7517' : '#E24B4A' }}>
+                    {ptResult.nearestDist} pts away {ptResult.nearestDist <= 10 ? '✅' : ptResult.nearestDist <= 20 ? '⚠️' : '❌'}
+                  </span>
+                </div>
+              ) : <span style={{ color: '#666' }}>No levels saved for {ptSymbol}</span>}
+            </div>
+
+            {/* Warnings */}
+            {ptResult.warnings.length > 0 ? (
+              <div style={{ background: '#E24B4A12', border: '1px solid #E24B4A44', borderRadius: 8, padding: '10px 12px' }}>
+                {ptResult.warnings.map((w, i) => (
+                  <div key={i} style={{ color: '#E24B4A', fontSize: 13, marginBottom: i < ptResult.warnings.length - 1 ? 4 : 0 }}>⚠️ {w}</div>
+                ))}
+              </div>
+            ) : (
+              <div style={{ background: '#1D9E7512', border: '1px solid #1D9E7544', borderRadius: 8, padding: '10px 12px', color: '#1D9E75', fontSize: 13 }}>
+                ✅ Setup looks clean — R:R is within range and target is near a key level
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   const [authed, setAuthed] = useState(() => sessionStorage.getItem('tl_auth') === '1');
   const [trades, setTrades] = useState([]);
@@ -685,6 +901,8 @@ export default function App() {
         </div>
 
         <ProgressChart trades={trades} />
+
+        <ManageLevels />
 
         {showForm && (
           <TradeForm form={form} setForm={setForm} onSubmit={editingTrade ? updateTrade : submitTrade} onCancel={cancelForm} uploading={uploading} isEdit={!!editingTrade} />
