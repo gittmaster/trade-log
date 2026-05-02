@@ -497,6 +497,7 @@ function ManageLevels() {
   const [newSymbol, setNewSymbol] = useState('MGC');
   const [editId, setEditId] = useState(null);
   const [editPrice, setEditPrice] = useState('');
+  const [open, setOpen] = useState(false);
 
   // Pre-trade checklist state
   const [ptSymbol, setPtSymbol] = useState('MGC');
@@ -563,7 +564,13 @@ function ManageLevels() {
   const otherLevels = levels.filter(l => l.symbol !== ptSymbol).sort((a, b) => b.price - a.price);
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 24 }}>
+    <div style={{ marginBottom: 24 }}>
+      <div onClick={() => setOpen(o => !o)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#111', border: '1px solid #222', borderRadius: open ? '8px 8px 0 0' : 8, padding: '10px 16px', cursor: 'pointer', userSelect: 'none' }}>
+        <span style={{ fontWeight: 600, fontSize: 14, color: '#ccc' }}>📐 Key Levels & Pre-Trade Check</span>
+        <span style={{ color: '#888', fontSize: 14 }}>{open ? '▲ Hide' : '▼ Show'}</span>
+      </div>
+      {open && <div style={{ border: '1px solid #222', borderTop: 'none', borderRadius: '0 0 8px 8px', padding: 16 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
 
       {/* Key Levels Manager */}
       <div className="table-card" style={{ marginBottom: 0 }}>
@@ -691,6 +698,8 @@ function ManageLevels() {
         )}
       </div>
     </div>
+    </div>}
+    </div>
   );
 }
 
@@ -708,10 +717,13 @@ export default function App() {
   const [chartModal, setChartModal] = useState(null);
   const [sortCol, setSortCol] = useState('date');
   const [sortDir, setSortDir] = useState('desc');
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 25;
 
   const handleSort = (col) => {
     if (sortCol === col) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
     else { setSortCol(col); setSortDir('asc'); }
+    setPage(1);
   };
 
   const nextTradeNumber = () => {
@@ -856,6 +868,9 @@ export default function App() {
     });
   })();
 
+  const totalPages = Math.ceil(ft.length / PAGE_SIZE);
+  const paginatedFt = ft.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
   const weekTrades = filteredTrades().filter(t => activeFilter === 'week' && t.pnl !== null);
   const weekNet = weekTrades.reduce((s, t) => s + (t.pnl || 0), 0);
   const weekWins = weekTrades.filter(t => t.pnl > 0).length;
@@ -922,7 +937,7 @@ export default function App() {
           </div>
           <div className="filter-row">
             {['all', 'A1', 'A2', 'MGC', 'MNQ', 'aplus', 'a', 'aminus', 'win', 'loss', 'week'].map(f => (
-              <button key={f} className={`filter-btn ${activeFilter === f ? 'active' : ''}`} onClick={() => setActiveFilter(f)}>
+              <button key={f} className={`filter-btn ${activeFilter === f ? 'active' : ''}`} onClick={() => { setActiveFilter(f); setPage(1); }}>
                 {f === 'aplus' ? 'A+' : f === 'aminus' ? 'A-' : f === 'week' ? 'This Week' : f.charAt(0).toUpperCase() + f.slice(1)}
               </button>
             ))}
@@ -932,7 +947,7 @@ export default function App() {
             {tierFilterGroups.map(({ key, label, color }) => (
               <button key={key} className={`filter-btn ${activeFilter === key ? 'active' : ''}`}
                 style={activeFilter === key ? { borderColor: color, color: color, background: color + '22' } : { borderColor: '#2a2a2a' }}
-                onClick={() => setActiveFilter(activeFilter === key ? 'all' : key)}>{label}</button>
+                onClick={() => { setActiveFilter(activeFilter === key ? 'all' : key); setPage(1); }}>{label}</button>
             ))}
           </div>
 
@@ -952,7 +967,7 @@ export default function App() {
                   </tr>
                 </thead>
                 <tbody>
-                  {ft.map(t => {
+                  {paginatedFt.map(t => {
                     const pnl = t.pnl;
                     const alTier = t.al_tier || '—'; const slTier = t.sl_tier || '—';
                     const alTierColor = TIER_COLORS[alTier]; const slTierColor = TIER_COLORS[slTier];
@@ -982,6 +997,24 @@ export default function App() {
                   })}
                 </tbody>
               </table>
+            </div>
+          )}
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderTop: '1px solid #1a1a1a', marginTop: 4 }}>
+              <div style={{ fontSize: 12, color: '#666' }}>
+                Showing {((page - 1) * PAGE_SIZE) + 1}–{Math.min(page * PAGE_SIZE, ft.length)} of {ft.length} trades
+              </div>
+              <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                <button onClick={() => setPage(1)} disabled={page === 1} style={{ padding: '4px 10px', borderRadius: 6, border: '1px solid #2a2a2a', background: 'transparent', color: page === 1 ? '#444' : '#888', cursor: page === 1 ? 'default' : 'pointer', fontSize: 12 }}>«</button>
+                <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} style={{ padding: '4px 10px', borderRadius: 6, border: '1px solid #2a2a2a', background: 'transparent', color: page === 1 ? '#444' : '#888', cursor: page === 1 ? 'default' : 'pointer', fontSize: 12 }}>‹ Prev</button>
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
+                  <button key={p} onClick={() => setPage(p)} style={{ padding: '4px 10px', borderRadius: 6, border: '1px solid', borderColor: page === p ? '#185FA5' : '#2a2a2a', background: page === p ? '#185FA522' : 'transparent', color: page === p ? '#185FA5' : '#888', cursor: 'pointer', fontSize: 12, fontWeight: page === p ? 600 : 400 }}>{p}</button>
+                ))}
+                <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} style={{ padding: '4px 10px', borderRadius: 6, border: '1px solid #2a2a2a', background: 'transparent', color: page === totalPages ? '#444' : '#888', cursor: page === totalPages ? 'default' : 'pointer', fontSize: 12 }}>Next ›</button>
+                <button onClick={() => setPage(totalPages)} disabled={page === totalPages} style={{ padding: '4px 10px', borderRadius: 6, border: '1px solid #2a2a2a', background: 'transparent', color: page === totalPages ? '#444' : '#888', cursor: page === totalPages ? 'default' : 'pointer', fontSize: 12 }}>»</button>
+              </div>
             </div>
           )}
         </div>
