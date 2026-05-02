@@ -133,6 +133,7 @@ function ProgressChart({ trades }) {
   const pnlChartRef = useRef(null);
   const wrChartRef = useRef(null);
   const [view, setView] = useState('weekly');
+  const [open, setOpen] = useState(false);
   const [chartReady, setChartReady] = useState(!!window.Chart);
 
   const closed = trades.filter(t => t.pnl !== null && t.date);
@@ -270,21 +271,23 @@ function ProgressChart({ trades }) {
   if (!closed.length) return null;
 
   return (
-    <div className="table-card" style={{ marginBottom: 24 }}>
-      <div className="table-header" style={{ marginBottom: 16 }}>
-        <h2>Progress</h2>
-        <div style={{ display: 'flex', gap: 6 }}>
-          {['weekly', 'monthly'].map(v => (
-            <button key={v} onClick={() => setView(v)} style={{
-              padding: '4px 14px', borderRadius: 6, fontSize: 12, fontWeight: 500, cursor: 'pointer',
+    <div style={{ marginBottom: 24 }}>
+      <div onClick={() => setOpen(o => !o)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#111', border: '1px solid #222', borderRadius: open ? '8px 8px 0 0' : 8, padding: '10px 16px', cursor: 'pointer', userSelect: 'none' }}>
+        <span style={{ fontWeight: 600, fontSize: 14, color: '#ccc' }}>📈 Progress</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          {open && ['weekly', 'monthly'].map(v => (
+            <button key={v} onClick={e => { e.stopPropagation(); setView(v); }} style={{
+              padding: '3px 12px', borderRadius: 6, fontSize: 12, fontWeight: 500, cursor: 'pointer',
               border: '1px solid', borderColor: view === v ? '#185FA5' : '#2a2a2a',
               background: view === v ? '#185FA522' : 'transparent', color: view === v ? '#185FA5' : '#888',
             }}>
               {v.charAt(0).toUpperCase() + v.slice(1)}
             </button>
           ))}
+          <span style={{ color: '#888', fontSize: 14 }}>{open ? '▲ Hide' : '▼ Show'}</span>
         </div>
       </div>
+      {open && <div style={{ border: '1px solid #222', borderTop: 'none', borderRadius: '0 0 8px 8px', padding: 16 }}>
 
       <div style={{ display: 'flex', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
         {[
@@ -323,6 +326,7 @@ function ProgressChart({ trades }) {
       <div style={{ position: 'relative', width: '100%', height: 180 }}>
         <canvas ref={wrRef} role="img" aria-label={`Line chart showing win rate by ${view}`} />
       </div>
+      </div>}
     </div>
   );
 }
