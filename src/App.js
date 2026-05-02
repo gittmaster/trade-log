@@ -202,7 +202,22 @@ function ProgressChart({ trades }) {
         responsive: true, maintainAspectRatio: false,
         plugins: {
           legend: { display: false },
-          tooltip: { callbacks: { label: ctx => { const v = ctx.raw; return (v >= 0 ? '+$' : '-$') + Math.abs(v).toLocaleString(); } } }
+          tooltip: {
+            callbacks: {
+              title: ctx => {
+                const i = ctx[0].dataIndex;
+                const b = buckets[i];
+                const wr = b.total ? Math.round(b.wins / b.total * 100) : 0;
+                return `${b.label}  ·  ${b.total} trade${b.total !== 1 ? 's' : ''}  ·  ${wr}% WR`;
+              },
+              label: ctx => {
+                const v = ctx.raw;
+                const i = ctx.dataIndex;
+                const b = buckets[i];
+                return [`P&L: ${(v >= 0 ? '+$' : '-$') + Math.abs(v).toLocaleString()}`, `Wins: ${b.wins}   Losses: ${b.total - b.wins}`];
+              }
+            }
+          }
         },
         scales: {
           x: { ticks: { autoSkip: false, maxRotation: 45, color: '#888', font: { size: 11 } }, grid: { display: false } },
@@ -223,7 +238,14 @@ function ProgressChart({ trades }) {
       },
       options: {
         responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ctx.raw + '%' } } },
+        plugins: { legend: { display: false }, tooltip: { callbacks: {
+          title: ctx => {
+            const i = ctx[0].dataIndex;
+            const b = buckets[i];
+            return `${b.label}  ·  ${b.total} trade${b.total !== 1 ? 's' : ''}`;
+          },
+          label: ctx => `Win Rate: ${ctx.raw}%  (${buckets[ctx.dataIndex].wins}W / ${buckets[ctx.dataIndex].total - buckets[ctx.dataIndex].wins}L)`
+        } } },
         scales: {
           x: { ticks: { autoSkip: false, maxRotation: 45, color: '#888', font: { size: 11 } }, grid: { display: false } },
           y: { min: 0, max: 100, ticks: { color: '#888', font: { size: 11 }, callback: v => v + '%' }, grid: { color: 'rgba(128,128,128,0.12)' } }
@@ -268,9 +290,9 @@ function ProgressChart({ trades }) {
         {[
           { label: 'Net P&L', value: (totalNet >= 0 ? '+$' : '-$') + Math.abs(totalNet).toLocaleString(), color: totalNet >= 0 ? '#1D9E75' : '#E24B4A' },
           { label: 'Win Rate', value: overallWR + '%', color: overallWR >= 50 ? '#1D9E75' : '#E24B4A' },
-          { label: 'Total Trades', value: totalTrades },
-          { label: 'Best ' + (view === 'weekly' ? 'Week' : 'Month'), value: bestBucket ? bestBucket.label : '—', color: '#1D9E75' },
-          { label: 'Worst ' + (view === 'weekly' ? 'Week' : 'Month'), value: worstBucket ? worstBucket.label : '—', color: '#E24B4A' },
+          { label: 'Trades', value: `${totalTrades} (${totalWins}W / ${totalTrades - totalWins}L)` },
+          { label: 'Best ' + (view === 'weekly' ? 'Week' : 'Month'), value: bestBucket ? `${bestBucket.label} (${bestBucket.total}t)` : '—', color: '#1D9E75' },
+          { label: 'Worst ' + (view === 'weekly' ? 'Week' : 'Month'), value: worstBucket ? `${worstBucket.label} (${worstBucket.total}t)` : '—', color: '#E24B4A' },
         ].map((c, i) => (
           <div key={i} style={{ background: '#111', borderRadius: 8, padding: '8px 14px', minWidth: 90 }}>
             <div style={{ fontSize: 11, color: '#666', marginBottom: 3 }}>{c.label}</div>
