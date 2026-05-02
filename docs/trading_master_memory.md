@@ -280,6 +280,18 @@
 
 ## NOTES FOR NEXT SESSION
 - Trades 91 & 92 still open — target m($4600) / green HTF line
-- Stop at 4675 — do NOT remove again
+- Stop moved to 4662 (nearest resistance) before weekend close
 - If Tertiary SL crosses on 1-hour close → exit both immediately
 - Log trades 91 & 92 when closed, note the stop removal as behavioral flag
+- MGC price at close: 4620 — 20 points from target
+
+---
+
+## WEB APP CHANGELOG
+| Date | Feature |
+|---|---|
+| Apr 2026 | Initial app built — trade log, Supabase backend, login |
+| May 1, 2026 | Added AL/SL tier tracking (Primary/Secondary/Tertiary) |
+| May 1, 2026 | Added weekly/monthly progress chart with Chart.js |
+| May 1, 2026 | Progress chart tooltips show trade count, WR%, W/L on hover |
+| May 1, 2026 | Summary cards show trades breakdown (e.g. 38 trades, 20W/18L) |
