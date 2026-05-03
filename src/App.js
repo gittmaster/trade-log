@@ -179,7 +179,7 @@ function ProgressChart({ trades }) {
   }, []);
 
   useEffect(() => {
-    if (!chartReady || !pnlRef.current || !wrRef.current) return;
+    if (!chartReady || !open || !pnlRef.current || !wrRef.current) return;
     const Chart = window.Chart;
     const buckets = view === 'weekly' ? getWeeklyBuckets() : getMonthlyBuckets();
     if (!buckets.length) return;
@@ -258,7 +258,7 @@ function ProgressChart({ trades }) {
       if (pnlChartRef.current) { pnlChartRef.current.destroy(); pnlChartRef.current = null; }
       if (wrChartRef.current) { wrChartRef.current.destroy(); wrChartRef.current = null; }
     };
-  }, [chartReady, trades, view]);
+  }, [chartReady, trades, view, open]);
 
   const buckets = view === 'weekly' ? getWeeklyBuckets() : getMonthlyBuckets();
   const totalNet = Math.round(buckets.reduce((s, b) => s + b.pnl, 0));
