@@ -494,7 +494,10 @@ const DEFAULT_LEVELS = [
 function ManageLevels() {
   const storageKey = 'tl_key_levels';
   const [levels, setLevels] = useState(() => {
-    try { const s = localStorage.getItem(storageKey); return s ? JSON.parse(s) : DEFAULT_LEVELS; } catch { return DEFAULT_LEVELS; }
+    try {
+      const s = localStorage.getItem(storageKey) || sessionStorage.getItem(storageKey);
+      return s ? JSON.parse(s) : DEFAULT_LEVELS;
+    } catch { return DEFAULT_LEVELS; }
   });
   const [newName, setNewName] = useState('');
   const [newPrice, setNewPrice] = useState('');
@@ -514,6 +517,7 @@ function ManageLevels() {
   const save = (updated) => {
     setLevels(updated);
     try { localStorage.setItem(storageKey, JSON.stringify(updated)); } catch {}
+    try { sessionStorage.setItem(storageKey, JSON.stringify(updated)); } catch {}
   };
 
   const addLevel = () => {
