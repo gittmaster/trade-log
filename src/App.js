@@ -578,8 +578,13 @@ function ManageLevels() {
 
       {/* Key Levels Manager */}
       <div className="table-card" style={{ marginBottom: 0 }}>
-        <div className="table-header" style={{ marginBottom: 16 }}>
+        <div className="table-header" style={{ marginBottom: 12 }}>
           <h2>Key Levels</h2>
+          <div style={{ display: 'flex', gap: 6 }}>
+            {['MGC', 'MNQ'].map(s => (
+              <button key={s} onClick={() => setLvlSymbol(s)} style={{ padding: '3px 12px', borderRadius: 6, fontSize: 12, fontWeight: 500, cursor: 'pointer', border: '1px solid', borderColor: lvlSymbol === s ? '#185FA5' : '#2a2a2a', background: lvlSymbol === s ? '#185FA522' : 'transparent', color: lvlSymbol === s ? '#185FA5' : '#888' }}>{s}</button>
+            ))}
+          </div>
         </div>
 
         {/* Add new level */}
@@ -595,14 +600,11 @@ function ManageLevels() {
           <button onClick={addLevel} style={{ background: '#185FA5', border: 'none', borderRadius: 6, padding: '6px 14px', color: '#fff', fontSize: 13, cursor: 'pointer', fontWeight: 500 }}>+ Add</button>
         </div>
 
-        {/* MGC levels */}
-        {['MGC', 'MNQ'].map(sym => {
-          const sLevels = levels.filter(l => l.symbol === sym).sort((a, b) => b.price - a.price);
-          if (!sLevels.length) return null;
-          return (
-            <div key={sym} style={{ marginBottom: 14 }}>
-              <div style={{ fontSize: 11, color: '#888', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>{sym}</div>
-              {sLevels.map(l => (
+        {/* Filtered levels list */}
+        {(() => {
+          const sLevels = levels.filter(l => l.symbol === lvlSymbol).sort((a, b) => b.price - a.price);
+          if (!sLevels.length) return <div style={{ color: '#555', fontSize: 13, padding: '8px 0' }}>No {lvlSymbol} levels saved yet.</div>;
+          return sLevels.map(l => (
                 <div key={l.id} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, background: '#111', borderRadius: 6, padding: '6px 10px' }}>
                   <span style={{ flex: 1, fontSize: 13, color: '#ccc' }}>{l.name}</span>
                   {editId === l.id ? (
@@ -620,10 +622,8 @@ function ManageLevels() {
                     </>
                   )}
                 </div>
-              ))}
-            </div>
-          );
-        })}
+          ));
+        })()}
       </div>
 
       {/* Pre-Trade Checklist */}
@@ -653,9 +653,14 @@ function ManageLevels() {
           ))}
         </div>
 
-        <button onClick={checkTrade} style={{ width: '100%', background: '#185FA5', border: 'none', borderRadius: 8, padding: '10px', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer', marginBottom: 16 }}>
-          Check Setup
-        </button>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8, marginBottom: 16 }}>
+          <button onClick={checkTrade} style={{ background: '#185FA5', border: 'none', borderRadius: 8, padding: '10px', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
+            Check Setup
+          </button>
+          <button onClick={() => { setPtEntry(''); setPtStop(''); setPtTarget(''); setPtResult(null); }} style={{ background: '#222', border: '1px solid #2a2a2a', borderRadius: 8, padding: '10px 16px', color: '#888', fontSize: 13, cursor: 'pointer' }}>
+            Clear
+          </button>
+        </div>
 
         {ptResult && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
