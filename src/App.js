@@ -505,6 +505,7 @@ function ManageLevels() {
   const [editId, setEditId] = useState(null);
   const [editPrice, setEditPrice] = useState('');
   const [open, setOpen] = useState(false);
+  const [lvlSymbol, setLvlSymbol] = useState('MGC');
 
   // Pre-trade checklist state
   const [ptSymbol, setPtSymbol] = useState('MGC');
