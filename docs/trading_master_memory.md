@@ -298,3 +298,6 @@
 | May 2, 2026 | Made Progress section collapsible |
 | May 2, 2026 | Made Key Levels & Pre-Trade Check section collapsible |
 | May 2, 2026 | Added pagination to trade table — 25 trades per page |
+| May 4, 2026 | Key Levels panel — MGC/MNQ toggle tabs to filter levels by symbol |
+| May 4, 2026 | Key Levels panel — Clear button added to Pre-Trade Check |
+| May 4, 2026 | Fixed blank screen bug in Key Levels panel (missing lvlSymbol state) |
