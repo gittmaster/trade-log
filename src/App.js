@@ -11,11 +11,19 @@ const SESSIONS = ['Pre-open', 'Open', 'Mid-sess', 'Pre-mkt', 'Overnight', 'Late'
 const TIERS = ['Primary', 'Secondary', 'Tertiary'];
 const TIER_COLORS = { Primary: '#1D9E75', Secondary: '#185FA5', Tertiary: '#E24B4A' };
 
+const SYMBOL_MULT = { MGC: 10, MNQ: 2, MYM: 0.5, MCL: 100 };
+
+function getMultiplier(symbol, custom_multiplier) {
+  if (SYMBOL_MULT[symbol]) return SYMBOL_MULT[symbol];
+  return custom_multiplier ? parseFloat(custom_multiplier) : 1;
+}
+
 function calcPnL(trade) {
   if (!trade.entry || !trade.exit_price) return null;
   const diff = trade.direction === 'long' ? trade.exit_price - trade.entry : trade.entry - trade.exit_price;
-  const mult = trade.symbol === 'MGC' ? 10 : trade.symbol === 'MNQ' ? 2 : 100;
-  return Math.round(diff * mult * 100) / 100;
+  const mult = getMultiplier(trade.symbol, trade.custom_multiplier);
+  const contracts = trade.contracts ? parseFloat(trade.contracts) : 1;
+  return Math.round(diff * mult * contracts * 100) / 100;
 }
 
 function getSession(time) {
@@ -40,7 +48,7 @@ function autoGrade(al_strength, al_touches, al_age, sl_quality, sl_touches, sl_a
 
 const EMPTY_FORM = {
   trade_number: '', date: new Date().toISOString().split('T')[0], time: '',
-  account: 'A1', symbol: 'MGC', direction: 'long', entry: '', exit_price: '',
+  account: 'A1', symbol: 'MGC', custom_symbol: '', custom_multiplier: '', contracts: '1', direction: 'long', entry: '', exit_price: '',
   stop: '', target: '', exit_reason: '', al_strength: 'standard',
   al_touches: '', al_age: '<1wk', al_tier: 'Primary',
   sl_quality: 'weak', sl_touches: '', sl_age: '<1wk', sl_tier: 'Primary',
@@ -382,12 +390,33 @@ function TradeForm({ form, setForm, onSubmit, onCancel, uploading, isEdit }) {
           <div className="toggle-row">{['A1', 'A2'].map(a => <button key={a} className={`tog ${form.account === a ? 'tog-blue' : ''}`} onClick={() => setForm(f => ({ ...f, account: a }))}>{a}</button>)}</div>
         </div>
         <div className="field"><label>Symbol</label>
-          <div className="toggle-row">{['MGC', 'MNQ'].map(s => <button key={s} className={`tog ${form.symbol === s ? 'tog-blue' : ''}`} onClick={() => setForm(f => ({ ...f, symbol: s }))}>{s}</button>)}</div>
+          <div className="toggle-row">
+            {['MGC', 'MNQ', 'MYM', 'MCL', 'OTHER'].map(s => (
+              <button key={s} className={`tog ${form.symbol === s ? 'tog-blue' : ''}`} onClick={() => setForm(f => ({ ...f, symbol: s, custom_symbol: '', custom_multiplier: '' }))}>{s}</button>
+            ))}
+          </div>
+          {form.symbol === 'OTHER' && (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 6 }}>
+              <input type="text" placeholder="Symbol (e.g. ES)" value={form.custom_symbol || ''} onChange={e => setForm(f => ({ ...f, custom_symbol: e.target.value }))}
+                style={{ background: '#0d0d0d', border: '1px solid #2a2a2a', borderRadius: 6, padding: '5px 10px', color: '#ccc', fontSize: 12 }} />
+              <input type="number" placeholder="$/point multiplier" value={form.custom_multiplier || ''} onChange={e => setForm(f => ({ ...f, custom_multiplier: e.target.value }))}
+                style={{ background: '#0d0d0d', border: '1px solid #2a2a2a', borderRadius: 6, padding: '5px 10px', color: '#ccc', fontSize: 12 }} />
+            </div>
+          )}
         </div>
         <div className="field"><label>Direction</label>
           <div className="toggle-row">
             <button className={`tog ${form.direction === 'long' ? 'tog-green' : ''}`} onClick={() => setForm(f => ({ ...f, direction: 'long' }))}>Long</button>
             <button className={`tog ${form.direction === 'short' ? 'tog-red' : ''}`} onClick={() => setForm(f => ({ ...f, direction: 'short' }))}>Short</button>
+          </div>
+        </div>
+        <div className="field"><label>Contracts</label>
+          <div className="toggle-row">
+            {['1', '2', '3'].map(n => (
+              <button key={n} className={`tog ${form.contracts === n ? 'tog-blue' : ''}`} onClick={() => setForm(f => ({ ...f, contracts: n }))}>{n}</button>
+            ))}
+            <input type="number" min="1" placeholder="Other" value={!['1','2','3'].includes(form.contracts) ? form.contracts : ''} onChange={e => setForm(f => ({ ...f, contracts: e.target.value }))}
+              style={{ width: 60, background: '#0d0d0d', border: '1px solid #2a2a2a', borderRadius: 6, padding: '4px 8px', color: '#ccc', fontSize: 12 }} />
           </div>
         </div>
       </div>
@@ -542,7 +571,7 @@ function ManageLevels() {
     const target = parseFloat(ptTarget);
     if (!entry || !stop || !target) return;
 
-    const mult = ptSymbol === 'MGC' ? 10 : 2;
+    const mult = getMultiplier(ptSymbol);
     const isShort = ptDirection === 'short';
 
     const stopDist = isShort ? stop - entry : entry - stop;
@@ -799,6 +828,9 @@ export default function App() {
       al_touches: form.al_touches ? parseInt(form.al_touches) : null,
       sl_touches: form.sl_touches ? parseInt(form.sl_touches) : null,
       al_tier: form.al_tier || 'Primary', sl_tier: form.sl_tier || 'Primary',
+      contracts: form.contracts ? parseFloat(form.contracts) : 1,
+      custom_symbol: form.custom_symbol || null,
+      custom_multiplier: form.custom_multiplier ? parseFloat(form.custom_multiplier) : null,
       confirmations: confs, session, chart_url, pnl
     };
     delete trade.chart_file;
@@ -824,7 +856,7 @@ export default function App() {
 
   const startEdit = (trade) => {
     const confs = typeof trade.confirmations === 'string' ? trade.confirmations.split(',').filter(Boolean) : (trade.confirmations || []);
-    setForm({ ...trade, confirmations: confs, chart_file: null, al_tier: trade.al_tier || 'Primary', sl_tier: trade.sl_tier || 'Primary' });
+    setForm({ ...trade, confirmations: confs, chart_file: null, al_tier: trade.al_tier || 'Primary', sl_tier: trade.sl_tier || 'Primary', contracts: trade.contracts ? String(trade.contracts) : '1', custom_symbol: trade.custom_symbol || '', custom_multiplier: trade.custom_multiplier ? String(trade.custom_multiplier) : '' });
     setEditingTrade(trade); setShowForm(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -990,7 +1022,7 @@ export default function App() {
                         <td>{t.trade_number || '—'}</td><td>{t.date}</td>
                         <td style={{ fontSize: 11 }}>{t.time || '—'}</td>
                         <td><span className={`badge ${t.account === 'A1' ? 'badge-purple' : 'badge-amber'}`}>{t.account}</span></td>
-                        <td style={{ fontWeight: 500 }}>{t.symbol}</td>
+                        <td style={{ fontWeight: 500 }}>{t.symbol === 'OTHER' && t.custom_symbol ? t.custom_symbol : t.symbol}</td>
                         <td><span className={`badge ${t.direction === 'long' ? 'badge-green' : 'badge-red'}`}>{t.direction}</span></td>
                         <td><span className="grade-badge" style={{ background: GRADE_COLORS[t.grade] + '22', color: GRADE_COLORS[t.grade] }}>{GRADES[t.grade] || t.grade}</span></td>
                         <td><span className={`badge ${t.al_strength === 'strong' ? 'badge-green' : 'badge-blue'}`}>{t.al_strength === 'strong' ? '★1wk+' : 'Std'}</span></td>
