@@ -514,10 +514,11 @@ function TradeForm({ form, setForm, onSubmit, onCancel, uploading, isEdit }) {
 // ─── Manage Levels + Pre-Trade Checklist ──────────────────────────────────────
 const DEFAULT_LEVELS = [
   { id: 1, name: 'W($4900)', price: 4900, symbol: 'MGC' },
-  { id: 2, name: '4($4642.1)', price: 4642.1, symbol: 'MGC' },
-  { id: 3, name: 'W($4600)', price: 4600, symbol: 'MGC' },
-  { id: 4, name: 'M($4600)', price: 4600, symbol: 'MGC' },
-  { id: 5, name: 'M($4400)', price: 4400, symbol: 'MGC' },
+  { id: 2, name: '4H($4750)', price: 4750, symbol: 'MGC' },
+  { id: 3, name: '4($4642.1)', price: 4642.1, symbol: 'MGC' },
+  { id: 4, name: 'W($4600)', price: 4600, symbol: 'MGC' },
+  { id: 5, name: 'M($4600)', price: 4600.1, symbol: 'MGC' },
+  { id: 6, name: 'M($4400)', price: 4400, symbol: 'MGC' },
 ];
 
 function ManageLevels() {
@@ -572,34 +573,110 @@ function ManageLevels() {
     if (!entry || !stop || !target) return;
 
     const mult = getMultiplier(ptSymbol);
-    const isShort = ptDirection === 'short';
+    const isLong = ptDirection === 'long';
 
-    const stopDist = isShort ? stop - entry : entry - stop;
-    const targetDist = isShort ? entry - target : target - entry;
+    const stopDist = isLong ? entry - stop : stop - entry;
+    const targetDist = isLong ? target - entry : entry - target;
     const rr = stopDist > 0 ? Math.round((targetDist / stopDist) * 100) / 100 : 0;
     const maxGain = Math.round(targetDist * mult);
     const maxLoss = Math.round(stopDist * mult);
 
-    // Find nearest level to target
     const symLevels = levels.filter(l => l.symbol === ptSymbol);
-    let nearest = null;
+
+    // Find levels BETWEEN entry and target (blocking levels) — sorted closest to entry first
+    const blockingLevels = symLevels.filter(l => {
+      if (isLong) return l.price > entry && l.price < target;
+      else return l.price < entry && l.price > target;
+    }).sort((a, b) => isLong ? a.price - b.price : b.price - a.price);
+
+    // Find nearest level to target
+    let nearestToTarget = null;
     let nearestDist = Infinity;
     symLevels.forEach(l => {
       const d = Math.abs(l.price - target);
-      if (d < nearestDist) { nearestDist = d; nearest = l; }
+      if (d < nearestDist) { nearestDist = d; nearestToTarget = l; }
     });
 
+    // Find next level BEYOND target (potential extension)
+    const beyondTarget = symLevels.filter(l => {
+      if (isLong) return l.price > target;
+      else return l.price < target;
+    }).sort((a, b) => isLong ? a.price - b.price : b.price - a.price);
+    const nextLevel = beyondTarget[0] || null;
+
     const warnings = [];
-    if (rr > 2.5) warnings.push(`R:R is ${rr} — above 2.5, target may be too wide`);
-    if (nearestDist > 20) warnings.push(`Target is ${Math.round(nearestDist)} pts from nearest level (${nearest ? nearest.name : 'none'}) — not sitting at a key level`);
+    const suggestions = [];
+
     if (stopDist <= 0) warnings.push('Stop is on wrong side of entry');
     if (targetDist <= 0) warnings.push('Target is on wrong side of entry');
 
-    setPtResult({ rr, maxGain, maxLoss, nearest, nearestDist: Math.round(nearestDist), warnings, stopDist: Math.round(stopDist), targetDist: Math.round(targetDist) });
+    if (blockingLevels.length > 0) {
+      // There's a key level blocking — recommend targeting just before it
+      const closest = blockingLevels[0];
+      warnings.push(`${closest.name} @ ${closest.price} is blocking your path`);
+      const suggestedTarget = isLong ? closest.price - 2 : closest.price + 2;
+      const suggestedDist = Math.abs(suggestedTarget - entry);
+      const suggestedRR = stopDist > 0 ? Math.round((suggestedDist / stopDist) * 100) / 100 : 0;
+      const suggestedGain = Math.round(suggestedDist * mult);
+      suggestions.push({
+        label: `Just before ${closest.name}`,
+        price: suggestedTarget.toFixed(1),
+        rr: suggestedRR,
+        gain: suggestedGain,
+        type: 'conservative',
+        note: 'Exit before resistance'
+      });
+      // If there are more blocking levels, also suggest targeting the next one
+      if (blockingLevels.length > 1) {
+        const second = blockingLevels[1];
+        const s2Target = isLong ? second.price - 2 : second.price + 2;
+        const s2Dist = Math.abs(s2Target - entry);
+        const s2RR = stopDist > 0 ? Math.round((s2Dist / stopDist) * 100) / 100 : 0;
+        suggestions.push({
+          label: `Just before ${second.name}`,
+          price: s2Target.toFixed(1),
+          rr: s2RR,
+          gain: Math.round(s2Dist * mult),
+          type: 'aggressive',
+          note: 'If first level breaks'
+        });
+      }
+    } else {
+      // No blocking levels — check if target is near a key level
+      if (nearestDist > 20) {
+        warnings.push(`Target @ ${target} has no key level nearby (nearest: ${nearestToTarget ? nearestToTarget.name + ' @ ' + nearestToTarget.price : 'none'})`);
+        // Suggest the next level beyond as a better target
+        if (nextLevel) {
+          const nd = Math.abs(nextLevel.price - entry);
+          const nRR = stopDist > 0 ? Math.round((nd / stopDist) * 100) / 100 : 0;
+          suggestions.push({
+            label: `Move to ${nextLevel.name}`,
+            price: nextLevel.price,
+            rr: nRR,
+            gain: Math.round(nd * mult),
+            type: 'aggressive',
+            note: 'Next key level above'
+          });
+        }
+      }
+    }
+
+    const targetAtLevel = nearestDist <= 10;
+
+    setPtResult({
+      rr, maxGain, maxLoss,
+      nearestToTarget, nearestDist: Math.round(nearestDist),
+      blockingLevels,
+      nextLevel,
+      suggestions,
+      warnings,
+      stopDist: Math.round(stopDist),
+      targetDist: Math.round(targetDist),
+      targetAtLevel
+    });
   };
 
   const symLevels = levels.filter(l => l.symbol === ptSymbol).sort((a, b) => b.price - a.price);
-  const otherLevels = levels.filter(l => l.symbol !== ptSymbol).sort((a, b) => b.price - a.price);
 
   return (
     <div style={{ marginBottom: 24 }}>
@@ -623,7 +700,7 @@ function ManageLevels() {
 
         {/* Add new level */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 80px 70px auto', gap: 8, marginBottom: 16 }}>
-          <input placeholder="Name (e.g. W$4900)" value={newName} onChange={e => setNewName(e.target.value)}
+          <input placeholder="Name (e.g. 4H$4750)" value={newName} onChange={e => setNewName(e.target.value)}
             style={{ background: '#111', border: '1px solid #2a2a2a', borderRadius: 6, padding: '6px 10px', color: '#ccc', fontSize: 13 }} />
           <input placeholder="Price" type="number" step="0.1" value={newPrice} onChange={e => setNewPrice(e.target.value)}
             style={{ background: '#111', border: '1px solid #2a2a2a', borderRadius: 6, padding: '6px 10px', color: '#ccc', fontSize: 13 }} />
@@ -701,7 +778,7 @@ function ManageLevels() {
             {/* R:R and stats */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
               {[
-                { label: 'R:R', value: ptResult.rr + ':1', color: ptResult.rr > 2.5 ? '#E24B4A' : '#1D9E75' },
+                { label: 'R:R', value: ptResult.rr + ':1', color: ptResult.rr >= 1.5 ? '#1D9E75' : '#E24B4A' },
                 { label: 'Max Gain', value: '+$' + ptResult.maxGain, color: '#1D9E75' },
                 { label: 'Max Loss', value: '-$' + ptResult.maxLoss, color: '#E24B4A' },
               ].map((c, i) => (
@@ -712,29 +789,70 @@ function ManageLevels() {
               ))}
             </div>
 
-            {/* Nearest level */}
+            {/* Blocking levels — most important warning */}
+            {ptResult.blockingLevels.length > 0 && (
+              <div style={{ background: '#E24B4A12', border: '1.5px solid #E24B4A55', borderRadius: 8, padding: '10px 12px' }}>
+                <div style={{ color: '#E24B4A', fontWeight: 600, fontSize: 13, marginBottom: 6 }}>
+                  ⛔ {ptResult.blockingLevels.length} Key Level{ptResult.blockingLevels.length > 1 ? 's' : ''} Blocking Your Path
+                </div>
+                {ptResult.blockingLevels.map((l, i) => {
+                  const distFromEntry = Math.round(Math.abs(l.price - parseFloat(ptEntry)));
+                  const distFromTarget = Math.round(Math.abs(parseFloat(ptTarget) - l.price));
+                  return (
+                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: '#ccc', marginBottom: i < ptResult.blockingLevels.length - 1 ? 4 : 0 }}>
+                      <span style={{ fontWeight: 500 }}>{l.name} @ {l.price}</span>
+                      <span style={{ color: '#E24B4A', fontSize: 12 }}>{distFromEntry} pts from entry · {distFromTarget} pts before your target</span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Suggested targets */}
+            {ptResult.suggestions.length > 0 && (
+              <div style={{ background: '#185FA512', border: '1px solid #185FA544', borderRadius: 8, padding: '10px 12px' }}>
+                <div style={{ fontSize: 12, color: '#185FA5', fontWeight: 600, marginBottom: 8 }}>💡 Recommended Targets Instead</div>
+                {ptResult.suggestions.map((s, i) => (
+                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: i < ptResult.suggestions.length - 1 ? 8 : 0, background: '#111', borderRadius: 6, padding: '7px 10px' }}>
+                    <div>
+                      <div style={{ fontSize: 14, color: '#ccc', fontWeight: 600 }}>@ {s.price}</div>
+                      <div style={{ fontSize: 11, color: '#666' }}>{s.label} · {s.note}</div>
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: s.rr >= 1.5 ? '#1D9E75' : '#BA7517' }}>{s.rr}:1 R:R</div>
+                      <div style={{ fontSize: 11, color: '#1D9E75' }}>+${s.gain} max</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Target level proximity */}
             <div style={{ background: '#111', borderRadius: 8, padding: '10px 12px' }}>
               <div style={{ fontSize: 11, color: '#666', marginBottom: 4 }}>Nearest Key Level to Target</div>
-              {ptResult.nearest ? (
+              {ptResult.nearestToTarget ? (
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ color: '#ccc', fontWeight: 500 }}>{ptResult.nearest.name} @ {ptResult.nearest.price}</span>
+                  <span style={{ color: '#ccc', fontWeight: 500 }}>{ptResult.nearestToTarget.name} @ {ptResult.nearestToTarget.price}</span>
                   <span style={{ fontSize: 12, color: ptResult.nearestDist <= 10 ? '#1D9E75' : ptResult.nearestDist <= 20 ? '#BA7517' : '#E24B4A' }}>
-                    {ptResult.nearestDist} pts away {ptResult.nearestDist <= 10 ? '✅' : ptResult.nearestDist <= 20 ? '⚠️' : '❌'}
+                    {ptResult.nearestDist} pts away {ptResult.targetAtLevel ? '✅' : ptResult.nearestDist <= 20 ? '⚠️' : '❌'}
                   </span>
                 </div>
               ) : <span style={{ color: '#666' }}>No levels saved for {ptSymbol}</span>}
             </div>
 
-            {/* Warnings */}
-            {ptResult.warnings.length > 0 ? (
+            {/* General warnings */}
+            {ptResult.warnings.filter(w => !w.includes('blocking')).length > 0 && (
               <div style={{ background: '#E24B4A12', border: '1px solid #E24B4A44', borderRadius: 8, padding: '10px 12px' }}>
-                {ptResult.warnings.map((w, i) => (
+                {ptResult.warnings.filter(w => !w.includes('blocking')).map((w, i) => (
                   <div key={i} style={{ color: '#E24B4A', fontSize: 13, marginBottom: i < ptResult.warnings.length - 1 ? 4 : 0 }}>⚠️ {w}</div>
                 ))}
               </div>
-            ) : (
+            )}
+
+            {/* All clear */}
+            {ptResult.warnings.length === 0 && (
               <div style={{ background: '#1D9E7512', border: '1px solid #1D9E7544', borderRadius: 8, padding: '10px 12px', color: '#1D9E75', fontSize: 13 }}>
-                ✅ Setup looks clean — R:R is within range and target is near a key level
+                ✅ Clean path to target — no blocking levels, target sits at a key level
               </div>
             )}
           </div>
