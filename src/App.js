@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from './supabase';
 import { seedTrades } from './seedData';
 import AIChat from './AIChat';
@@ -134,207 +134,165 @@ function TierInsightCard({ trades }) {
   );
 }
 
-// ─── Progress Chart ────────────────────────────────────────────────────────────
-function ProgressChart({ trades }) {
-  const pnlRef = useRef(null);
-  const wrRef = useRef(null);
-  const pnlChartRef = useRef(null);
-  const wrChartRef = useRef(null);
-  const [view, setView] = useState('weekly');
-  const [open, setOpen] = useState(false);
-  const [chartReady, setChartReady] = useState(!!window.Chart);
+// ─── Progress Calendar ─────────────────────────────────────────────────────────
+const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
+function ProgressCalendar({ trades }) {
   const closed = trades.filter(t => t.pnl !== null && t.date);
+  const now = new Date();
+  const [year, setYear] = useState(now.getFullYear());
+  const [month, setMonth] = useState(now.getMonth());
+  const [open, setOpen] = useState(false);
 
-  const getWeeklyBuckets = () => {
-    const map = {};
-    closed.forEach(t => {
-      const d = new Date(t.date + 'T12:00:00');
-      const day = d.getDay();
-      const diff = day === 0 ? -6 : 1 - day;
-      const mon = new Date(d);
-      mon.setDate(d.getDate() + diff);
-      const key = mon.toISOString().split('T')[0];
-      if (!map[key]) map[key] = { pnl: 0, wins: 0, total: 0, label: mon.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) };
-      map[key].pnl += t.pnl;
-      map[key].total += 1;
-      if (t.pnl > 0) map[key].wins += 1;
+  const changeMonth = (dir) => {
+    setMonth(m => {
+      let nm = m + dir;
+      if (nm > 11) { setYear(y => y + 1); return 0; }
+      if (nm < 0) { setYear(y => y - 1); return 11; }
+      return nm;
     });
-    return Object.entries(map).sort((a, b) => a[0].localeCompare(b[0])).map(([, v]) => v);
   };
 
-  const getMonthlyBuckets = () => {
-    const map = {};
-    closed.forEach(t => {
-      const key = t.date.slice(0, 7);
-      if (!map[key]) {
-        const [y, m] = key.split('-');
-        map[key] = { pnl: 0, wins: 0, total: 0, label: new Date(parseInt(y), parseInt(m) - 1, 1).toLocaleDateString('en-US', { month: 'short', year: '2-digit' }) };
-      }
-      map[key].pnl += t.pnl;
-      map[key].total += 1;
-      if (t.pnl > 0) map[key].wins += 1;
-    });
-    return Object.entries(map).sort((a, b) => a[0].localeCompare(b[0])).map(([, v]) => v);
+  const goToday = () => { setYear(now.getFullYear()); setMonth(now.getMonth()); };
+
+  // Build day map for current month
+  const dayMap = {};
+  closed.forEach(t => {
+    const [ty, tm, td] = t.date.split('-').map(Number);
+    if (ty === year && tm - 1 === month) {
+      if (!dayMap[td]) dayMap[td] = { pnl: 0, count: 0, wins: 0 };
+      dayMap[td].pnl += t.pnl;
+      dayMap[td].count += 1;
+      if (t.pnl > 0) dayMap[td].wins += 1;
+    }
+  });
+
+  // Monthly stats
+  const monthNet = Object.values(dayMap).reduce((s, d) => s + d.pnl, 0);
+  const tradeDays = Object.keys(dayMap).length;
+
+  // Build calendar grid
+  const firstDay = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const cells = [];
+  for (let i = 0; i < firstDay; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+  while (cells.length % 7 !== 0) cells.push(null);
+  const weeks = [];
+  for (let i = 0; i < cells.length; i += 7) weeks.push(cells.slice(i, i + 7));
+
+  const fmt = (v) => {
+    const abs = Math.abs(Math.round(v));
+    return (v >= 0 ? '+$' : '-$') + abs.toLocaleString();
   };
-
-  useEffect(() => {
-    if (window.Chart) { setChartReady(true); return; }
-    const script = document.createElement('script');
-    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js';
-    script.onload = () => setChartReady(true);
-    document.head.appendChild(script);
-  }, []);
-
-  useEffect(() => {
-    if (!chartReady || !open || !pnlRef.current || !wrRef.current) return;
-    const Chart = window.Chart;
-    const buckets = view === 'weekly' ? getWeeklyBuckets() : getMonthlyBuckets();
-    if (!buckets.length) return;
-
-    const labels = buckets.map(b => b.label);
-    const pnls = buckets.map(b => Math.round(b.pnl));
-    const wrs = buckets.map(b => b.total ? Math.round(b.wins / b.total * 100) : 0);
-    const barColors = pnls.map(v => v >= 0 ? '#1D9E75' : '#E24B4A');
-    const barBorders = pnls.map(v => v >= 0 ? '#0F6E56' : '#A32D2D');
-
-    if (pnlChartRef.current) { pnlChartRef.current.destroy(); pnlChartRef.current = null; }
-    if (wrChartRef.current) { wrChartRef.current.destroy(); wrChartRef.current = null; }
-
-    pnlChartRef.current = new Chart(pnlRef.current, {
-      type: 'bar',
-      data: {
-        labels,
-        datasets: [{ label: 'P&L', data: pnls, backgroundColor: barColors, borderColor: barBorders, borderWidth: 1, borderRadius: 4 }]
-      },
-      options: {
-        responsive: true, maintainAspectRatio: false,
-        plugins: {
-          legend: { display: false },
-          tooltip: {
-            callbacks: {
-              title: ctx => {
-                const i = ctx[0].dataIndex;
-                const b = buckets[i];
-                const wr = b.total ? Math.round(b.wins / b.total * 100) : 0;
-                return `${b.label}  ·  ${b.total} trade${b.total !== 1 ? 's' : ''}  ·  ${wr}% WR`;
-              },
-              label: ctx => {
-                const v = ctx.raw;
-                const i = ctx.dataIndex;
-                const b = buckets[i];
-                return [`P&L: ${(v >= 0 ? '+$' : '-$') + Math.abs(v).toLocaleString()}`, `Wins: ${b.wins}   Losses: ${b.total - b.wins}`];
-              }
-            }
-          }
-        },
-        scales: {
-          x: { ticks: { autoSkip: false, maxRotation: 45, color: '#888', font: { size: 11 } }, grid: { display: false } },
-          y: { grid: { color: 'rgba(128,128,128,0.12)' }, ticks: { color: '#888', font: { size: 11 }, callback: v => (v >= 0 ? '+$' : '-$') + Math.abs(v).toLocaleString() } }
-        }
-      }
-    });
-
-    wrChartRef.current = new Chart(wrRef.current, {
-      type: 'line',
-      data: {
-        labels,
-        datasets: [{
-          label: 'Win Rate', data: wrs, borderColor: '#185FA5', backgroundColor: 'rgba(24,95,165,0.08)',
-          pointBackgroundColor: wrs.map(w => w >= 50 ? '#1D9E75' : '#E24B4A'),
-          pointRadius: 5, pointHoverRadius: 7, fill: true, tension: 0.3
-        }]
-      },
-      options: {
-        responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { display: false }, tooltip: { callbacks: {
-          title: ctx => {
-            const i = ctx[0].dataIndex;
-            const b = buckets[i];
-            return `${b.label}  ·  ${b.total} trade${b.total !== 1 ? 's' : ''}`;
-          },
-          label: ctx => `Win Rate: ${ctx.raw}%  (${buckets[ctx.dataIndex].wins}W / ${buckets[ctx.dataIndex].total - buckets[ctx.dataIndex].wins}L)`
-        } } },
-        scales: {
-          x: { ticks: { autoSkip: false, maxRotation: 45, color: '#888', font: { size: 11 } }, grid: { display: false } },
-          y: { min: 0, max: 100, ticks: { color: '#888', font: { size: 11 }, callback: v => v + '%' }, grid: { color: 'rgba(128,128,128,0.12)' } }
-        }
-      }
-    });
-
-    return () => {
-      if (pnlChartRef.current) { pnlChartRef.current.destroy(); pnlChartRef.current = null; }
-      if (wrChartRef.current) { wrChartRef.current.destroy(); wrChartRef.current = null; }
-    };
-  }, [chartReady, trades, view, open]);
-
-  const buckets = view === 'weekly' ? getWeeklyBuckets() : getMonthlyBuckets();
-  const totalNet = Math.round(buckets.reduce((s, b) => s + b.pnl, 0));
-  const totalTrades = buckets.reduce((s, b) => s + b.total, 0);
-  const totalWins = buckets.reduce((s, b) => s + b.wins, 0);
-  const overallWR = totalTrades ? Math.round(totalWins / totalTrades * 100) : 0;
-  const bestBucket = buckets.length ? buckets.reduce((a, b) => b.pnl > a.pnl ? b : a) : null;
-  const worstBucket = buckets.length ? buckets.reduce((a, b) => b.pnl < a.pnl ? b : a) : null;
 
   if (!closed.length) return null;
 
   return (
     <div style={{ marginBottom: 24 }}>
-      <div onClick={() => setOpen(o => !o)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#111', border: '1px solid #222', borderRadius: open ? '8px 8px 0 0' : 8, padding: '10px 16px', cursor: 'pointer', userSelect: 'none' }}>
-        <span style={{ fontWeight: 600, fontSize: 14, color: '#ccc' }}>📈 Progress</span>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          {open && ['weekly', 'monthly'].map(v => (
-            <button key={v} onClick={e => { e.stopPropagation(); setView(v); }} style={{
-              padding: '3px 12px', borderRadius: 6, fontSize: 12, fontWeight: 500, cursor: 'pointer',
-              border: '1px solid', borderColor: view === v ? '#185FA5' : '#2a2a2a',
-              background: view === v ? '#185FA522' : 'transparent', color: view === v ? '#185FA5' : '#888',
-            }}>
-              {v.charAt(0).toUpperCase() + v.slice(1)}
-            </button>
-          ))}
-          <span style={{ color: '#888', fontSize: 14 }}>{open ? '▲ Hide' : '▼ Show'}</span>
-        </div>
+      {/* Header bar */}
+      <div
+        onClick={() => setOpen(o => !o)}
+        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#111', border: '1px solid #222', borderRadius: open ? '8px 8px 0 0' : 8, padding: '10px 16px', cursor: 'pointer', userSelect: 'none' }}
+      >
+        <span style={{ fontWeight: 600, fontSize: 14, color: '#ccc' }}>📅 Progress</span>
+        <span style={{ color: '#888', fontSize: 14 }}>{open ? '▲ Hide' : '▼ Show'}</span>
       </div>
-      {open && <div style={{ border: '1px solid #222', borderTop: 'none', borderRadius: '0 0 8px 8px', padding: 16 }}>
 
-      <div style={{ display: 'flex', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
-        {[
-          { label: 'Net P&L', value: (totalNet >= 0 ? '+$' : '-$') + Math.abs(totalNet).toLocaleString(), color: totalNet >= 0 ? '#1D9E75' : '#E24B4A' },
-          { label: 'Win Rate', value: overallWR + '%', color: overallWR >= 50 ? '#1D9E75' : '#E24B4A' },
-          { label: 'Trades', value: `${totalTrades} (${totalWins}W / ${totalTrades - totalWins}L)` },
-          { label: 'Best ' + (view === 'weekly' ? 'Week' : 'Month'), value: bestBucket ? `${bestBucket.label} (${bestBucket.total}t)` : '—', color: '#1D9E75' },
-          { label: 'Worst ' + (view === 'weekly' ? 'Week' : 'Month'), value: worstBucket ? `${worstBucket.label} (${worstBucket.total}t)` : '—', color: '#E24B4A' },
-        ].map((c, i) => (
-          <div key={i} style={{ background: '#111', borderRadius: 8, padding: '8px 14px', minWidth: 90 }}>
-            <div style={{ fontSize: 11, color: '#666', marginBottom: 3 }}>{c.label}</div>
-            <div style={{ fontSize: 15, fontWeight: 500, color: c.color || '#ccc' }}>{c.value}</div>
+      {open && (
+        <div style={{ border: '1px solid #222', borderTop: 'none', borderRadius: '0 0 8px 8px', padding: 16 }}>
+
+          {/* Calendar nav + monthly stats */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <button onClick={(e) => { e.stopPropagation(); changeMonth(-1); }} style={{ background: 'transparent', border: '1px solid #2a2a2a', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', color: '#ccc', fontSize: 13 }}>‹</button>
+              <span style={{ fontSize: 15, fontWeight: 600, color: '#ccc', minWidth: 140, textAlign: 'center' }}>{MONTH_NAMES[month]} {year}</span>
+              <button onClick={(e) => { e.stopPropagation(); changeMonth(1); }} style={{ background: 'transparent', border: '1px solid #2a2a2a', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', color: '#ccc', fontSize: 13 }}>›</button>
+              <button onClick={(e) => { e.stopPropagation(); goToday(); }} style={{ background: 'transparent', border: '1px solid #2a2a2a', borderRadius: 6, padding: '4px 14px', cursor: 'pointer', color: '#ccc', fontSize: 12 }}>This month</button>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: 12, color: '#888' }}>Monthly stats:</span>
+              <span style={{
+                background: monthNet >= 0 ? '#1D9E7522' : '#E24B4A22',
+                color: monthNet >= 0 ? '#1D9E75' : '#E24B4A',
+                borderRadius: 20, padding: '3px 12px', fontSize: 13, fontWeight: 600
+              }}>{fmt(monthNet)}</span>
+              <span style={{ background: '#1a1a1a', color: '#aaa', borderRadius: 20, padding: '3px 12px', fontSize: 13 }}>{tradeDays} days</span>
+            </div>
           </div>
-        ))}
-      </div>
 
-      <div style={{ display: 'flex', gap: 16, marginBottom: 10, fontSize: 12, color: '#888' }}>
-        <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-          <span style={{ width: 10, height: 10, borderRadius: 2, background: '#1D9E75', display: 'inline-block' }} /> Profitable
-        </span>
-        <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-          <span style={{ width: 10, height: 10, borderRadius: 2, background: '#E24B4A', display: 'inline-block' }} /> Down
-        </span>
-      </div>
+          {/* Grid: calendar + weekly summaries */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 0, alignItems: 'start' }}>
 
-      <div style={{ fontSize: 11, color: '#666', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-        P&L per {view === 'weekly' ? 'week' : 'month'}
-      </div>
-      <div style={{ position: 'relative', width: '100%', height: 260, marginBottom: 28 }}>
-        <canvas ref={pnlRef} role="img" aria-label={`Bar chart showing P&L by ${view}`} />
-      </div>
+            {/* Calendar */}
+            <div style={{ minWidth: 0 }}>
+              {/* Weekday headers */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 3, marginBottom: 3 }}>
+                {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d => (
+                  <div key={d} style={{ textAlign: 'center', fontSize: 11, color: '#555', fontWeight: 500, padding: '4px 0' }}>{d}</div>
+                ))}
+              </div>
 
-      <div style={{ fontSize: 11, color: '#666', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-        Win rate per {view === 'weekly' ? 'week' : 'month'}
-      </div>
-      <div style={{ position: 'relative', width: '100%', height: 180 }}>
-        <canvas ref={wrRef} role="img" aria-label={`Line chart showing win rate by ${view}`} />
-      </div>
-      </div>}
+              {/* Weeks */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                {weeks.map((week, wi) => (
+                  <div key={wi} style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 3 }}>
+                    {week.map((day, di) => {
+                      if (!day) return <div key={di} style={{ minHeight: 72 }} />;
+                      const d = dayMap[day];
+                      const isToday = now.getFullYear() === year && now.getMonth() === month && now.getDate() === day;
+                      let bg = '#111';
+                      let borderColor = '#2a2a2a';
+                      if (d) { bg = d.pnl >= 0 ? '#1D9E7514' : '#E24B4A12'; borderColor = d.pnl >= 0 ? '#1D9E7540' : '#E24B4A40'; }
+                      if (isToday) borderColor = '#185FA5';
+                      const wr = d && d.count ? Math.round(d.wins / d.count * 100) : 0;
+                      return (
+                        <div key={di} style={{ background: bg, border: `${isToday ? '1.5px' : '1px'} solid ${borderColor}`, borderRadius: 6, padding: '5px 7px', minHeight: 72, display: 'flex', flexDirection: 'column', gap: 2, position: 'relative' }}>
+                          <span style={{ fontSize: 11, color: '#555', textAlign: 'right', lineHeight: 1 }}>{day}</span>
+                          {d && (
+                            <>
+                              <span style={{ fontSize: 13, fontWeight: 600, color: d.pnl >= 0 ? '#1D9E75' : '#E24B4A', lineHeight: 1.2 }}>
+                                {d.pnl >= 0 ? '+$' : '-$'}{Math.abs(Math.round(d.pnl)).toLocaleString()}
+                              </span>
+                              <span style={{ fontSize: 10, color: '#666' }}>{d.count} trade{d.count !== 1 ? 's' : ''}</span>
+                              <span style={{ fontSize: 10, color: '#666' }}>{wr}%</span>
+                              {d.pnl < 0 && <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#E24B4A', position: 'absolute', bottom: 5, left: 7 }} />}
+                            </>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Weekly summaries */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 3, marginTop: 23, marginLeft: 8 }}>
+              {weeks.map((week, wi) => {
+                let wNet = 0, wDays = 0;
+                week.forEach(day => {
+                  if (day && dayMap[day]) { wNet += dayMap[day].pnl; wDays++; }
+                });
+                return (
+                  <div key={wi} style={{ background: '#111', border: '1px solid #222', borderRadius: 6, padding: '8px 12px', minWidth: 90, minHeight: 72, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 3 }}>
+                    <span style={{ fontSize: 11, color: '#555', fontWeight: 500 }}>Week {wi + 1}</span>
+                    {wDays > 0 ? (
+                      <>
+                        <span style={{ fontSize: 15, fontWeight: 600, color: wNet >= 0 ? '#1D9E75' : '#E24B4A' }}>{fmt(wNet)}</span>
+                        <span style={{ fontSize: 11, color: '#555' }}>{wDays} day{wDays !== 1 ? 's' : ''}</span>
+                      </>
+                    ) : (
+                      <span style={{ fontSize: 12, color: '#333' }}>—</span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -537,7 +495,6 @@ function ManageLevels() {
   const [open, setOpen] = useState(false);
   const [lvlSymbol, setLvlSymbol] = useState('MGC');
 
-  // Pre-trade checklist state
   const [ptSymbol, setPtSymbol] = useState('MGC');
   const [ptDirection, setPtDirection] = useState('short');
   const [ptEntry, setPtEntry] = useState('');
@@ -583,13 +540,11 @@ function ManageLevels() {
 
     const symLevels = levels.filter(l => l.symbol === ptSymbol);
 
-    // Find levels BETWEEN entry and target (blocking levels) — sorted closest to entry first
     const blockingLevels = symLevels.filter(l => {
       if (isLong) return l.price > entry && l.price < target;
       else return l.price < entry && l.price > target;
     }).sort((a, b) => isLong ? a.price - b.price : b.price - a.price);
 
-    // Find nearest level to target
     let nearestToTarget = null;
     let nearestDist = Infinity;
     symLevels.forEach(l => {
@@ -597,7 +552,6 @@ function ManageLevels() {
       if (d < nearestDist) { nearestDist = d; nearestToTarget = l; }
     });
 
-    // Find next level BEYOND target (potential extension)
     const beyondTarget = symLevels.filter(l => {
       if (isLong) return l.price > target;
       else return l.price < target;
@@ -611,72 +565,35 @@ function ManageLevels() {
     if (targetDist <= 0) warnings.push('Target is on wrong side of entry');
 
     if (blockingLevels.length > 0) {
-      // There's a key level blocking — recommend targeting just before it
       const closest = blockingLevels[0];
       warnings.push(`${closest.name} @ ${closest.price} is blocking your path`);
       const suggestedTarget = isLong ? closest.price - 2 : closest.price + 2;
       const suggestedDist = Math.abs(suggestedTarget - entry);
       const suggestedRR = stopDist > 0 ? Math.round((suggestedDist / stopDist) * 100) / 100 : 0;
       const suggestedGain = Math.round(suggestedDist * mult);
-      suggestions.push({
-        label: `Just before ${closest.name}`,
-        price: suggestedTarget.toFixed(1),
-        rr: suggestedRR,
-        gain: suggestedGain,
-        type: 'conservative',
-        note: 'Exit before resistance'
-      });
-      // If there are more blocking levels, also suggest targeting the next one
+      suggestions.push({ label: `Just before ${closest.name}`, price: suggestedTarget.toFixed(1), rr: suggestedRR, gain: suggestedGain, type: 'conservative', note: 'Exit before resistance' });
       if (blockingLevels.length > 1) {
         const second = blockingLevels[1];
         const s2Target = isLong ? second.price - 2 : second.price + 2;
         const s2Dist = Math.abs(s2Target - entry);
         const s2RR = stopDist > 0 ? Math.round((s2Dist / stopDist) * 100) / 100 : 0;
-        suggestions.push({
-          label: `Just before ${second.name}`,
-          price: s2Target.toFixed(1),
-          rr: s2RR,
-          gain: Math.round(s2Dist * mult),
-          type: 'aggressive',
-          note: 'If first level breaks'
-        });
+        suggestions.push({ label: `Just before ${second.name}`, price: s2Target.toFixed(1), rr: s2RR, gain: Math.round(s2Dist * mult), type: 'aggressive', note: 'If first level breaks' });
       }
     } else {
-      // No blocking levels — check if target is near a key level
       if (nearestDist > 20) {
         warnings.push(`Target @ ${target} has no key level nearby (nearest: ${nearestToTarget ? nearestToTarget.name + ' @ ' + nearestToTarget.price : 'none'})`);
-        // Suggest the next level beyond as a better target
         if (nextLevel) {
           const nd = Math.abs(nextLevel.price - entry);
           const nRR = stopDist > 0 ? Math.round((nd / stopDist) * 100) / 100 : 0;
-          suggestions.push({
-            label: `Move to ${nextLevel.name}`,
-            price: nextLevel.price,
-            rr: nRR,
-            gain: Math.round(nd * mult),
-            type: 'aggressive',
-            note: 'Next key level above'
-          });
+          suggestions.push({ label: `Move to ${nextLevel.name}`, price: nextLevel.price, rr: nRR, gain: Math.round(nd * mult), type: 'aggressive', note: 'Next key level above' });
         }
       }
     }
 
     const targetAtLevel = nearestDist <= 10;
 
-    setPtResult({
-      rr, maxGain, maxLoss,
-      nearestToTarget, nearestDist: Math.round(nearestDist),
-      blockingLevels,
-      nextLevel,
-      suggestions,
-      warnings,
-      stopDist: Math.round(stopDist),
-      targetDist: Math.round(targetDist),
-      targetAtLevel
-    });
+    setPtResult({ rr, maxGain, maxLoss, nearestToTarget, nearestDist: Math.round(nearestDist), blockingLevels, nextLevel, suggestions, warnings, stopDist: Math.round(stopDist), targetDist: Math.round(targetDist), targetAtLevel });
   };
-
-  const symLevels = levels.filter(l => l.symbol === ptSymbol).sort((a, b) => b.price - a.price);
 
   return (
     <div style={{ marginBottom: 24 }}>
@@ -687,7 +604,6 @@ function ManageLevels() {
       {open && <div style={{ border: '1px solid #222', borderTop: 'none', borderRadius: '0 0 8px 8px', padding: 16 }}>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
 
-      {/* Key Levels Manager */}
       <div className="table-card" style={{ marginBottom: 0 }}>
         <div className="table-header" style={{ marginBottom: 12 }}>
           <h2>Key Levels</h2>
@@ -697,85 +613,60 @@ function ManageLevels() {
             ))}
           </div>
         </div>
-
-        {/* Add new level */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 80px 70px auto', gap: 8, marginBottom: 16 }}>
-          <input placeholder="Name (e.g. 4H$4750)" value={newName} onChange={e => setNewName(e.target.value)}
-            style={{ background: '#111', border: '1px solid #2a2a2a', borderRadius: 6, padding: '6px 10px', color: '#ccc', fontSize: 13 }} />
-          <input placeholder="Price" type="number" step="0.1" value={newPrice} onChange={e => setNewPrice(e.target.value)}
-            style={{ background: '#111', border: '1px solid #2a2a2a', borderRadius: 6, padding: '6px 10px', color: '#ccc', fontSize: 13 }} />
-          <select value={newSymbol} onChange={e => setNewSymbol(e.target.value)}
-            style={{ background: '#111', border: '1px solid #2a2a2a', borderRadius: 6, padding: '6px 8px', color: '#ccc', fontSize: 13 }}>
-            <option>MGC</option><option>MNQ</option>
-          </select>
+          <input placeholder="Name (e.g. 4H$4750)" value={newName} onChange={e => setNewName(e.target.value)} style={{ background: '#111', border: '1px solid #2a2a2a', borderRadius: 6, padding: '6px 10px', color: '#ccc', fontSize: 13 }} />
+          <input placeholder="Price" type="number" step="0.1" value={newPrice} onChange={e => setNewPrice(e.target.value)} style={{ background: '#111', border: '1px solid #2a2a2a', borderRadius: 6, padding: '6px 10px', color: '#ccc', fontSize: 13 }} />
+          <select value={newSymbol} onChange={e => setNewSymbol(e.target.value)} style={{ background: '#111', border: '1px solid #2a2a2a', borderRadius: 6, padding: '6px 8px', color: '#ccc', fontSize: 13 }}><option>MGC</option><option>MNQ</option></select>
           <button onClick={addLevel} style={{ background: '#185FA5', border: 'none', borderRadius: 6, padding: '6px 14px', color: '#fff', fontSize: 13, cursor: 'pointer', fontWeight: 500 }}>+ Add</button>
         </div>
-
-        {/* Filtered levels list */}
         {(() => {
           const sLevels = levels.filter(l => l.symbol === lvlSymbol).sort((a, b) => b.price - a.price);
           if (!sLevels.length) return <div style={{ color: '#555', fontSize: 13, padding: '8px 0' }}>No {lvlSymbol} levels saved yet.</div>;
           return sLevels.map(l => (
-                <div key={l.id} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, background: '#111', borderRadius: 6, padding: '6px 10px' }}>
-                  <span style={{ flex: 1, fontSize: 13, color: '#ccc' }}>{l.name}</span>
-                  {editId === l.id ? (
-                    <>
-                      <input type="number" step="0.1" value={editPrice} onChange={e => setEditPrice(e.target.value)}
-                        style={{ width: 80, background: '#1a1a1a', border: '1px solid #185FA5', borderRadius: 4, padding: '3px 6px', color: '#ccc', fontSize: 12 }} />
-                      <button onClick={() => saveEdit(l.id)} style={{ background: '#1D9E75', border: 'none', borderRadius: 4, padding: '3px 10px', color: '#fff', fontSize: 12, cursor: 'pointer' }}>Save</button>
-                      <button onClick={() => setEditId(null)} style={{ background: '#333', border: 'none', borderRadius: 4, padding: '3px 8px', color: '#888', fontSize: 12, cursor: 'pointer' }}>×</button>
-                    </>
-                  ) : (
-                    <>
-                      <span style={{ fontSize: 13, color: '#1D9E75', fontWeight: 500, minWidth: 60, textAlign: 'right' }}>{l.price}</span>
-                      <button onClick={() => startEdit(l)} style={{ background: '#222', border: 'none', borderRadius: 4, padding: '3px 8px', color: '#888', fontSize: 11, cursor: 'pointer' }}>Edit</button>
-                      <button onClick={() => deleteLevel(l.id)} style={{ background: 'none', border: 'none', color: '#E24B4A', fontSize: 14, cursor: 'pointer', padding: '0 4px' }}>×</button>
-                    </>
-                  )}
-                </div>
+            <div key={l.id} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, background: '#111', borderRadius: 6, padding: '6px 10px' }}>
+              <span style={{ flex: 1, fontSize: 13, color: '#ccc' }}>{l.name}</span>
+              {editId === l.id ? (
+                <>
+                  <input type="number" step="0.1" value={editPrice} onChange={e => setEditPrice(e.target.value)} style={{ width: 80, background: '#1a1a1a', border: '1px solid #185FA5', borderRadius: 4, padding: '3px 6px', color: '#ccc', fontSize: 12 }} />
+                  <button onClick={() => saveEdit(l.id)} style={{ background: '#1D9E75', border: 'none', borderRadius: 4, padding: '3px 10px', color: '#fff', fontSize: 12, cursor: 'pointer' }}>Save</button>
+                  <button onClick={() => setEditId(null)} style={{ background: '#333', border: 'none', borderRadius: 4, padding: '3px 8px', color: '#888', fontSize: 12, cursor: 'pointer' }}>×</button>
+                </>
+              ) : (
+                <>
+                  <span style={{ fontSize: 13, color: '#1D9E75', fontWeight: 500, minWidth: 60, textAlign: 'right' }}>{l.price}</span>
+                  <button onClick={() => startEdit(l)} style={{ background: '#222', border: 'none', borderRadius: 4, padding: '3px 8px', color: '#888', fontSize: 11, cursor: 'pointer' }}>Edit</button>
+                  <button onClick={() => deleteLevel(l.id)} style={{ background: 'none', border: 'none', color: '#E24B4A', fontSize: 14, cursor: 'pointer', padding: '0 4px' }}>×</button>
+                </>
+              )}
+            </div>
           ));
         })()}
       </div>
 
-      {/* Pre-Trade Checklist */}
       <div className="table-card" style={{ marginBottom: 0 }}>
-        <div className="table-header" style={{ marginBottom: 16 }}>
-          <h2>Pre-Trade Check</h2>
-        </div>
-
+        <div className="table-header" style={{ marginBottom: 16 }}><h2>Pre-Trade Check</h2></div>
         <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
           {['MGC', 'MNQ'].map(s => (
-            <button key={s} onClick={() => { setPtSymbol(s); setPtResult(null); }}
-              style={{ padding: '5px 16px', borderRadius: 6, fontSize: 13, fontWeight: 500, cursor: 'pointer', border: '1px solid', borderColor: ptSymbol === s ? '#185FA5' : '#2a2a2a', background: ptSymbol === s ? '#185FA522' : 'transparent', color: ptSymbol === s ? '#185FA5' : '#888' }}>{s}</button>
+            <button key={s} onClick={() => { setPtSymbol(s); setPtResult(null); }} style={{ padding: '5px 16px', borderRadius: 6, fontSize: 13, fontWeight: 500, cursor: 'pointer', border: '1px solid', borderColor: ptSymbol === s ? '#185FA5' : '#2a2a2a', background: ptSymbol === s ? '#185FA522' : 'transparent', color: ptSymbol === s ? '#185FA5' : '#888' }}>{s}</button>
           ))}
           {['short', 'long'].map(d => (
-            <button key={d} onClick={() => { setPtDirection(d); setPtResult(null); }}
-              style={{ padding: '5px 16px', borderRadius: 6, fontSize: 13, fontWeight: 500, cursor: 'pointer', border: '1px solid', borderColor: ptDirection === d ? (d === 'short' ? '#E24B4A' : '#1D9E75') : '#2a2a2a', background: ptDirection === d ? (d === 'short' ? '#E24B4A22' : '#1D9E7522') : 'transparent', color: ptDirection === d ? (d === 'short' ? '#E24B4A' : '#1D9E75') : '#888' }}>{d.charAt(0).toUpperCase() + d.slice(1)}</button>
+            <button key={d} onClick={() => { setPtDirection(d); setPtResult(null); }} style={{ padding: '5px 16px', borderRadius: 6, fontSize: 13, fontWeight: 500, cursor: 'pointer', border: '1px solid', borderColor: ptDirection === d ? (d === 'short' ? '#E24B4A' : '#1D9E75') : '#2a2a2a', background: ptDirection === d ? (d === 'short' ? '#E24B4A22' : '#1D9E7522') : 'transparent', color: ptDirection === d ? (d === 'short' ? '#E24B4A' : '#1D9E75') : '#888' }}>{d.charAt(0).toUpperCase() + d.slice(1)}</button>
           ))}
         </div>
-
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 12 }}>
           {[['Entry', ptEntry, setPtEntry], ['Stop', ptStop, setPtStop], ['Target', ptTarget, setPtTarget]].map(([label, val, setter]) => (
             <div key={label} className="field" style={{ marginBottom: 0 }}>
               <label style={{ fontSize: 11 }}>{label}</label>
-              <input type="number" step="0.1" value={val} onChange={e => { setter(e.target.value); setPtResult(null); }}
-                style={{ width: '100%', background: '#111', border: '1px solid #2a2a2a', borderRadius: 6, padding: '6px 10px', color: '#ccc', fontSize: 13 }} />
+              <input type="number" step="0.1" value={val} onChange={e => { setter(e.target.value); setPtResult(null); }} style={{ width: '100%', background: '#111', border: '1px solid #2a2a2a', borderRadius: 6, padding: '6px 10px', color: '#ccc', fontSize: 13 }} />
             </div>
           ))}
         </div>
-
         <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8, marginBottom: 16 }}>
-          <button onClick={checkTrade} style={{ background: '#185FA5', border: 'none', borderRadius: 8, padding: '10px', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
-            Check Setup
-          </button>
-          <button onClick={() => { setPtEntry(''); setPtStop(''); setPtTarget(''); setPtResult(null); }} style={{ background: '#222', border: '1px solid #2a2a2a', borderRadius: 8, padding: '10px 16px', color: '#888', fontSize: 13, cursor: 'pointer' }}>
-            Clear
-          </button>
+          <button onClick={checkTrade} style={{ background: '#185FA5', border: 'none', borderRadius: 8, padding: '10px', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>Check Setup</button>
+          <button onClick={() => { setPtEntry(''); setPtStop(''); setPtTarget(''); setPtResult(null); }} style={{ background: '#222', border: '1px solid #2a2a2a', borderRadius: 8, padding: '10px 16px', color: '#888', fontSize: 13, cursor: 'pointer' }}>Clear</button>
         </div>
-
         {ptResult && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {/* R:R and stats */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
               {[
                 { label: 'R:R', value: ptResult.rr + ':1', color: ptResult.rr >= 1.5 ? '#1D9E75' : '#E24B4A' },
@@ -788,13 +679,9 @@ function ManageLevels() {
                 </div>
               ))}
             </div>
-
-            {/* Blocking levels — most important warning */}
             {ptResult.blockingLevels.length > 0 && (
               <div style={{ background: '#E24B4A12', border: '1.5px solid #E24B4A55', borderRadius: 8, padding: '10px 12px' }}>
-                <div style={{ color: '#E24B4A', fontWeight: 600, fontSize: 13, marginBottom: 6 }}>
-                  ⛔ {ptResult.blockingLevels.length} Key Level{ptResult.blockingLevels.length > 1 ? 's' : ''} Blocking Your Path
-                </div>
+                <div style={{ color: '#E24B4A', fontWeight: 600, fontSize: 13, marginBottom: 6 }}>⛔ {ptResult.blockingLevels.length} Key Level{ptResult.blockingLevels.length > 1 ? 's' : ''} Blocking Your Path</div>
                 {ptResult.blockingLevels.map((l, i) => {
                   const distFromEntry = Math.round(Math.abs(l.price - parseFloat(ptEntry)));
                   const distFromTarget = Math.round(Math.abs(parseFloat(ptTarget) - l.price));
@@ -807,8 +694,6 @@ function ManageLevels() {
                 })}
               </div>
             )}
-
-            {/* Suggested targets */}
             {ptResult.suggestions.length > 0 && (
               <div style={{ background: '#185FA512', border: '1px solid #185FA544', borderRadius: 8, padding: '10px 12px' }}>
                 <div style={{ fontSize: 12, color: '#185FA5', fontWeight: 600, marginBottom: 8 }}>💡 Recommended Targets Instead</div>
@@ -826,8 +711,6 @@ function ManageLevels() {
                 ))}
               </div>
             )}
-
-            {/* Target level proximity */}
             <div style={{ background: '#111', borderRadius: 8, padding: '10px 12px' }}>
               <div style={{ fontSize: 11, color: '#666', marginBottom: 4 }}>Nearest Key Level to Target</div>
               {ptResult.nearestToTarget ? (
@@ -839,8 +722,6 @@ function ManageLevels() {
                 </div>
               ) : <span style={{ color: '#666' }}>No levels saved for {ptSymbol}</span>}
             </div>
-
-            {/* General warnings */}
             {ptResult.warnings.filter(w => !w.includes('blocking')).length > 0 && (
               <div style={{ background: '#E24B4A12', border: '1px solid #E24B4A44', borderRadius: 8, padding: '10px 12px' }}>
                 {ptResult.warnings.filter(w => !w.includes('blocking')).map((w, i) => (
@@ -848,8 +729,6 @@ function ManageLevels() {
                 ))}
               </div>
             )}
-
-            {/* All clear */}
             {ptResult.warnings.length === 0 && (
               <div style={{ background: '#1D9E7512', border: '1px solid #1D9E7544', borderRadius: 8, padding: '10px 12px', color: '#1D9E75', fontSize: 13 }}>
                 ✅ Clean path to target — no blocking levels, target sits at a key level
@@ -1079,7 +958,7 @@ export default function App() {
           <TierInsightCard trades={trades} />
         </div>
 
-        <ProgressChart trades={trades} />
+        <ProgressCalendar trades={trades} />
 
         <ManageLevels />
 
@@ -1132,30 +1011,28 @@ export default function App() {
                 </thead>
                 <tbody>
                   {paginatedFt.map(t => {
-                    const pnl = t.pnl;
-                    const alTier = t.al_tier || '—'; const slTier = t.sl_tier || '—';
-                    const alTierColor = TIER_COLORS[alTier]; const slTierColor = TIER_COLORS[slTier];
+                    const pnlColor = t.pnl > 0 ? '#1D9E75' : t.pnl < 0 ? '#E24B4A' : '#888';
                     return (
                       <tr key={t.id}>
-                        <td>{t.trade_number || '—'}</td><td>{t.date}</td>
-                        <td style={{ fontSize: 11 }}>{t.time || '—'}</td>
-                        <td><span className={`badge ${t.account === 'A1' ? 'badge-purple' : 'badge-amber'}`}>{t.account}</span></td>
-                        <td style={{ fontWeight: 500 }}>{t.symbol === 'OTHER' && t.custom_symbol ? t.custom_symbol : t.symbol}</td>
-                        <td><span className={`badge ${t.direction === 'long' ? 'badge-green' : 'badge-red'}`}>{t.direction}</span></td>
-                        <td><span className="grade-badge" style={{ background: GRADE_COLORS[t.grade] + '22', color: GRADE_COLORS[t.grade] }}>{GRADES[t.grade] || t.grade}</span></td>
-                        <td><span className={`badge ${t.al_strength === 'strong' ? 'badge-green' : 'badge-blue'}`}>{t.al_strength === 'strong' ? '★1wk+' : 'Std'}</span></td>
-                        <td>{alTierColor ? <span className="badge" style={{ background: alTierColor + '22', color: alTierColor, border: '1px solid ' + alTierColor + '55' }}>{alTier}</span> : <span style={{ color: '#555' }}>—</span>}</td>
-                        <td><span className={`badge ${t.sl_quality === 'strong' ? 'badge-teal' : 'badge-amber'}`}>{t.sl_quality === 'strong' ? '★Str' : 'Weak'}</span></td>
-                        <td>{slTierColor ? <span className="badge" style={{ background: slTierColor + '22', color: slTierColor, border: '1px solid ' + slTierColor + '55' }}>{slTier}</span> : <span style={{ color: '#555' }}>—</span>}</td>
-                        <td>{t.entry || '—'}</td><td>{t.exit_price || '—'}</td>
-                        <td style={{ color: pnl > 0 ? '#1D9E75' : pnl < 0 ? '#E24B4A' : undefined, fontWeight: 500 }}>
-                          {pnl !== null ? (pnl >= 0 ? '+$' : '-$') + Math.abs(pnl) : '—'}
-                        </td>
-                        <td><span className={`badge ${pnl > 0 ? 'badge-green' : pnl < 0 ? 'badge-red' : 'badge-blue'}`}>{t.exit_reason}</span></td>
-                        <td style={{ fontSize: 11, color: '#888' }}>{t.session || '—'}</td>
-                        <td>{t.chart_url ? <button className="chart-view-btn" onClick={() => setChartModal(t.chart_url)} title="View chart">📷</button> : <span style={{ color: '#333' }}>—</span>}</td>
-                        <td><button className="edit-btn" onClick={() => startEdit(t)} title="Edit trade">✎</button></td>
-                        <td><button className="del-btn" onClick={() => deleteTrade(t.id)}>×</button></td>
+                        <td>{t.trade_number || '—'}</td>
+                        <td style={{ whiteSpace: 'nowrap' }}>{t.date}</td>
+                        <td>{t.time || '—'}</td>
+                        <td>{t.account}</td>
+                        <td>{t.symbol === 'OTHER' ? (t.custom_symbol || 'OTHER') : t.symbol}</td>
+                        <td><span style={{ color: t.direction === 'long' ? '#1D9E75' : '#E24B4A', fontWeight: 600, fontSize: 11 }}>{t.direction?.toUpperCase()}</span></td>
+                        <td><span style={{ background: GRADE_COLORS[t.grade] + '33', color: GRADE_COLORS[t.grade], padding: '2px 8px', borderRadius: 4, fontSize: 12, fontWeight: 600 }}>{GRADES[t.grade] || t.grade}</span></td>
+                        <td><span style={{ fontSize: 11, color: t.al_strength === 'strong' ? '#1D9E75' : '#888' }}>{t.al_strength === 'strong' ? '★' : '○'} {t.al_touches || '?'}t {t.al_age || ''}</span></td>
+                        <td><span style={{ fontSize: 11, color: TIER_COLORS[t.al_tier] || '#888', background: (TIER_COLORS[t.al_tier] || '#888') + '22', padding: '2px 7px', borderRadius: 4 }}>{t.al_tier || '—'}</span></td>
+                        <td><span style={{ fontSize: 11, color: t.sl_quality === 'strong' ? '#1D9E75' : '#E24B4A' }}>{t.sl_quality === 'strong' ? '★' : '✗'} {t.sl_touches || '?'}t {t.sl_age || ''}</span></td>
+                        <td><span style={{ fontSize: 11, color: TIER_COLORS[t.sl_tier] || '#888', background: (TIER_COLORS[t.sl_tier] || '#888') + '22', padding: '2px 7px', borderRadius: 4 }}>{t.sl_tier || '—'}</span></td>
+                        <td style={{ fontFamily: 'var(--mono)', fontSize: 12 }}>{t.entry}</td>
+                        <td style={{ fontFamily: 'var(--mono)', fontSize: 12 }}>{t.exit_price || '—'}</td>
+                        <td style={{ color: pnlColor, fontWeight: 600, fontFamily: 'var(--mono)', fontSize: 13 }}>{t.pnl !== null ? (t.pnl >= 0 ? '+$' : '-$') + Math.abs(t.pnl) : '—'}</td>
+                        <td><span style={{ fontSize: 11, color: '#888' }}>{t.exit_reason || '—'}</span></td>
+                        <td><span style={{ fontSize: 11, color: '#666' }}>{t.session || '—'}</span></td>
+                        <td>{t.chart_url ? <button className="btn-link" onClick={() => setChartModal(t.chart_url)}>View</button> : '—'}</td>
+                        <td><button className="btn-link" onClick={() => startEdit(t)}>Edit</button></td>
+                        <td><button className="btn-link" style={{ color: '#E24B4A' }} onClick={() => deleteTrade(t.id)}>Del</button></td>
                       </tr>
                     );
                   })}
@@ -1163,22 +1040,11 @@ export default function App() {
               </table>
             </div>
           )}
-
-          {/* Pagination */}
           {totalPages > 1 && (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderTop: '1px solid #1a1a1a', marginTop: 4 }}>
-              <div style={{ fontSize: 12, color: '#666' }}>
-                Showing {((page - 1) * PAGE_SIZE) + 1}–{Math.min(page * PAGE_SIZE, ft.length)} of {ft.length} trades
-              </div>
-              <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                <button onClick={() => setPage(1)} disabled={page === 1} style={{ padding: '4px 10px', borderRadius: 6, border: '1px solid #2a2a2a', background: 'transparent', color: page === 1 ? '#444' : '#888', cursor: page === 1 ? 'default' : 'pointer', fontSize: 12 }}>«</button>
-                <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} style={{ padding: '4px 10px', borderRadius: 6, border: '1px solid #2a2a2a', background: 'transparent', color: page === 1 ? '#444' : '#888', cursor: page === 1 ? 'default' : 'pointer', fontSize: 12 }}>‹ Prev</button>
-                {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
-                  <button key={p} onClick={() => setPage(p)} style={{ padding: '4px 10px', borderRadius: 6, border: '1px solid', borderColor: page === p ? '#185FA5' : '#2a2a2a', background: page === p ? '#185FA522' : 'transparent', color: page === p ? '#185FA5' : '#888', cursor: 'pointer', fontSize: 12, fontWeight: page === p ? 600 : 400 }}>{p}</button>
-                ))}
-                <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} style={{ padding: '4px 10px', borderRadius: 6, border: '1px solid #2a2a2a', background: 'transparent', color: page === totalPages ? '#444' : '#888', cursor: page === totalPages ? 'default' : 'pointer', fontSize: 12 }}>Next ›</button>
-                <button onClick={() => setPage(totalPages)} disabled={page === totalPages} style={{ padding: '4px 10px', borderRadius: 6, border: '1px solid #2a2a2a', background: 'transparent', color: page === totalPages ? '#444' : '#888', cursor: page === totalPages ? 'default' : 'pointer', fontSize: 12 }}>»</button>
-              </div>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'center', padding: '12px 0', alignItems: 'center' }}>
+              <button className="filter-btn" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>‹ Prev</button>
+              <span style={{ fontSize: 13, color: '#888' }}>Page {page} of {totalPages}</span>
+              <button className="filter-btn" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}>Next ›</button>
             </div>
           )}
         </div>
