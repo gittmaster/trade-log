@@ -57,9 +57,11 @@ const DEFAULT_STRATEGIES = [
 export default function Strategies({ trades, strategies, saveStrategies, reloadTrades, setMsg }) {
   const effectiveStrategies = strategies.length > 0 ? strategies : DEFAULT_STRATEGIES;
 
-  React.useEffect(() => {
-    if (strategies.length === 0) saveStrategies(DEFAULT_STRATEGIES);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const didSeed = React.useRef(false);
+  if (!didSeed.current && strategies.length === 0) {
+    didSeed.current = true;
+    saveStrategies(DEFAULT_STRATEGIES);
+  }
 
   const [showModal, setShowModal] = useState(false);
   const [editStrategy, setEditStrategy] = useState(null);
