@@ -5,54 +5,58 @@ import { GRADES, GRADE_COLORS } from '../App';
 const EMOJIS = ['📈','📉','⚡','🎯','🔥','💎','🏹','🌊','📐','💡','🔑','🎲','🧲','🛡️','⚔️','🔮','🌀','💫','🏆','📊'];
 const COLORS = ['#185FA5','#1D9E75','#E24B4A','#BA7517','#7F77DD','#888780'];
 
-// ─── Pre-built strategies from trading memory ─────────────────────────────────
+// ─── Strategy definitions ─────────────────────────────────────────────────────
+// AL strong = al_touches >= 3 AND al_age === '1wk+'
+// SL strong = sl_touches >= 3 AND sl_age === '1wk+'
+
 const DEFAULT_STRATEGIES = [
   {
-    id: 'strat-trendline-break',
-    icon: '📈',
-    name: 'Trendline Break AL/SL',
-    desc: 'AL cross entry · SL trendline stop · A/A+ grade only',
-    symbol: 'Any',
-    color: '#185FA5',
-    notes: 'Wait for AL to fully break/cross — never anticipate. At least ONE side must have 4 touches minimum. Stop at SL trendline, trail as price moves. Target must be a named W/M/4 level. Never take A- with Weak SL.',
-  },
-  {
-    id: 'strat-aplus-only',
+    id: 'strat-aplus-prime',
     icon: '⭐',
-    name: 'A+ Grade Only',
-    desc: '★Strong AL + ★Strong SL · highest confidence setups',
+    name: 'A+ Prime',
+    desc: 'AL 3+ touches 1wk+ · SL 3+ touches 1wk+',
     symbol: 'Any',
     color: '#1D9E75',
-    notes: 'A+ = Strong AL (3+ touches, 1wk+) AND Strong SL (3+ touches, 1wk+). ~80% win rate historically. Required grade for all Long trades.',
+    notes: 'Highest conviction setup. Both AL and SL have 3+ touches with 1 week+ of data. Historically ~88% win rate. This is the setup to size up on. Never skip these.',
   },
   {
-    id: 'strat-short-primary',
-    icon: '🏹',
-    name: 'Short — Primary Tier',
-    desc: 'Short direction · Primary AL & SL only · strongest edge',
-    symbol: 'MGC',
-    color: '#E24B4A',
-    notes: 'Shorts are net +$4,820 all-time vs Longs –$1,736. Primary tier SL only. Best sessions: 09:00–13:00 EST. Avoid Thursday unless A+ grade. Mandatory 30-min break after any loss.',
+    id: 'strat-strong-al-weak-sl',
+    icon: '📈',
+    name: 'Strong AL / Weak SL',
+    desc: 'AL 3+ touches 1wk+ · SL <3 touches or <1wk',
+    symbol: 'Any',
+    color: '#185FA5',
+    notes: 'Strong action line but weaker safety line. Good entry signal but stop is less reliable. Use tighter discretion on SL management. Historically profitable but watch fake-outs at SL.',
   },
   {
-    id: 'strat-3touch-break',
-    icon: '🌊',
-    name: '3+ Touchpoint Break',
-    desc: 'Minimum 3 touches on AL before entry',
+    id: 'strat-weak-al-strong-sl',
+    icon: '🛡️',
+    name: 'Weak AL / Strong SL',
+    desc: 'AL <3 touches or <1wk · SL 3+ touches 1wk+',
     symbol: 'Any',
     color: '#BA7517',
-    notes: 'Entry only after AL has 3+ confirmed touches. Same-day touch does NOT count. Age of last touch must be at least 1 day old.',
+    notes: 'Weaker entry signal but strong stop placement. The SL is reliable so risk is well-defined. Entry confidence is lower — be selective. Historically profitable when the AL break is clean.',
   },
   {
-    id: 'strat-overnight-carry',
-    icon: '🌙',
-    name: 'Overnight Carry',
-    desc: 'Positions held overnight · strict R:R requirement',
-    symbol: 'MGC',
-    color: '#7F77DD',
-    notes: 'Hard stop at SL — no changes overnight. R:R must be 2:1+ from current price. Target must be at a major W/M level. Valid hold window: 19:00–23:00 EST.',
+    id: 'strat-both-weak',
+    icon: '⚠️',
+    name: 'Both Weak',
+    desc: 'AL <3 touches or <1wk · SL <3 touches or <1wk',
+    symbol: 'Any',
+    color: '#E24B4A',
+    notes: 'Neither AL nor SL meets the 3-touch 1wk+ threshold. Historically net negative. These trades should be avoided or skipped entirely. If taken, size down significantly.',
   },
 ];
+
+// ─── Auto-assign logic ────────────────────────────────────────────────────────
+function getStrategyIdForTrade(trade) {
+  const alStrong = parseInt(trade.al_touches) >= 3 && trade.al_age === '1wk+';
+  const slStrong = parseInt(trade.sl_touches) >= 3 && trade.sl_age === '1wk+';
+  if (alStrong && slStrong) return 'strat-aplus-prime';
+  if (alStrong && !slStrong) return 'strat-strong-al-weak-sl';
+  if (!alStrong && slStrong) return 'strat-weak-al-strong-sl';
+  return 'strat-both-weak';
+}
 
 export default function Strategies({ trades, strategies, saveStrategies, reloadTrades, setMsg }) {
   const effectiveStrategies = strategies.length > 0 ? strategies : DEFAULT_STRATEGIES;
@@ -67,13 +71,12 @@ export default function Strategies({ trades, strategies, saveStrategies, reloadT
   const [editStrategy, setEditStrategy] = useState(null);
   const [form, setForm] = useState({ name: '', desc: '', symbol: 'Any', icon: '📈', color: '#185FA5', notes: '' });
   const [emojiGridOpen, setEmojiGridOpen] = useState(false);
-
-  // Detail / assign panel state
   const [selectedStrat, setSelectedStrat] = useState(null);
-  const [assignView, setAssignView] = useState('stats'); // 'stats' | 'assign'
-  const [assignFilter, setAssignFilter] = useState('unassigned'); // 'unassigned' | 'all'
+  const [assignView, setAssignView] = useState('stats');
+  const [assignFilter, setAssignFilter] = useState('unassigned');
   const [selectedTradeIds, setSelectedTradeIds] = useState(new Set());
   const [assigning, setAssigning] = useState(false);
+  const [autoAssigning, setAutoAssigning] = useState(false);
 
   const closed = trades.filter(t => t.pnl !== null);
 
@@ -98,7 +101,38 @@ export default function Strategies({ trades, strategies, saveStrategies, reloadT
     };
   };
 
-  // Trades available to assign to selected strategy
+  // Auto-assign ALL trades based on AL/SL data
+  const autoAssignAll = async () => {
+    setAutoAssigning(true);
+    try {
+      // Group trades by strategy to batch updates
+      const groups = {};
+      trades.forEach(t => {
+        const sid = getStrategyIdForTrade(t);
+        if (!groups[sid]) groups[sid] = [];
+        groups[sid].push(t.id);
+      });
+
+      let totalUpdated = 0;
+      for (const [stratId, ids] of Object.entries(groups)) {
+        const { error } = await supabase
+          .from('trades')
+          .update({ strategy_id: stratId })
+          .in('id', ids);
+        if (error) throw new Error(error.message);
+        totalUpdated += ids.length;
+      }
+
+      setMsg(`✓ ${totalUpdated} trades auto-assigned based on AL/SL data`);
+      await reloadTrades();
+    } catch (err) {
+      setMsg('Error: ' + err.message);
+    }
+    setAutoAssigning(false);
+    setTimeout(() => setMsg(''), 4000);
+  };
+
+  // Trades available to assign in the panel
   const assignableTrades = useMemo(() => {
     if (!selectedStrat) return [];
     const base = [...trades].sort((a, b) => b.date.localeCompare(a.date));
@@ -121,17 +155,9 @@ export default function Strategies({ trades, strategies, saveStrategies, reloadT
     if (!selectedTradeIds.size || !selectedStrat) return;
     setAssigning(true);
     const ids = [...selectedTradeIds];
-    const { error } = await supabase
-      .from('trades')
-      .update({ strategy_id: selectedStrat.id })
-      .in('id', ids);
-    if (error) {
-      setMsg('Error assigning: ' + error.message);
-    } else {
-      setMsg(`✓ ${ids.length} trade${ids.length !== 1 ? 's' : ''} assigned to ${selectedStrat.name}`);
-      setSelectedTradeIds(new Set());
-      await reloadTrades();
-    }
+    const { error } = await supabase.from('trades').update({ strategy_id: selectedStrat.id }).in('id', ids);
+    if (error) { setMsg('Error: ' + error.message); }
+    else { setMsg(`✓ ${ids.length} trade${ids.length !== 1 ? 's' : ''} assigned to ${selectedStrat.name}`); setSelectedTradeIds(new Set()); await reloadTrades(); }
     setAssigning(false);
     setTimeout(() => setMsg(''), 3000);
   };
@@ -140,17 +166,9 @@ export default function Strategies({ trades, strategies, saveStrategies, reloadT
     if (!selectedTradeIds.size) return;
     setAssigning(true);
     const ids = [...selectedTradeIds];
-    const { error } = await supabase
-      .from('trades')
-      .update({ strategy_id: null })
-      .in('id', ids);
-    if (error) {
-      setMsg('Error: ' + error.message);
-    } else {
-      setMsg(`✓ ${ids.length} trade${ids.length !== 1 ? 's' : ''} unassigned`);
-      setSelectedTradeIds(new Set());
-      await reloadTrades();
-    }
+    const { error } = await supabase.from('trades').update({ strategy_id: null }).in('id', ids);
+    if (error) { setMsg('Error: ' + error.message); }
+    else { setMsg(`✓ ${ids.length} trade${ids.length !== 1 ? 's' : ''} unassigned`); setSelectedTradeIds(new Set()); await reloadTrades(); }
     setAssigning(false);
     setTimeout(() => setMsg(''), 3000);
   };
@@ -198,8 +216,9 @@ export default function Strategies({ trades, strategies, saveStrategies, reloadT
     const st = getStratStats(s.id);
     return { trades: acc.trades + st.trades, pnl: acc.pnl + st.totalPnl };
   }, { trades: 0, pnl: 0 });
-  const bestStrat = stratWithStats.filter(s => s.stats.trades > 0).sort((a, b) => b.stats.totalPnl - a.stats.totalPnl)[0];
-  const worstStrat = stratWithStats.filter(s => s.stats.trades > 0).sort((a, b) => a.stats.totalPnl - b.stats.totalPnl)[0];
+  const withTrades = stratWithStats.filter(s => s.stats.trades > 0);
+  const bestStrat = withTrades.length ? withTrades.reduce((a, b) => b.stats.totalPnl > a.stats.totalPnl ? b : a) : null;
+  const worstStrat = withTrades.length ? withTrades.reduce((a, b) => b.stats.totalPnl < a.stats.totalPnl ? b : a) : null;
   const noStratCount = trades.filter(t => !t.strategy_id).length;
 
   const StratRow = ({ s }) => {
@@ -223,7 +242,7 @@ export default function Strategies({ trades, strategies, saveStrategies, reloadT
             <div style={{ width: 34, height: 34, borderRadius: 8, background: s.color ? s.color + '22' : '#1a1a1a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, border: `1px solid ${s.color || '#2a2a2a'}44`, flexShrink: 0 }}>{s.icon}</div>
             <div>
               <div style={{ fontSize: 13, fontWeight: 500, color: '#ccc' }}>{s.name}</div>
-              <div style={{ fontSize: 11, color: '#555' }}>{s.desc || '—'}</div>
+              <div style={{ fontSize: 11, color: '#555' }}>{s.desc}</div>
             </div>
           </div>
         </td>
@@ -258,41 +277,62 @@ export default function Strategies({ trades, strategies, saveStrategies, reloadT
 
       {/* ── Main table ── */}
       <div style={{ flex: 1, overflow: 'auto', padding: '16px 20px', minWidth: 0 }}>
+
+        {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
           <div>
             <div style={{ fontSize: 18, fontWeight: 500, color: '#ccc', marginBottom: 2 }}>Strategies</div>
-            <div style={{ fontSize: 12, color: '#555' }}>All-time performance by strategy</div>
+            <div style={{ fontSize: 12, color: '#555' }}>Performance by AL/SL combination · all time</div>
           </div>
-          <button onClick={() => openModal()} style={{ padding: '7px 16px', borderRadius: 8, border: 'none', background: '#185FA5', color: '#fff', fontSize: 13, fontWeight: 500, cursor: 'pointer' }}>
-            + New Strategy
-          </button>
+          <div style={{ display: 'flex', gap: 8 }}>
+            {/* Auto-assign button */}
+            <button
+              onClick={autoAssignAll}
+              disabled={autoAssigning}
+              style={{ padding: '7px 16px', borderRadius: 8, border: '1px solid #1D9E7544', background: '#1D9E7511', color: '#1D9E75', fontSize: 13, fontWeight: 500, cursor: 'pointer' }}
+            >
+              {autoAssigning ? '⏳ Assigning...' : '⚡ Auto-assign all trades'}
+            </button>
+            <button onClick={() => openModal()} style={{ padding: '7px 16px', borderRadius: 8, border: 'none', background: '#185FA5', color: '#fff', fontSize: 13, fontWeight: 500, cursor: 'pointer' }}>
+              + New Strategy
+            </button>
+          </div>
+        </div>
+
+        {/* Auto-assign info banner */}
+        <div style={{ background: '#185FA511', border: '1px solid #185FA533', borderRadius: 8, padding: '10px 16px', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span style={{ fontSize: 16 }}>💡</span>
+          <div style={{ fontSize: 12, color: '#666', lineHeight: 1.5 }}>
+            <strong style={{ color: '#185FA5' }}>Auto-assign</strong> reads every trade's AL/SL touches and age to assign the correct strategy automatically.
+            AL strong = 3+ touches &amp; 1wk+ · SL strong = 3+ touches &amp; 1wk+
+          </div>
         </div>
 
         {/* Summary cards */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 8, marginBottom: 16 }}>
           {[
             { label: 'Strategies', value: effectiveStrategies.length, color: '#185FA5' },
-            { label: 'Tagged Trades', value: overallStats.trades },
+            { label: 'Tagged Trades', value: overallStats.trades + ' / ' + trades.length },
             { label: 'Overall P&L', value: (overallStats.pnl >= 0 ? '+$' : '-$') + Math.abs(overallStats.pnl).toLocaleString(), color: overallStats.pnl >= 0 ? '#1D9E75' : '#E24B4A' },
-            { label: 'Best Strategy', value: bestStrat ? bestStrat.icon + ' ' + bestStrat.name.slice(0, 14) : '—', color: '#1D9E75' },
-            { label: 'Worst Strategy', value: worstStrat ? worstStrat.icon + ' ' + worstStrat.name.slice(0, 14) : '—', color: '#E24B4A' },
+            { label: 'Best Strategy', value: bestStrat ? bestStrat.icon + ' ' + bestStrat.name : '—', color: '#1D9E75' },
+            { label: 'Worst Strategy', value: worstStrat ? worstStrat.icon + ' ' + worstStrat.name : '—', color: '#E24B4A' },
           ].map((c, i) => (
             <div key={i} style={{ background: '#111', border: '1px solid #222', borderRadius: 8, padding: '10px 14px' }}>
               <div style={{ fontSize: 11, color: '#555', marginBottom: 3 }}>{c.label}</div>
-              <div style={{ fontSize: 14, fontWeight: 500, color: c.color || '#ccc' }}>{c.value}</div>
+              <div style={{ fontSize: 13, fontWeight: 500, color: c.color || '#ccc' }}>{c.value}</div>
             </div>
           ))}
         </div>
 
-        {/* Untagged trades banner */}
+        {/* Untagged warning */}
         {noStratCount > 0 && (
           <div style={{ background: '#BA751712', border: '1px solid #BA751733', borderRadius: 8, padding: '10px 16px', marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <span>⚠️</span>
-              <span style={{ fontSize: 13, color: '#BA7517' }}>{noStratCount} trade{noStratCount !== 1 ? 's' : ''} not tagged to any strategy</span>
+              <span style={{ fontSize: 13, color: '#BA7517' }}>{noStratCount} trade{noStratCount !== 1 ? 's' : ''} not tagged — click <strong>Auto-assign</strong> to tag them all instantly</span>
             </div>
-            <button onClick={() => openPanel({ id: '__unassigned__', icon: '📋', name: 'Unassigned', color: '#555', _system: true }, 'assign')} style={{ fontSize: 12, padding: '4px 12px', borderRadius: 6, border: '1px solid #BA751744', background: 'transparent', color: '#BA7517', cursor: 'pointer' }}>
-              Assign now →
+            <button onClick={autoAssignAll} disabled={autoAssigning} style={{ fontSize: 12, padding: '4px 12px', borderRadius: 6, border: '1px solid #1D9E7544', background: '#1D9E7511', color: '#1D9E75', cursor: 'pointer' }}>
+              ⚡ Auto-assign now
             </button>
           </div>
         )}
@@ -313,21 +353,19 @@ export default function Strategies({ trades, strategies, saveStrategies, reloadT
             </tbody>
           </table>
         </div>
-
-        <div style={{ fontSize: 11, color: '#444', marginTop: 10, textAlign: 'right' }}>
-          Click a row to view stats · 🔗 to assign trades · ✏️ to edit
-        </div>
+        <div style={{ fontSize: 11, color: '#444', marginTop: 8, textAlign: 'right' }}>Click a row for stats · 🔗 to manually assign trades · ✏️ to edit</div>
       </div>
 
       {/* ── Side panel ── */}
       {selectedStrat && panelStats && (
         <div style={{ width: 360, background: '#111', borderLeft: '1px solid #222', display: 'flex', flexDirection: 'column', overflow: 'hidden', flexShrink: 0 }}>
-
-          {/* Panel header */}
           <div style={{ padding: '12px 16px', borderBottom: '1px solid #222', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <span style={{ fontSize: 20 }}>{selectedStrat.icon}</span>
-              <span style={{ fontSize: 14, fontWeight: 500, color: '#ccc' }}>{selectedStrat.name}</span>
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 500, color: '#ccc' }}>{selectedStrat.name}</div>
+                <div style={{ fontSize: 11, color: '#555' }}>{selectedStrat.desc}</div>
+              </div>
             </div>
             <button onClick={() => setSelectedStrat(null)} style={{ background: 'none', border: 'none', color: '#555', fontSize: 20, cursor: 'pointer' }}>×</button>
           </div>
@@ -335,7 +373,7 @@ export default function Strategies({ trades, strategies, saveStrategies, reloadT
           {/* Tab toggle */}
           {!selectedStrat._system && (
             <div style={{ display: 'flex', borderBottom: '1px solid #222', flexShrink: 0 }}>
-              {[['stats','📊 Stats'],['assign','🔗 Assign Trades']].map(([v, label]) => (
+              {[['stats','📊 Stats'],['assign','🔗 Assign']].map(([v, label]) => (
                 <button key={v} onClick={() => { setAssignView(v); setSelectedTradeIds(new Set()); }} style={{
                   flex: 1, padding: '9px 0', fontSize: 12, fontWeight: 500, cursor: 'pointer',
                   background: assignView === v ? '#185FA511' : 'transparent',
@@ -348,13 +386,13 @@ export default function Strategies({ trades, strategies, saveStrategies, reloadT
 
           <div style={{ flex: 1, overflow: 'auto' }}>
 
-            {/* ── Stats tab ── */}
+            {/* Stats tab */}
             {assignView === 'stats' && (
               <div style={{ padding: 14 }}>
                 {selectedStrat.notes && (
                   <div style={{ background: '#0d0d0d', border: '1px solid #1a1a1a', borderRadius: 8, padding: '10px 12px', marginBottom: 14 }}>
                     <div style={{ fontSize: 10, color: '#444', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 5 }}>Strategy rules</div>
-                    <div style={{ fontSize: 12, color: '#777', lineHeight: 1.6 }}>{selectedStrat.notes}</div>
+                    <div style={{ fontSize: 12, color: '#666', lineHeight: 1.6 }}>{selectedStrat.notes}</div>
                   </div>
                 )}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 14 }}>
@@ -383,33 +421,24 @@ export default function Strategies({ trades, strategies, saveStrategies, reloadT
                   ))}
                 </>) : (
                   <div style={{ fontSize: 12, color: '#444', textAlign: 'center', padding: '20px 0' }}>
-                    No trades tagged yet.<br />
-                    <button onClick={() => setAssignView('assign')} style={{ marginTop: 8, fontSize: 12, padding: '5px 14px', borderRadius: 6, border: '1px solid #185FA544', background: 'transparent', color: '#185FA5', cursor: 'pointer' }}>
-                      Assign trades →
+                    No trades tagged yet.
+                    <br />
+                    <button onClick={() => autoAssignAll()} style={{ marginTop: 8, fontSize: 12, padding: '5px 14px', borderRadius: 6, border: '1px solid #1D9E7544', background: '#1D9E7511', color: '#1D9E75', cursor: 'pointer' }}>
+                      ⚡ Auto-assign all trades
                     </button>
                   </div>
                 )}
               </div>
             )}
 
-            {/* ── Assign tab ── */}
+            {/* Assign tab */}
             {assignView === 'assign' && (
               <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-                {/* Assign controls */}
                 <div style={{ padding: '10px 14px', borderBottom: '1px solid #1a1a1a', flexShrink: 0 }}>
-                  <div style={{ fontSize: 12, color: '#888', marginBottom: 8 }}>
-                    {selectedStrat._system
-                      ? 'Select trades to reassign or unassign'
-                      : `Select trades to assign to "${selectedStrat.name}"`}
-                  </div>
+                  <div style={{ fontSize: 12, color: '#888', marginBottom: 8 }}>Manually assign trades to "{selectedStrat.name}"</div>
                   <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
                     {[['unassigned','Untagged only'],['all','All trades']].map(([v, label]) => (
-                      <button key={v} onClick={() => { setAssignFilter(v); setSelectedTradeIds(new Set()); }} style={{
-                        fontSize: 11, padding: '3px 10px', borderRadius: 20, cursor: 'pointer',
-                        border: '1px solid', borderColor: assignFilter === v ? '#185FA5' : '#2a2a2a',
-                        background: assignFilter === v ? '#185FA522' : 'transparent',
-                        color: assignFilter === v ? '#185FA5' : '#666',
-                      }}>{label}</button>
+                      <button key={v} onClick={() => { setAssignFilter(v); setSelectedTradeIds(new Set()); }} style={{ fontSize: 11, padding: '3px 10px', borderRadius: 20, cursor: 'pointer', border: '1px solid', borderColor: assignFilter === v ? '#185FA5' : '#2a2a2a', background: assignFilter === v ? '#185FA522' : 'transparent', color: assignFilter === v ? '#185FA5' : '#666' }}>{label}</button>
                     ))}
                   </div>
                   <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
@@ -418,69 +447,48 @@ export default function Strategies({ trades, strategies, saveStrategies, reloadT
                     <span style={{ fontSize: 11, color: '#555', marginLeft: 4 }}>{selectedTradeIds.size} selected</span>
                   </div>
                 </div>
-
-                {/* Trade list */}
                 <div style={{ flex: 1, overflowY: 'auto' }}>
                   {assignableTrades.length === 0 ? (
                     <div style={{ padding: '24px 14px', textAlign: 'center', fontSize: 13, color: '#444' }}>
-                      {assignFilter === 'unassigned' ? 'All trades are already tagged 🎉' : 'No trades found'}
+                      {assignFilter === 'unassigned' ? 'All trades are tagged 🎉' : 'No trades found'}
                     </div>
-                  ) : (
-                    assignableTrades.map(t => {
-                      const isChecked = selectedTradeIds.has(t.id);
-                      const currentStrat = effectiveStrategies.find(s => s.id === t.strategy_id);
-                      return (
-                        <div
-                          key={t.id}
-                          onClick={() => toggleTradeSelect(t.id)}
-                          style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 14px', borderBottom: '1px solid #1a1a1a', cursor: 'pointer', background: isChecked ? '#185FA50a' : 'transparent' }}
-                          onMouseEnter={e => { if (!isChecked) e.currentTarget.style.background = '#1a1a1a'; }}
-                          onMouseLeave={e => { if (!isChecked) e.currentTarget.style.background = 'transparent'; }}
-                        >
-                          <input type="checkbox" checked={isChecked} onChange={() => {}} style={{ width: 13, height: 13, accentColor: '#185FA5', flexShrink: 0 }} />
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
-                              <span style={{ fontSize: 12, fontWeight: 500, color: '#ccc' }}>#{t.trade_number || '—'}</span>
-                              <span style={{ fontSize: 11, color: '#555' }}>{t.date}</span>
-                              <span style={{ fontSize: 11, color: '#555' }}>{t.symbol === 'OTHER' ? t.custom_symbol : t.symbol}</span>
-                              <span style={{ fontSize: 11, color: t.direction === 'long' ? '#1D9E75' : '#E24B4A' }}>{t.direction?.toUpperCase()}</span>
-                            </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                              <span style={{ fontSize: 11, background: GRADE_COLORS[t.grade]+'33', color: GRADE_COLORS[t.grade], padding: '1px 6px', borderRadius: 4, fontWeight: 600 }}>{GRADES[t.grade] || t.grade}</span>
-                              {currentStrat && (
-                                <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 20, background: (currentStrat.color || '#185FA5') + '22', color: currentStrat.color || '#185FA5' }}>
-                                  {currentStrat.icon} {currentStrat.name.slice(0, 12)}
-                                </span>
-                              )}
-                              {!t.strategy_id && <span style={{ fontSize: 10, color: '#BA7517' }}>untagged</span>}
-                            </div>
+                  ) : assignableTrades.map(t => {
+                    const isChecked = selectedTradeIds.has(t.id);
+                    const currentStrat = effectiveStrategies.find(s => s.id === t.strategy_id);
+                    const suggestedStratId = getStrategyIdForTrade(t);
+                    const suggestedStrat = effectiveStrategies.find(s => s.id === suggestedStratId);
+                    return (
+                      <div key={t.id} onClick={() => toggleTradeSelect(t.id)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 14px', borderBottom: '1px solid #1a1a1a', cursor: 'pointer', background: isChecked ? '#185FA50a' : 'transparent' }}
+                        onMouseEnter={e => { if (!isChecked) e.currentTarget.style.background = '#1a1a1a'; }}
+                        onMouseLeave={e => { if (!isChecked) e.currentTarget.style.background = 'transparent'; }}
+                      >
+                        <input type="checkbox" checked={isChecked} onChange={() => {}} style={{ width: 13, height: 13, accentColor: '#185FA5', flexShrink: 0 }} />
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                            <span style={{ fontSize: 12, fontWeight: 500, color: '#ccc' }}>#{t.trade_number || '—'}</span>
+                            <span style={{ fontSize: 11, color: '#555' }}>{t.date}</span>
+                            <span style={{ fontSize: 11, color: '#555' }}>{t.symbol === 'OTHER' ? t.custom_symbol : t.symbol}</span>
+                            <span style={{ fontSize: 11, color: t.direction === 'long' ? '#1D9E75' : '#E24B4A' }}>{t.direction?.toUpperCase()}</span>
                           </div>
-                          <span style={{ fontSize: 12, fontWeight: 500, color: t.pnl > 0 ? '#1D9E75' : t.pnl < 0 ? '#E24B4A' : '#555', flexShrink: 0 }}>
-                            {t.pnl !== null ? (t.pnl >= 0 ? '+$' : '-$') + Math.abs(t.pnl) : '—'}
-                          </span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <span style={{ fontSize: 11, background: GRADE_COLORS[t.grade]+'33', color: GRADE_COLORS[t.grade], padding: '1px 6px', borderRadius: 4, fontWeight: 600 }}>{GRADES[t.grade] || t.grade}</span>
+                            {currentStrat && <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 20, background: (currentStrat.color||'#185FA5')+'22', color: currentStrat.color||'#185FA5' }}>{currentStrat.icon} {currentStrat.name.slice(0,12)}</span>}
+                            {!t.strategy_id && suggestedStrat && <span style={{ fontSize: 10, color: '#444' }}>→ {suggestedStrat.icon} {suggestedStrat.name.slice(0,14)}</span>}
+                          </div>
                         </div>
-                      );
-                    })
-                  )}
+                        <span style={{ fontSize: 12, fontWeight: 500, color: t.pnl > 0 ? '#1D9E75' : t.pnl < 0 ? '#E24B4A' : '#555', flexShrink: 0 }}>
+                          {t.pnl !== null ? (t.pnl >= 0 ? '+$' : '-$') + Math.abs(t.pnl) : '—'}
+                        </span>
+                      </div>
+                    );
+                  })}
                 </div>
-
-                {/* Action buttons */}
                 <div style={{ padding: '10px 14px', borderTop: '1px solid #222', flexShrink: 0, display: 'flex', gap: 8 }}>
-                  {!selectedStrat._system && (
-                    <button
-                      onClick={assignTrades}
-                      disabled={!selectedTradeIds.size || assigning}
-                      style={{ flex: 1, padding: '8px', borderRadius: 8, border: 'none', background: selectedTradeIds.size ? '#185FA5' : '#1a1a1a', color: selectedTradeIds.size ? '#fff' : '#444', fontSize: 13, fontWeight: 500, cursor: selectedTradeIds.size ? 'pointer' : 'default' }}
-                    >
-                      {assigning ? 'Assigning...' : `Assign ${selectedTradeIds.size ? `(${selectedTradeIds.size})` : ''}`}
-                    </button>
-                  )}
-                  <button
-                    onClick={unassignTrades}
-                    disabled={!selectedTradeIds.size || assigning}
-                    style={{ flex: selectedStrat._system ? 1 : 0, padding: '8px 14px', borderRadius: 8, border: '1px solid #2a2a2a', background: 'transparent', color: selectedTradeIds.size ? '#BA7517' : '#444', fontSize: 13, cursor: selectedTradeIds.size ? 'pointer' : 'default' }}
-                  >
-                    {selectedStrat._system ? `Unassign ${selectedTradeIds.size ? `(${selectedTradeIds.size})` : ''}` : 'Unassign'}
+                  <button onClick={assignTrades} disabled={!selectedTradeIds.size || assigning} style={{ flex: 1, padding: '8px', borderRadius: 8, border: 'none', background: selectedTradeIds.size ? '#185FA5' : '#1a1a1a', color: selectedTradeIds.size ? '#fff' : '#444', fontSize: 13, fontWeight: 500, cursor: selectedTradeIds.size ? 'pointer' : 'default' }}>
+                    {assigning ? 'Assigning...' : `Assign ${selectedTradeIds.size ? `(${selectedTradeIds.size})` : ''}`}
+                  </button>
+                  <button onClick={unassignTrades} disabled={!selectedTradeIds.size || assigning} style={{ padding: '8px 14px', borderRadius: 8, border: '1px solid #2a2a2a', background: 'transparent', color: selectedTradeIds.size ? '#BA7517' : '#444', fontSize: 13, cursor: selectedTradeIds.size ? 'pointer' : 'default' }}>
+                    Unassign
                   </button>
                 </div>
               </div>
@@ -489,7 +497,7 @@ export default function Strategies({ trades, strategies, saveStrategies, reloadT
         </div>
       )}
 
-      {/* ── New/Edit Strategy Modal ── */}
+      {/* ── New/Edit Modal ── */}
       {showModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
           <div style={{ background: '#111', border: '1px solid #2a2a2a', borderRadius: 12, width: 480, maxHeight: '90vh', overflow: 'auto' }}>
@@ -498,29 +506,23 @@ export default function Strategies({ trades, strategies, saveStrategies, reloadT
               <button onClick={() => setShowModal(false)} style={{ background: 'none', border: 'none', color: '#666', fontSize: 18, cursor: 'pointer' }}>×</button>
             </div>
             <div style={{ padding: 20 }}>
-              {/* Icon */}
               <div style={{ marginBottom: 16 }}>
                 <label style={{ fontSize: 12, color: '#666', display: 'block', marginBottom: 8, fontWeight: 500 }}>Icon</label>
                 <div onClick={() => setEmojiGridOpen(o => !o)} style={{ width: 52, height: 52, borderRadius: 10, background: '#1a1a1a', border: `1px solid ${emojiGridOpen ? '#185FA5' : '#2a2a2a'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 26, cursor: 'pointer', marginBottom: 8 }}>{form.icon}</div>
                 {emojiGridOpen && (
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(10, 1fr)', gap: 4, background: '#1a1a1a', borderRadius: 8, padding: 8, border: '1px solid #2a2a2a' }}>
-                    {EMOJIS.map(e => (
-                      <div key={e} onClick={() => { setForm(f => ({ ...f, icon: e })); setEmojiGridOpen(false); }} style={{ width: 30, height: 30, borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 17, cursor: 'pointer', background: form.icon === e ? '#185FA522' : 'transparent', border: form.icon === e ? '1px solid #185FA5' : '1px solid transparent' }}>{e}</div>
-                    ))}
+                    {EMOJIS.map(e => <div key={e} onClick={() => { setForm(f => ({ ...f, icon: e })); setEmojiGridOpen(false); }} style={{ width: 30, height: 30, borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 17, cursor: 'pointer', background: form.icon === e ? '#185FA522' : 'transparent', border: form.icon === e ? '1px solid #185FA5' : '1px solid transparent' }}>{e}</div>)}
                   </div>
                 )}
               </div>
-              {/* Name */}
               <div style={{ marginBottom: 14 }}>
                 <label style={{ fontSize: 12, color: '#666', display: 'block', marginBottom: 6, fontWeight: 500 }}>Strategy name *</label>
-                <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="e.g. Trendline Break AL/SL" style={{ width: '100%', background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 8, padding: '8px 12px', fontSize: 13, color: '#ccc', fontFamily: 'inherit' }} />
+                <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="e.g. A+ Prime" style={{ width: '100%', background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 8, padding: '8px 12px', fontSize: 13, color: '#ccc', fontFamily: 'inherit' }} />
               </div>
-              {/* Description */}
               <div style={{ marginBottom: 14 }}>
                 <label style={{ fontSize: 12, color: '#666', display: 'block', marginBottom: 6, fontWeight: 500 }}>Description</label>
                 <input value={form.desc} onChange={e => setForm(f => ({ ...f, desc: e.target.value }))} placeholder="Short description" style={{ width: '100%', background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 8, padding: '8px 12px', fontSize: 13, color: '#ccc', fontFamily: 'inherit' }} />
               </div>
-              {/* Symbol + Color */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
                 <div>
                   <label style={{ fontSize: 12, color: '#666', display: 'block', marginBottom: 6, fontWeight: 500 }}>Default symbol</label>
@@ -529,18 +531,15 @@ export default function Strategies({ trades, strategies, saveStrategies, reloadT
                   </select>
                 </div>
                 <div>
-                  <label style={{ fontSize: 12, color: '#666', display: 'block', marginBottom: 6, fontWeight: 500 }}>Color tag</label>
+                  <label style={{ fontSize: 12, color: '#666', display: 'block', marginBottom: 6, fontWeight: 500 }}>Color</label>
                   <div style={{ display: 'flex', gap: 8, paddingTop: 6 }}>
-                    {COLORS.map(c => (
-                      <div key={c} onClick={() => setForm(f => ({ ...f, color: c }))} style={{ width: 24, height: 24, borderRadius: '50%', background: c, cursor: 'pointer', border: form.color === c ? '2px solid #fff' : '2px solid transparent' }} />
-                    ))}
+                    {COLORS.map(c => <div key={c} onClick={() => setForm(f => ({ ...f, color: c }))} style={{ width: 24, height: 24, borderRadius: '50%', background: c, cursor: 'pointer', border: form.color === c ? '2px solid #fff' : '2px solid transparent' }} />)}
                   </div>
                 </div>
               </div>
-              {/* Notes */}
               <div>
                 <label style={{ fontSize: 12, color: '#666', display: 'block', marginBottom: 6, fontWeight: 500 }}>Rules / Notes</label>
-                <textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} rows={3} placeholder="Entry conditions, exit rules, notes..." style={{ width: '100%', background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 8, padding: '8px 12px', fontSize: 13, color: '#ccc', resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.5 }} />
+                <textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} rows={3} placeholder="Entry conditions, exit rules..." style={{ width: '100%', background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 8, padding: '8px 12px', fontSize: 13, color: '#ccc', resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.5 }} />
               </div>
             </div>
             <div style={{ padding: '12px 20px', borderTop: '1px solid #222', display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
