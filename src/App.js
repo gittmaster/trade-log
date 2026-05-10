@@ -1,23 +1,29 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from './supabase';
 import { seedTrades } from './seedData';
-import AIChat from './AIChat';
 import Login from './Login';
+import Dashboard from './pages/Dashboard';
+import Reports from './pages/Reports';
+import TradeView from './pages/TradeView';
+import Strategies from './pages/Strategies';
+import AIChat from './components/AIChat';
+import DateRangePicker from './components/DateRangePicker';
 import './App.css';
 
-const GRADES = { aplus: 'A+', a: 'A', aminus: 'A-' };
-const GRADE_COLORS = { aplus: '#1D9E75', a: '#185FA5', aminus: '#BA7517' };
-const SESSIONS = ['Pre-open', 'Open', 'Mid-sess', 'Pre-mkt', 'Overnight', 'Late'];
-const TIERS = ['Primary', 'Secondary', 'Tertiary'];
-const TIER_COLORS = { Primary: '#1D9E75', Secondary: '#185FA5', Tertiary: '#E24B4A' };
-const SYMBOL_MULT = { MGC: 10, MNQ: 2, MYM: 0.5, MCL: 100 };
+// ─── Constants ────────────────────────────────────────────────────────────────
+export const GRADES = { aplus: 'A+', a: 'A', aminus: 'A-' };
+export const GRADE_COLORS = { aplus: '#1D9E75', a: '#185FA5', aminus: '#BA7517' };
+export const SESSIONS = ['Pre-open', 'Open', 'Mid-sess', 'Pre-mkt', 'Overnight', 'Late'];
+export const TIERS = ['Primary', 'Secondary', 'Tertiary'];
+export const TIER_COLORS = { Primary: '#1D9E75', Secondary: '#185FA5', Tertiary: '#E24B4A' };
+export const SYMBOL_MULT = { MGC: 10, MNQ: 2, MYM: 0.5, MCL: 100 };
 
-function getMultiplier(symbol, custom_multiplier) {
+export function getMultiplier(symbol, custom_multiplier) {
   if (SYMBOL_MULT[symbol]) return SYMBOL_MULT[symbol];
   return custom_multiplier ? parseFloat(custom_multiplier) : 1;
 }
 
-function calcPnL(trade) {
+export function calcPnL(trade) {
   if (!trade.entry || !trade.exit_price) return null;
   const diff = trade.direction === 'long' ? trade.exit_price - trade.entry : trade.entry - trade.exit_price;
   const mult = getMultiplier(trade.symbol, trade.custom_multiplier);
@@ -25,7 +31,7 @@ function calcPnL(trade) {
   return Math.round(diff * mult * contracts * 100) / 100;
 }
 
-function getSession(time) {
+export function getSession(time) {
   if (!time) return 'Mid-sess';
   const h = parseInt(time.split(':')[0]);
   if (h >= 7 && h < 9) return 'Pre-open';
@@ -36,7 +42,7 @@ function getSession(time) {
   return 'Overnight';
 }
 
-function autoGrade(al_strength, al_touches, al_age, sl_quality, sl_touches, sl_age) {
+export function autoGrade(al_strength, al_touches, al_age, sl_quality, sl_touches, sl_age) {
   const alStrong = al_strength === 'strong' && parseInt(al_touches) >= 3 && al_age === '1wk+';
   const slStrong = sl_quality === 'strong' && parseInt(sl_touches) >= 3 && sl_age === '1wk+';
   if (alStrong && slStrong) return 'aplus';
@@ -45,864 +51,47 @@ function autoGrade(al_strength, al_touches, al_age, sl_quality, sl_touches, sl_a
   return 'aminus';
 }
 
-const EMPTY_FORM = {
+export const EMPTY_FORM = {
   trade_number: '', date: new Date().toISOString().split('T')[0], time: '',
-  account: 'A1', symbol: 'MGC', custom_symbol: '', custom_multiplier: '', contracts: '1', direction: 'long', entry: '', exit_price: '',
-  stop: '', target: '', exit_reason: '', al_strength: 'standard',
-  al_touches: '', al_age: '<1wk', al_tier: 'Primary',
+  account: 'A1', symbol: 'MGC', custom_symbol: '', custom_multiplier: '', contracts: '1',
+  direction: 'long', entry: '', exit_price: '', stop: '', target: '',
+  exit_reason: '', al_strength: 'standard', al_touches: '', al_age: '<1wk', al_tier: 'Primary',
   sl_quality: 'weak', sl_touches: '', sl_age: '<1wk', sl_tier: 'Primary',
-  sl_price: '', grade: 'a', yellow_levels: '',
-  confirmations: [], notes: '', chart_file: null
+  sl_price: '', grade: 'a', yellow_levels: '', confirmations: [], notes: '',
+  chart_file: null, strategy_id: null,
 };
 
-function StatCard({ label, value, color }) {
-  return (
-    <div className="stat-card">
-      <div className="stat-label">{label}</div>
-      <div className="stat-value" style={{ color: color || 'inherit' }}>{value}</div>
-    </div>
-  );
-}
-
-function InsightCard({ title, data }) {
-  return (
-    <div className="insight-card">
-      <div className="insight-title">{title}</div>
-      {data.map((row, i) => (
-        <div key={i} className="insight-row">
-          <span className="insight-label">{row.label}</span>
-          <span className="insight-value" style={{ color: row.wr >= 50 ? '#1D9E75' : '#E24B4A' }}>
-            {row.wr}% · {row.net >= 0 ? '+' : ''}${row.net}
-          </span>
-        </div>
-      ))}
-      {data.length === 0 && <div className="insight-empty">No data</div>}
-    </div>
-  );
-}
-
-function TierInsightCard({ trades }) {
-  const closed = trades.filter(t => t.pnl !== null);
-  const tierData = (field) => TIERS.map(tier => {
-    const ts = closed.filter(t => t[field] === tier);
-    if (!ts.length) return null;
-    const w = ts.filter(t => t.pnl > 0).length;
-    return { label: tier, count: ts.length, wr: Math.round(w / ts.length * 100), net: Math.round(ts.reduce((s, t) => s + t.pnl, 0)), color: TIER_COLORS[tier] };
-  }).filter(Boolean);
-
-  const alData = tierData('al_tier');
-  const slData = tierData('sl_tier');
-
-  if (!alData.length && !slData.length) return (
-    <div className="insight-card">
-      <div className="insight-title">By Tier (AL / SL)</div>
-      <div className="insight-empty">No tier data yet — start logging with tier selected</div>
-    </div>
-  );
-
-  return (
-    <div className="insight-card" style={{ gridColumn: 'span 2' }}>
-      <div className="insight-title">By Tier (AL / SL)</div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px 24px' }}>
-        <div>
-          <div style={{ fontSize: 11, color: '#888', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Action Line</div>
-          {alData.map((row, i) => (
-            <div key={i} className="insight-row">
-              <span className="insight-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span style={{ width: 8, height: 8, borderRadius: '50%', background: row.color, display: 'inline-block' }} />
-                {row.label} <span style={{ color: '#555', fontSize: 11 }}>({row.count})</span>
-              </span>
-              <span className="insight-value" style={{ color: row.wr >= 50 ? '#1D9E75' : '#E24B4A' }}>{row.wr}% · {row.net >= 0 ? '+' : ''}${row.net}</span>
-            </div>
-          ))}
-        </div>
-        <div>
-          <div style={{ fontSize: 11, color: '#888', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Safety Line</div>
-          {slData.map((row, i) => (
-            <div key={i} className="insight-row">
-              <span className="insight-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span style={{ width: 8, height: 8, borderRadius: '50%', background: row.color, display: 'inline-block' }} />
-                {row.label} <span style={{ color: '#555', fontSize: 11 }}>({row.count})</span>
-              </span>
-              <span className="insight-value" style={{ color: row.wr >= 50 ? '#1D9E75' : '#E24B4A' }}>{row.wr}% · {row.net >= 0 ? '+' : ''}${row.net}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── Progress Calendar ─────────────────────────────────────────────────────────
-const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-
-function ProgressCalendar({ trades }) {
-  const closed = trades.filter(t => t.pnl !== null && t.date);
+// ─── Date helpers ─────────────────────────────────────────────────────────────
+export function getDefaultDateRange() {
   const now = new Date();
-  const [year, setYear] = useState(now.getFullYear());
-  const [month, setMonth] = useState(now.getMonth());
-  const [open, setOpen] = useState(false);
-  const [chartView, setChartView] = useState('monthly');
-  const cumulRef = useRef(null);
-  const dailyRef = useRef(null);
-  const cumulInstance = useRef(null);
-  const dailyInstance = useRef(null);
-  const [chartReady, setChartReady] = useState(!!window.Chart);
+  const start = new Date(now.getFullYear(), now.getMonth(), 1);
+  return { start, end: now };
+}
 
-  const changeMonth = (dir) => {
-    setMonth(m => {
-      let nm = m + dir;
-      if (nm > 11) { setYear(y => y + 1); return 0; }
-      if (nm < 0) { setYear(y => y - 1); return 11; }
-      return nm;
-    });
-  };
-
-  const goToday = () => { setYear(now.getFullYear()); setMonth(now.getMonth()); };
-
-  const dayMap = {};
-  closed.forEach(t => {
-    const [ty, tm, td] = t.date.split('-').map(Number);
-    if (ty === year && tm - 1 === month) {
-      if (!dayMap[td]) dayMap[td] = { pnl: 0, count: 0, wins: 0 };
-      dayMap[td].pnl += t.pnl;
-      dayMap[td].count += 1;
-      if (t.pnl > 0) dayMap[td].wins += 1;
-    }
+export function filterTradesByRange(trades, dateRange, account) {
+  return trades.filter(t => {
+    if (!t.date) return false;
+    const d = new Date(t.date + 'T12:00:00');
+    const inRange = d >= dateRange.start && d <= dateRange.end;
+    const inAccount = account === 'both' || t.account === account.toUpperCase();
+    return inRange && inAccount;
   });
-
-  const monthNet = Object.values(dayMap).reduce((s, d) => s + d.pnl, 0);
-  const tradeDays = Object.keys(dayMap).length;
-
-  const getWeekStart = () => {
-    const d = new Date(now);
-    const day = d.getDay();
-    const diff = day === 0 ? -6 : 1 - day;
-    d.setDate(d.getDate() + diff);
-    d.setHours(0, 0, 0, 0);
-    return d;
-  };
-
-  const buildChartData = (view) => {
-    const dateMap = {};
-    [...closed].sort((a, b) => a.date.localeCompare(b.date)).forEach(t => {
-      if (!dateMap[t.date]) dateMap[t.date] = 0;
-      dateMap[t.date] += t.pnl;
-    });
-    let filteredDates = Object.keys(dateMap).sort();
-    if (view === 'weekly') {
-      const weekStart = getWeekStart();
-      const weekEnd = new Date(weekStart);
-      weekEnd.setDate(weekStart.getDate() + 6);
-      filteredDates = filteredDates.filter(date => {
-        const d = new Date(date + 'T12:00:00');
-        return d >= weekStart && d <= weekEnd;
-      });
-    } else {
-      const ym = `${year}-${String(month + 1).padStart(2, '0')}`;
-      filteredDates = filteredDates.filter(date => date.startsWith(ym));
-    }
-    let cum = 0;
-    return filteredDates.map(date => {
-      const daily = Math.round(dateMap[date] * 100) / 100;
-      cum += daily;
-      const [, m, d] = date.split('-');
-      const label = view === 'weekly'
-        ? new Date(date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'numeric', day: 'numeric' })
-        : `${m}/${d}`;
-      return { date, label, daily, cumulative: Math.round(cum * 100) / 100 };
-    });
-  };
-
-  useEffect(() => {
-    if (window.Chart) { setChartReady(true); return; }
-    const script = document.createElement('script');
-    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js';
-    script.onload = () => setChartReady(true);
-    document.head.appendChild(script);
-  }, []);
-
-  useEffect(() => {
-    if (!chartReady || !open || !cumulRef.current || !dailyRef.current) return;
-    const data = buildChartData(chartView);
-
-    if (cumulInstance.current) { cumulInstance.current.destroy(); cumulInstance.current = null; }
-    if (dailyInstance.current) { dailyInstance.current.destroy(); dailyInstance.current = null; }
-
-    if (!data.length) return;
-    const Chart = window.Chart;
-
-    const labels = data.map(d => d.label);
-    const cumulValues = data.map(d => d.cumulative);
-    const dailyValues = data.map(d => d.daily);
-
-    // --- Cumulative line chart ---
-    const cCtx = cumulRef.current.getContext('2d');
-    const allPos = cumulValues.every(v => v >= 0);
-    const allNeg = cumulValues.every(v => v < 0);
-    let cumulGrad = cCtx.createLinearGradient(0, 0, 0, 260);
-    if (allPos) {
-      cumulGrad.addColorStop(0, 'rgba(29,158,117,0.35)');
-      cumulGrad.addColorStop(1, 'rgba(29,158,117,0.03)');
-    } else if (allNeg) {
-      cumulGrad.addColorStop(0, 'rgba(226,75,74,0.08)');
-      cumulGrad.addColorStop(1, 'rgba(226,75,74,0.38)');
-    } else {
-      const maxV = Math.max(...cumulValues);
-      const minV = Math.min(...cumulValues);
-      const zeroRatio = maxV / (maxV - minV);
-      cumulGrad.addColorStop(0, 'rgba(29,158,117,0.35)');
-      cumulGrad.addColorStop(Math.min(zeroRatio, 0.98), 'rgba(29,158,117,0.04)');
-      cumulGrad.addColorStop(Math.min(zeroRatio + 0.02, 1), 'rgba(226,75,74,0.04)');
-      cumulGrad.addColorStop(1, 'rgba(226,75,74,0.35)');
-    }
-
-    const lastVal = cumulValues[cumulValues.length - 1];
-    cumulInstance.current = new Chart(cCtx, {
-      type: 'line',
-      data: {
-        labels,
-        datasets: [{
-          data: cumulValues,
-          borderColor: lastVal >= 0 ? '#1D9E75' : '#E24B4A',
-          borderWidth: 2,
-          pointRadius: data.length <= 7 ? 4 : 0,
-          pointHoverRadius: 5,
-          pointBackgroundColor: lastVal >= 0 ? '#1D9E75' : '#E24B4A',
-          pointHoverBackgroundColor: '#fff',
-          fill: true,
-          backgroundColor: cumulGrad,
-          tension: 0.3,
-        }]
-      },
-      options: {
-        responsive: true, maintainAspectRatio: false,
-        interaction: { mode: 'index', intersect: false },
-        plugins: {
-          legend: { display: false },
-          tooltip: {
-            backgroundColor: '#1a1a1a', borderColor: '#333', borderWidth: 1,
-            titleColor: '#aaa', bodyColor: '#fff',
-            callbacks: { label: ctx => ` ${ctx.raw >= 0 ? '+$' : '-$'}${Math.abs(ctx.raw).toLocaleString()}` }
-          }
-        },
-        scales: {
-          x: { ticks: { color: '#555', font: { size: 11 }, maxTicksLimit: 10, maxRotation: 0 }, grid: { display: false }, border: { display: false } },
-          y: { ticks: { color: '#555', font: { size: 11 }, callback: v => (v >= 0 ? '+$' : '-$') + Math.abs(v).toLocaleString() }, grid: { color: 'rgba(255,255,255,0.05)' }, border: { display: false } }
-        }
-      }
-    });
-
-    // --- Daily bar chart with inline labels ---
-    const dCtx = dailyRef.current.getContext('2d');
-    dailyInstance.current = new Chart(dCtx, {
-      type: 'bar',
-      data: {
-        labels,
-        datasets: [{
-          data: dailyValues,
-          backgroundColor: dailyValues.map(v => v >= 0 ? 'rgba(29,158,117,0.85)' : 'rgba(226,75,74,0.85)'),
-          borderColor: dailyValues.map(v => v >= 0 ? '#0F6E56' : '#A32D2D'),
-          borderWidth: 1,
-          borderRadius: 3,
-        }]
-      },
-      options: {
-        responsive: true, maintainAspectRatio: false,
-        interaction: { mode: 'index', intersect: false },
-        layout: { padding: { top: 24 } },
-        plugins: {
-          legend: { display: false },
-          tooltip: { enabled: false },
-        },
-        scales: {
-          x: { ticks: { color: '#555', font: { size: 11 }, maxTicksLimit: 10, maxRotation: 0 }, grid: { display: false }, border: { display: false } },
-          y: { ticks: { color: '#555', font: { size: 11 }, callback: v => (v >= 0 ? '+$' : '-$') + Math.abs(v).toLocaleString() }, grid: { color: 'rgba(255,255,255,0.05)' }, border: { display: false } }
-        },
-        animation: {
-          onComplete: function () {
-            const chart = this;
-            const ctx = chart.ctx;
-            ctx.save();
-            ctx.font = '500 10px sans-serif';
-            ctx.textAlign = 'center';
-            chart.data.datasets.forEach((dataset, i) => {
-              const meta = chart.getDatasetMeta(i);
-              meta.data.forEach((bar, index) => {
-                const value = dataset.data[index];
-                if (value === null || value === undefined) return;
-                const label = (value >= 0 ? '+$' : '-$') + Math.abs(Math.round(value)).toLocaleString();
-                ctx.fillStyle = value >= 0 ? '#1D9E75' : '#E24B4A';
-                if (value >= 0) {
-                  ctx.textBaseline = 'bottom';
-                  ctx.fillText(label, bar.x, bar.y - 3);
-                } else {
-                  ctx.textBaseline = 'top';
-                  ctx.fillText(label, bar.x, bar.y + 3);
-                }
-              });
-            });
-            ctx.restore();
-          }
-        }
-      }
-    });
-
-    return () => {
-      if (cumulInstance.current) { cumulInstance.current.destroy(); cumulInstance.current = null; }
-      if (dailyInstance.current) { dailyInstance.current.destroy(); dailyInstance.current = null; }
-    };
-  }, [chartReady, open, trades, chartView, year, month]);
-
-  // Calendar grid
-  const firstDay = new Date(year, month, 1).getDay();
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const cells = [];
-  for (let i = 0; i < firstDay; i++) cells.push(null);
-  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
-  while (cells.length % 7 !== 0) cells.push(null);
-  const weeks = [];
-  for (let i = 0; i < cells.length; i += 7) weeks.push(cells.slice(i, i + 7));
-
-  const fmt = (v) => (v >= 0 ? '+$' : '-$') + Math.abs(Math.round(v)).toLocaleString();
-
-  const chartData = open ? buildChartData(chartView) : [];
-  const chartNet = chartData.reduce((s, d) => s + d.daily, 0);
-  const chartTradeDays = chartData.length;
-
-  if (!closed.length) return null;
-
-  const toggleBtn = (v, label) => (
-    <button key={v} onClick={e => { e.stopPropagation(); setChartView(v); }} style={{
-      padding: '3px 14px', borderRadius: 6, fontSize: 12, fontWeight: 500, cursor: 'pointer',
-      border: '1px solid', borderColor: chartView === v ? '#185FA5' : '#2a2a2a',
-      background: chartView === v ? '#185FA522' : 'transparent',
-      color: chartView === v ? '#185FA5' : '#888',
-    }}>{label}</button>
-  );
-
-  return (
-    <div style={{ marginBottom: 24 }}>
-      <div onClick={() => setOpen(o => !o)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#111', border: '1px solid #222', borderRadius: open ? '8px 8px 0 0' : 8, padding: '10px 16px', cursor: 'pointer', userSelect: 'none' }}>
-        <span style={{ fontWeight: 600, fontSize: 14, color: '#ccc' }}>📅 Progress</span>
-        <span style={{ color: '#888', fontSize: 14 }}>{open ? '▲ Hide' : '▼ Show'}</span>
-      </div>
-
-      {open && (
-        <div style={{ border: '1px solid #222', borderTop: 'none', borderRadius: '0 0 8px 8px', padding: 16 }}>
-
-          {/* Calendar nav + monthly stats */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <button onClick={e => { e.stopPropagation(); changeMonth(-1); }} style={{ background: 'transparent', border: '1px solid #2a2a2a', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', color: '#ccc', fontSize: 13 }}>‹</button>
-              <span style={{ fontSize: 15, fontWeight: 600, color: '#ccc', minWidth: 140, textAlign: 'center' }}>{MONTH_NAMES[month]} {year}</span>
-              <button onClick={e => { e.stopPropagation(); changeMonth(1); }} style={{ background: 'transparent', border: '1px solid #2a2a2a', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', color: '#ccc', fontSize: 13 }}>›</button>
-              <button onClick={e => { e.stopPropagation(); goToday(); }} style={{ background: 'transparent', border: '1px solid #2a2a2a', borderRadius: 6, padding: '4px 14px', cursor: 'pointer', color: '#ccc', fontSize: 12 }}>This month</button>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ fontSize: 12, color: '#888' }}>Monthly stats:</span>
-              <span style={{ background: monthNet >= 0 ? '#1D9E7522' : '#E24B4A22', color: monthNet >= 0 ? '#1D9E75' : '#E24B4A', borderRadius: 20, padding: '3px 12px', fontSize: 13, fontWeight: 600 }}>{fmt(monthNet)}</span>
-              <span style={{ background: '#1a1a1a', color: '#aaa', borderRadius: 20, padding: '3px 12px', fontSize: 13 }}>{tradeDays} days</span>
-            </div>
-          </div>
-
-          {/* Calendar + weekly summaries */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 0, alignItems: 'start' }}>
-            <div style={{ minWidth: 0 }}>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 3, marginBottom: 3 }}>
-                {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d => (
-                  <div key={d} style={{ textAlign: 'center', fontSize: 11, color: '#555', fontWeight: 500, padding: '4px 0' }}>{d}</div>
-                ))}
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                {weeks.map((week, wi) => (
-                  <div key={wi} style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 3 }}>
-                    {week.map((day, di) => {
-                      if (!day) return <div key={di} style={{ minHeight: 72 }} />;
-                      const d = dayMap[day];
-                      const isToday = now.getFullYear() === year && now.getMonth() === month && now.getDate() === day;
-                      let bg = '#111', borderColor = '#2a2a2a';
-                      if (d) { bg = d.pnl >= 0 ? '#1D9E7514' : '#E24B4A12'; borderColor = d.pnl >= 0 ? '#1D9E7540' : '#E24B4A40'; }
-                      if (isToday) borderColor = '#185FA5';
-                      const wr = d && d.count ? Math.round(d.wins / d.count * 100) : 0;
-                      return (
-                        <div key={di} style={{ background: bg, border: `${isToday ? '1.5px' : '1px'} solid ${borderColor}`, borderRadius: 6, padding: '5px 7px', minHeight: 72, display: 'flex', flexDirection: 'column', gap: 2, position: 'relative' }}>
-                          <span style={{ fontSize: 11, color: '#555', textAlign: 'right', lineHeight: 1 }}>{day}</span>
-                          {d && (<>
-                            <span style={{ fontSize: 13, fontWeight: 600, color: d.pnl >= 0 ? '#1D9E75' : '#E24B4A', lineHeight: 1.2 }}>{d.pnl >= 0 ? '+$' : '-$'}{Math.abs(Math.round(d.pnl)).toLocaleString()}</span>
-                            <span style={{ fontSize: 10, color: '#666' }}>{d.count} trade{d.count !== 1 ? 's' : ''}</span>
-                            <span style={{ fontSize: 10, color: '#666' }}>{wr}%</span>
-                            {d.pnl < 0 && <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#E24B4A', position: 'absolute', bottom: 5, left: 7 }} />}
-                          </>)}
-                        </div>
-                      );
-                    })}
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Weekly summaries */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 3, marginTop: 23, marginLeft: 8 }}>
-              {weeks.map((week, wi) => {
-                let wNet = 0, wDays = 0;
-                week.forEach(day => { if (day && dayMap[day]) { wNet += dayMap[day].pnl; wDays++; } });
-                return (
-                  <div key={wi} style={{ background: '#111', border: '1px solid #222', borderRadius: 6, padding: '8px 12px', minWidth: 90, minHeight: 72, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 3 }}>
-                    <span style={{ fontSize: 11, color: '#555', fontWeight: 500 }}>Week {wi + 1}</span>
-                    {wDays > 0 ? (<>
-                      <span style={{ fontSize: 15, fontWeight: 600, color: wNet >= 0 ? '#1D9E75' : '#E24B4A' }}>{fmt(wNet)}</span>
-                      <span style={{ fontSize: 11, color: '#555' }}>{wDays} day{wDays !== 1 ? 's' : ''}</span>
-                    </>) : <span style={{ fontSize: 12, color: '#333' }}>—</span>}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Chart toggle + summary */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 28, marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
-            <div style={{ display: 'flex', gap: 6 }}>
-              {toggleBtn('weekly', 'Weekly')}
-              {toggleBtn('monthly', 'Monthly')}
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ fontSize: 12, color: '#888' }}>{chartView === 'weekly' ? 'This week:' : `${MONTH_NAMES[month]}:`}</span>
-              {chartData.length > 0 ? (<>
-                <span style={{ background: chartNet >= 0 ? '#1D9E7522' : '#E24B4A22', color: chartNet >= 0 ? '#1D9E75' : '#E24B4A', borderRadius: 20, padding: '3px 12px', fontSize: 13, fontWeight: 600 }}>{fmt(chartNet)}</span>
-                <span style={{ background: '#1a1a1a', color: '#aaa', borderRadius: 20, padding: '3px 12px', fontSize: 13 }}>{chartTradeDays} days</span>
-              </>) : <span style={{ fontSize: 12, color: '#555' }}>No trades</span>}
-            </div>
-          </div>
-
-          {/* Cumulative P&L line chart */}
-          <div style={{ marginBottom: 8 }}>
-            <div style={{ fontSize: 13, fontWeight: 600, color: '#888', marginBottom: 12 }}>Daily net cumulative P&L</div>
-            {chartData.length === 0
-              ? <div style={{ height: 80, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#555', fontSize: 13 }}>No trades in this {chartView === 'weekly' ? 'week' : 'month'}</div>
-              : <div style={{ position: 'relative', width: '100%', height: 260 }}><canvas ref={cumulRef} /></div>
-            }
-          </div>
-
-          {/* Daily bar chart */}
-          <div style={{ marginTop: 28 }}>
-            <div style={{ fontSize: 13, fontWeight: 600, color: '#888', marginBottom: 12 }}>Net daily P&L</div>
-            {chartData.length === 0
-              ? <div style={{ height: 80, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#555', fontSize: 13 }}>No trades in this {chartView === 'weekly' ? 'week' : 'month'}</div>
-              : <div style={{ position: 'relative', width: '100%', height: 300 }}><canvas ref={dailyRef} /></div>
-            }
-          </div>
-
-        </div>
-      )}
-    </div>
-  );
 }
 
-function ChartModal({ url, onClose }) {
-  if (!url) return null;
-  return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={e => e.stopPropagation()}>
-        <div className="modal-header"><span className="modal-title">Trade Chart</span><button className="modal-close" onClick={onClose}>×</button></div>
-        <img src={url} alt="Trade chart" className="modal-img" />
-      </div>
-    </div>
-  );
-}
-
-function TertiaryWarning({ alTier, slTier }) {
-  const alTertiary = alTier === 'Tertiary';
-  const slTertiary = slTier === 'Tertiary';
-  if (!alTertiary && !slTertiary) return null;
-  const parts = [];
-  if (alTertiary) parts.push('Action Line');
-  if (slTertiary) parts.push('Safety Line');
-  return (
-    <div style={{ background: '#E24B4A18', border: '1.5px solid #E24B4A55', borderRadius: 8, padding: '10px 14px', marginBottom: 12, display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-      <span style={{ fontSize: 18, lineHeight: 1 }}>⚠️</span>
-      <div>
-        <div style={{ color: '#E24B4A', fontWeight: 600, fontSize: 13 }}>Tertiary {parts.join(' & ')} — Low Reliability</div>
-        <div style={{ color: '#aaa', fontSize: 12, marginTop: 2 }}>Your April data: Tertiary SL trades cost –$460. Consider skipping or requiring stronger confluence before taking this setup.</div>
-      </div>
-    </div>
-  );
-}
-
-function TradeForm({ form, setForm, onSubmit, onCancel, uploading, isEdit }) {
-  const confOptions = ['AL crossed', 'Yellow S/R cleared', 'SL identified', 'Open space'];
-  const confs = Array.isArray(form.confirmations) ? form.confirmations : (form.confirmations || '').split(',').filter(Boolean);
-  const toggleConf = (c) => {
-    const current = Array.isArray(form.confirmations) ? form.confirmations : (form.confirmations || '').split(',').filter(Boolean);
-    setForm(f => ({ ...f, confirmations: current.includes(c) ? current.filter(x => x !== c) : [...current, c] }));
-  };
-
-  return (
-    <div className="form-card">
-      <h2>{isEdit ? 'Edit Trade' : 'Log New Trade'}</h2>
-      <div className="form-grid-3">
-        <div className="field"><label>Trade #</label><input type="number" value={form.trade_number || ''} onChange={e => setForm(f => ({ ...f, trade_number: e.target.value }))} /></div>
-        <div className="field"><label>Date</label><input type="date" value={form.date || ''} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} /></div>
-        <div className="field"><label>Time (EST)</label><input type="time" value={form.time || ''} onChange={e => setForm(f => ({ ...f, time: e.target.value }))} /></div>
-      </div>
-      <div className="form-grid-3">
-        <div className="field"><label>Account</label>
-          <div className="toggle-row">{['A1', 'A2'].map(a => <button key={a} className={`tog ${form.account === a ? 'tog-blue' : ''}`} onClick={() => setForm(f => ({ ...f, account: a }))}>{a}</button>)}</div>
-        </div>
-        <div className="field"><label>Symbol</label>
-          <div className="toggle-row">
-            {['MGC', 'MNQ', 'MYM', 'MCL', 'OTHER'].map(s => (
-              <button key={s} className={`tog ${form.symbol === s ? 'tog-blue' : ''}`} onClick={() => setForm(f => ({ ...f, symbol: s, custom_symbol: '', custom_multiplier: '' }))}>{s}</button>
-            ))}
-          </div>
-          {form.symbol === 'OTHER' && (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 6 }}>
-              <input type="text" placeholder="Symbol (e.g. ES)" value={form.custom_symbol || ''} onChange={e => setForm(f => ({ ...f, custom_symbol: e.target.value }))}
-                style={{ background: '#0d0d0d', border: '1px solid #2a2a2a', borderRadius: 6, padding: '5px 10px', color: '#ccc', fontSize: 12 }} />
-              <input type="number" placeholder="$/point multiplier" value={form.custom_multiplier || ''} onChange={e => setForm(f => ({ ...f, custom_multiplier: e.target.value }))}
-                style={{ background: '#0d0d0d', border: '1px solid #2a2a2a', borderRadius: 6, padding: '5px 10px', color: '#ccc', fontSize: 12 }} />
-            </div>
-          )}
-        </div>
-        <div className="field"><label>Direction</label>
-          <div className="toggle-row">
-            <button className={`tog ${form.direction === 'long' ? 'tog-green' : ''}`} onClick={() => setForm(f => ({ ...f, direction: 'long' }))}>Long</button>
-            <button className={`tog ${form.direction === 'short' ? 'tog-red' : ''}`} onClick={() => setForm(f => ({ ...f, direction: 'short' }))}>Short</button>
-          </div>
-        </div>
-        <div className="field"><label>Contracts</label>
-          <div className="toggle-row">
-            {['1', '2', '3'].map(n => (
-              <button key={n} className={`tog ${form.contracts === n ? 'tog-blue' : ''}`} onClick={() => setForm(f => ({ ...f, contracts: n }))}>{n}</button>
-            ))}
-            <input type="number" min="1" placeholder="Other" value={!['1','2','3'].includes(form.contracts) ? form.contracts : ''} onChange={e => setForm(f => ({ ...f, contracts: e.target.value }))}
-              style={{ width: 60, background: '#0d0d0d', border: '1px solid #2a2a2a', borderRadius: 6, padding: '4px 8px', color: '#ccc', fontSize: 12 }} />
-          </div>
-        </div>
-      </div>
-      <div className="form-grid-4">
-        <div className="field"><label>Entry</label><input type="number" step="0.01" value={form.entry || ''} onChange={e => setForm(f => ({ ...f, entry: e.target.value }))} /></div>
-        <div className="field"><label>Exit</label><input type="number" step="0.01" value={form.exit_price || ''} onChange={e => setForm(f => ({ ...f, exit_price: e.target.value }))} /></div>
-        <div className="field"><label>Stop</label><input type="number" step="0.01" value={form.stop || ''} onChange={e => setForm(f => ({ ...f, stop: e.target.value }))} /></div>
-        <div className="field"><label>Target</label><input type="number" step="0.01" value={form.target || ''} onChange={e => setForm(f => ({ ...f, target: e.target.value }))} /></div>
-      </div>
-      <div className="form-grid-2">
-        <div className="field"><label>Exit Reason</label>
-          <div className="toggle-row">{['target', 'stop', 'manual', 'open'].map(r => <button key={r} className={`tog ${form.exit_reason === r ? 'tog-blue' : ''}`} onClick={() => setForm(f => ({ ...f, exit_reason: r }))}>{r}</button>)}</div>
-        </div>
-        <div className="field">
-          <label>Grade <span style={{ fontSize: 11, color: '#888', fontWeight: 400 }}>(auto-calculated)</span></label>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 4 }}>
-            <span className="grade-badge" style={{ background: GRADE_COLORS[form.grade] + '33', color: GRADE_COLORS[form.grade], fontSize: 18, fontWeight: 700, padding: '6px 18px', borderRadius: 8, border: '1.5px solid ' + GRADE_COLORS[form.grade] }}>
-              {GRADES[form.grade] || form.grade}
-            </span>
-            <span style={{ fontSize: 12, color: '#888' }}>{form.grade === 'aplus' ? '~80% win rate' : form.grade === 'a' ? '~55% win rate' : '~40% win rate'}</span>
-          </div>
-        </div>
-      </div>
-
-      <TertiaryWarning alTier={form.al_tier} slTier={form.sl_tier} />
-
-      <div style={{ background: '#111', border: '1px solid #222', borderRadius: 8, padding: '12px 14px', marginBottom: 12 }}>
-        <div style={{ fontSize: 12, color: '#888', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Action Line</div>
-        <div className="form-grid-3">
-          <div className="field"><label>Strength</label>
-            <div className="toggle-row">
-              <button className={`tog ${form.al_strength === 'strong' ? 'tog-green' : ''}`} onClick={() => setForm(f => { const u = { ...f, al_strength: 'strong' }; return { ...u, grade: autoGrade('strong', u.al_touches, u.al_age, u.sl_quality, u.sl_touches, u.sl_age) }; })}>★ Strong</button>
-              <button className={`tog ${form.al_strength === 'standard' ? 'tog-blue' : ''}`} onClick={() => setForm(f => { const u = { ...f, al_strength: 'standard' }; return { ...u, grade: autoGrade('standard', u.al_touches, u.al_age, u.sl_quality, u.sl_touches, u.sl_age) }; })}>Standard</button>
-            </div>
-          </div>
-          <div className="field"><label>Touches</label><input type="number" value={form.al_touches || ''} onChange={e => setForm(f => { const u = { ...f, al_touches: e.target.value }; return { ...u, grade: autoGrade(u.al_strength, u.al_touches, u.al_age, u.sl_quality, u.sl_touches, u.sl_age) }; })} /></div>
-          <div className="field"><label>Age</label>
-            <div className="toggle-row">{['<1day', '<1wk', '1wk+'].map(a => <button key={a} className={`tog ${form.al_age === a ? 'tog-blue' : ''}`} onClick={() => setForm(f => { const u = { ...f, al_age: a }; return { ...u, grade: autoGrade(u.al_strength, u.al_touches, a, u.sl_quality, u.sl_touches, u.sl_age) }; })}>{a}</button>)}</div>
-          </div>
-        </div>
-        <div className="field" style={{ marginBottom: 0 }}><label>AL Tier</label>
-          <div className="toggle-row">
-            {TIERS.map(tier => (
-              <button key={tier} className="tog" style={form.al_tier === tier ? { background: TIER_COLORS[tier] + '33', color: TIER_COLORS[tier], borderColor: TIER_COLORS[tier] } : {}} onClick={() => setForm(f => ({ ...f, al_tier: tier }))}>{tier}</button>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      <div style={{ background: '#111', border: '1px solid #222', borderRadius: 8, padding: '12px 14px', marginBottom: 12 }}>
-        <div style={{ fontSize: 12, color: '#888', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Safety Line</div>
-        <div className="form-grid-3">
-          <div className="field"><label>Quality</label>
-            <div className="toggle-row">
-              <button className={`tog ${form.sl_quality === 'strong' ? 'tog-green' : ''}`} onClick={() => setForm(f => { const u = { ...f, sl_quality: 'strong' }; return { ...u, grade: autoGrade(u.al_strength, u.al_touches, u.al_age, 'strong', u.sl_touches, u.sl_age) }; })}>★ Strong</button>
-              <button className={`tog ${form.sl_quality === 'weak' ? 'tog-red' : ''}`} onClick={() => setForm(f => { const u = { ...f, sl_quality: 'weak' }; return { ...u, grade: autoGrade(u.al_strength, u.al_touches, u.al_age, 'weak', u.sl_touches, u.sl_age) }; })}>Weak</button>
-            </div>
-          </div>
-          <div className="field"><label>Touches</label><input type="number" value={form.sl_touches || ''} onChange={e => setForm(f => { const u = { ...f, sl_touches: e.target.value }; return { ...u, grade: autoGrade(u.al_strength, u.al_touches, u.al_age, u.sl_quality, u.sl_touches, u.sl_age) }; })} /></div>
-          <div className="field"><label>Age</label>
-            <div className="toggle-row">{['<1day', '<1wk', '1wk+'].map(a => <button key={a} className={`tog ${form.sl_age === a ? 'tog-blue' : ''}`} onClick={() => setForm(f => { const u = { ...f, sl_age: a }; return { ...u, grade: autoGrade(u.al_strength, u.al_touches, u.al_age, u.sl_quality, u.sl_touches, a) }; })}>{a}</button>)}</div>
-          </div>
-        </div>
-        <div className="form-grid-2" style={{ marginTop: 8, marginBottom: 0 }}>
-          <div className="field" style={{ marginBottom: 0 }}><label>SL Tier</label>
-            <div className="toggle-row">
-              {TIERS.map(tier => (
-                <button key={tier} className="tog" style={form.sl_tier === tier ? { background: TIER_COLORS[tier] + '33', color: TIER_COLORS[tier], borderColor: TIER_COLORS[tier] } : {}} onClick={() => setForm(f => ({ ...f, sl_tier: tier }))}>{tier}</button>
-              ))}
-            </div>
-          </div>
-          <div className="field" style={{ marginBottom: 0 }}><label>SL Price</label><input type="number" step="0.01" value={form.sl_price || ''} onChange={e => setForm(f => ({ ...f, sl_price: e.target.value }))} /></div>
-        </div>
-      </div>
-
-      <div className="form-grid-2">
-        <div className="field"><label>Yellow Levels</label><input type="text" placeholder="e.g. 4650/4586/4420" value={form.yellow_levels || ''} onChange={e => setForm(f => ({ ...f, yellow_levels: e.target.value }))} /></div>
-      </div>
-      <div className="field"><label>Confirmations</label>
-        <div className="toggle-row">{confOptions.map(c => <button key={c} className={`tog ${confs.includes(c) ? 'tog-green' : ''}`} onClick={() => toggleConf(c)}>{c}</button>)}</div>
-      </div>
-      <div className="field"><label>Notes</label><textarea value={form.notes || ''} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} rows={2} /></div>
-      <div className="field">
-        <label>Chart Image&nbsp;{isEdit && form.chart_url && (<a href={form.chart_url} target="_blank" rel="noreferrer" className="chart-link">(view current chart)</a>)}</label>
-        <input type="file" accept="image/*" onChange={e => setForm(f => ({ ...f, chart_file: e.target.files[0] }))} />
-      </div>
-      <div className="form-actions">
-        <button className="btn-cancel" onClick={onCancel}>Cancel</button>
-        <button className="btn-submit" onClick={onSubmit} disabled={uploading}>{uploading ? 'Saving...' : isEdit ? 'Save Changes' : 'Log Trade'}</button>
-      </div>
-    </div>
-  );
-}
-
-// ─── Manage Levels + Pre-Trade Checklist ──────────────────────────────────────
-const DEFAULT_LEVELS = [
-  { id: 1, name: 'W($4900)', price: 4900, symbol: 'MGC' },
-  { id: 2, name: '4H($4750)', price: 4750, symbol: 'MGC' },
-  { id: 3, name: '4($4642.1)', price: 4642.1, symbol: 'MGC' },
-  { id: 4, name: 'W($4600)', price: 4600, symbol: 'MGC' },
-  { id: 5, name: 'M($4600)', price: 4600.1, symbol: 'MGC' },
-  { id: 6, name: 'M($4400)', price: 4400, symbol: 'MGC' },
-];
-
-function ManageLevels() {
-  const storageKey = 'tl_key_levels';
-  const [levels, setLevels] = useState(() => {
-    try {
-      const s = localStorage.getItem(storageKey) || sessionStorage.getItem(storageKey);
-      return s ? JSON.parse(s) : DEFAULT_LEVELS;
-    } catch { return DEFAULT_LEVELS; }
-  });
-  const [newName, setNewName] = useState('');
-  const [newPrice, setNewPrice] = useState('');
-  const [newSymbol, setNewSymbol] = useState('MGC');
-  const [editId, setEditId] = useState(null);
-  const [editPrice, setEditPrice] = useState('');
-  const [open, setOpen] = useState(false);
-  const [lvlSymbol, setLvlSymbol] = useState('MGC');
-  const [ptSymbol, setPtSymbol] = useState('MGC');
-  const [ptDirection, setPtDirection] = useState('short');
-  const [ptEntry, setPtEntry] = useState('');
-  const [ptStop, setPtStop] = useState('');
-  const [ptTarget, setPtTarget] = useState('');
-  const [ptResult, setPtResult] = useState(null);
-
-  const save = (updated) => {
-    setLevels(updated);
-    try { localStorage.setItem(storageKey, JSON.stringify(updated)); } catch {}
-    try { sessionStorage.setItem(storageKey, JSON.stringify(updated)); } catch {}
-  };
-
-  const addLevel = () => {
-    if (!newName || !newPrice) return;
-    save([...levels, { id: Date.now(), name: newName, price: parseFloat(newPrice), symbol: newSymbol }]);
-    setNewName(''); setNewPrice('');
-  };
-
-  const deleteLevel = (id) => save(levels.filter(l => l.id !== id));
-  const startEdit = (l) => { setEditId(l.id); setEditPrice(String(l.price)); };
-  const saveEdit = (id) => { save(levels.map(l => l.id === id ? { ...l, price: parseFloat(editPrice) } : l)); setEditId(null); setEditPrice(''); };
-
-  const checkTrade = () => {
-    const entry = parseFloat(ptEntry), stop = parseFloat(ptStop), target = parseFloat(ptTarget);
-    if (!entry || !stop || !target) return;
-    const mult = getMultiplier(ptSymbol);
-    const isLong = ptDirection === 'long';
-    const stopDist = isLong ? entry - stop : stop - entry;
-    const targetDist = isLong ? target - entry : entry - target;
-    const rr = stopDist > 0 ? Math.round((targetDist / stopDist) * 100) / 100 : 0;
-    const maxGain = Math.round(targetDist * mult);
-    const maxLoss = Math.round(stopDist * mult);
-    const symLevels = levels.filter(l => l.symbol === ptSymbol);
-    const blockingLevels = symLevels.filter(l => isLong ? l.price > entry && l.price < target : l.price < entry && l.price > target).sort((a, b) => isLong ? a.price - b.price : b.price - a.price);
-    let nearestToTarget = null, nearestDist = Infinity;
-    symLevels.forEach(l => { const d = Math.abs(l.price - target); if (d < nearestDist) { nearestDist = d; nearestToTarget = l; } });
-    const beyondTarget = symLevels.filter(l => isLong ? l.price > target : l.price < target).sort((a, b) => isLong ? a.price - b.price : b.price - a.price);
-    const nextLevel = beyondTarget[0] || null;
-    const warnings = [], suggestions = [];
-    if (stopDist <= 0) warnings.push('Stop is on wrong side of entry');
-    if (targetDist <= 0) warnings.push('Target is on wrong side of entry');
-    if (blockingLevels.length > 0) {
-      const closest = blockingLevels[0];
-      warnings.push(`${closest.name} @ ${closest.price} is blocking your path`);
-      const sTarget = isLong ? closest.price - 2 : closest.price + 2;
-      const sDist = Math.abs(sTarget - entry);
-      const sRR = stopDist > 0 ? Math.round((sDist / stopDist) * 100) / 100 : 0;
-      suggestions.push({ label: `Just before ${closest.name}`, price: sTarget.toFixed(1), rr: sRR, gain: Math.round(sDist * mult), type: 'conservative', note: 'Exit before resistance' });
-      if (blockingLevels.length > 1) {
-        const second = blockingLevels[1];
-        const s2 = isLong ? second.price - 2 : second.price + 2;
-        const s2Dist = Math.abs(s2 - entry);
-        suggestions.push({ label: `Just before ${second.name}`, price: s2.toFixed(1), rr: stopDist > 0 ? Math.round((s2Dist / stopDist) * 100) / 100 : 0, gain: Math.round(s2Dist * mult), type: 'aggressive', note: 'If first level breaks' });
-      }
-    } else if (nearestDist > 20) {
-      warnings.push(`Target @ ${target} has no key level nearby (nearest: ${nearestToTarget ? nearestToTarget.name + ' @ ' + nearestToTarget.price : 'none'})`);
-      if (nextLevel) { const nd = Math.abs(nextLevel.price - entry); suggestions.push({ label: `Move to ${nextLevel.name}`, price: nextLevel.price, rr: stopDist > 0 ? Math.round((nd / stopDist) * 100) / 100 : 0, gain: Math.round(nd * mult), type: 'aggressive', note: 'Next key level above' }); }
-    }
-    setPtResult({ rr, maxGain, maxLoss, nearestToTarget, nearestDist: Math.round(nearestDist), blockingLevels, nextLevel, suggestions, warnings, stopDist: Math.round(stopDist), targetDist: Math.round(targetDist), targetAtLevel: nearestDist <= 10 });
-  };
-
-  return (
-    <div style={{ marginBottom: 24 }}>
-      <div onClick={() => setOpen(o => !o)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#111', border: '1px solid #222', borderRadius: open ? '8px 8px 0 0' : 8, padding: '10px 16px', cursor: 'pointer', userSelect: 'none' }}>
-        <span style={{ fontWeight: 600, fontSize: 14, color: '#ccc' }}>📐 Key Levels & Pre-Trade Check</span>
-        <span style={{ color: '#888', fontSize: 14 }}>{open ? '▲ Hide' : '▼ Show'}</span>
-      </div>
-      {open && <div style={{ border: '1px solid #222', borderTop: 'none', borderRadius: '0 0 8px 8px', padding: 16 }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
-          <div className="table-card" style={{ marginBottom: 0 }}>
-            <div className="table-header" style={{ marginBottom: 12 }}>
-              <h2>Key Levels</h2>
-              <div style={{ display: 'flex', gap: 6 }}>
-                {['MGC', 'MNQ'].map(s => <button key={s} onClick={() => setLvlSymbol(s)} style={{ padding: '3px 12px', borderRadius: 6, fontSize: 12, fontWeight: 500, cursor: 'pointer', border: '1px solid', borderColor: lvlSymbol === s ? '#185FA5' : '#2a2a2a', background: lvlSymbol === s ? '#185FA522' : 'transparent', color: lvlSymbol === s ? '#185FA5' : '#888' }}>{s}</button>)}
-              </div>
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 80px 70px auto', gap: 8, marginBottom: 16 }}>
-              <input placeholder="Name (e.g. 4H$4750)" value={newName} onChange={e => setNewName(e.target.value)} style={{ background: '#111', border: '1px solid #2a2a2a', borderRadius: 6, padding: '6px 10px', color: '#ccc', fontSize: 13 }} />
-              <input placeholder="Price" type="number" step="0.1" value={newPrice} onChange={e => setNewPrice(e.target.value)} style={{ background: '#111', border: '1px solid #2a2a2a', borderRadius: 6, padding: '6px 10px', color: '#ccc', fontSize: 13 }} />
-              <select value={newSymbol} onChange={e => setNewSymbol(e.target.value)} style={{ background: '#111', border: '1px solid #2a2a2a', borderRadius: 6, padding: '6px 8px', color: '#ccc', fontSize: 13 }}><option>MGC</option><option>MNQ</option></select>
-              <button onClick={addLevel} style={{ background: '#185FA5', border: 'none', borderRadius: 6, padding: '6px 14px', color: '#fff', fontSize: 13, cursor: 'pointer', fontWeight: 500 }}>+ Add</button>
-            </div>
-            {(() => {
-              const sLevels = levels.filter(l => l.symbol === lvlSymbol).sort((a, b) => b.price - a.price);
-              if (!sLevels.length) return <div style={{ color: '#555', fontSize: 13 }}>No {lvlSymbol} levels saved yet.</div>;
-              return sLevels.map(l => (
-                <div key={l.id} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, background: '#111', borderRadius: 6, padding: '6px 10px' }}>
-                  <span style={{ flex: 1, fontSize: 13, color: '#ccc' }}>{l.name}</span>
-                  {editId === l.id ? (<>
-                    <input type="number" step="0.1" value={editPrice} onChange={e => setEditPrice(e.target.value)} style={{ width: 80, background: '#1a1a1a', border: '1px solid #185FA5', borderRadius: 4, padding: '3px 6px', color: '#ccc', fontSize: 12 }} />
-                    <button onClick={() => saveEdit(l.id)} style={{ background: '#1D9E75', border: 'none', borderRadius: 4, padding: '3px 10px', color: '#fff', fontSize: 12, cursor: 'pointer' }}>Save</button>
-                    <button onClick={() => setEditId(null)} style={{ background: '#333', border: 'none', borderRadius: 4, padding: '3px 8px', color: '#888', fontSize: 12, cursor: 'pointer' }}>×</button>
-                  </>) : (<>
-                    <span style={{ fontSize: 13, color: '#1D9E75', fontWeight: 500, minWidth: 60, textAlign: 'right' }}>{l.price}</span>
-                    <button onClick={() => startEdit(l)} style={{ background: '#222', border: 'none', borderRadius: 4, padding: '3px 8px', color: '#888', fontSize: 11, cursor: 'pointer' }}>Edit</button>
-                    <button onClick={() => deleteLevel(l.id)} style={{ background: 'none', border: 'none', color: '#E24B4A', fontSize: 14, cursor: 'pointer', padding: '0 4px' }}>×</button>
-                  </>)}
-                </div>
-              ));
-            })()}
-          </div>
-
-          <div className="table-card" style={{ marginBottom: 0 }}>
-            <div className="table-header" style={{ marginBottom: 16 }}><h2>Pre-Trade Check</h2></div>
-            <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-              {['MGC','MNQ'].map(s => <button key={s} onClick={() => { setPtSymbol(s); setPtResult(null); }} style={{ padding: '5px 16px', borderRadius: 6, fontSize: 13, fontWeight: 500, cursor: 'pointer', border: '1px solid', borderColor: ptSymbol === s ? '#185FA5' : '#2a2a2a', background: ptSymbol === s ? '#185FA522' : 'transparent', color: ptSymbol === s ? '#185FA5' : '#888' }}>{s}</button>)}
-              {['short','long'].map(d => <button key={d} onClick={() => { setPtDirection(d); setPtResult(null); }} style={{ padding: '5px 16px', borderRadius: 6, fontSize: 13, fontWeight: 500, cursor: 'pointer', border: '1px solid', borderColor: ptDirection === d ? (d === 'short' ? '#E24B4A' : '#1D9E75') : '#2a2a2a', background: ptDirection === d ? (d === 'short' ? '#E24B4A22' : '#1D9E7522') : 'transparent', color: ptDirection === d ? (d === 'short' ? '#E24B4A' : '#1D9E75') : '#888' }}>{d.charAt(0).toUpperCase() + d.slice(1)}</button>)}
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 12 }}>
-              {[['Entry', ptEntry, setPtEntry],['Stop', ptStop, setPtStop],['Target', ptTarget, setPtTarget]].map(([label, val, setter]) => (
-                <div key={label} className="field" style={{ marginBottom: 0 }}>
-                  <label style={{ fontSize: 11 }}>{label}</label>
-                  <input type="number" step="0.1" value={val} onChange={e => { setter(e.target.value); setPtResult(null); }} style={{ width: '100%', background: '#111', border: '1px solid #2a2a2a', borderRadius: 6, padding: '6px 10px', color: '#ccc', fontSize: 13 }} />
-                </div>
-              ))}
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8, marginBottom: 16 }}>
-              <button onClick={checkTrade} style={{ background: '#185FA5', border: 'none', borderRadius: 8, padding: '10px', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>Check Setup</button>
-              <button onClick={() => { setPtEntry(''); setPtStop(''); setPtTarget(''); setPtResult(null); }} style={{ background: '#222', border: '1px solid #2a2a2a', borderRadius: 8, padding: '10px 16px', color: '#888', fontSize: 13, cursor: 'pointer' }}>Clear</button>
-            </div>
-            {ptResult && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
-                  {[{ label: 'R:R', value: ptResult.rr + ':1', color: ptResult.rr >= 1.5 ? '#1D9E75' : '#E24B4A' }, { label: 'Max Gain', value: '+$' + ptResult.maxGain, color: '#1D9E75' }, { label: 'Max Loss', value: '-$' + ptResult.maxLoss, color: '#E24B4A' }].map((c, i) => (
-                    <div key={i} style={{ background: '#111', borderRadius: 8, padding: '8px 12px', textAlign: 'center' }}>
-                      <div style={{ fontSize: 11, color: '#666', marginBottom: 3 }}>{c.label}</div>
-                      <div style={{ fontSize: 16, fontWeight: 600, color: c.color }}>{c.value}</div>
-                    </div>
-                  ))}
-                </div>
-                {ptResult.blockingLevels.length > 0 && (
-                  <div style={{ background: '#E24B4A12', border: '1.5px solid #E24B4A55', borderRadius: 8, padding: '10px 12px' }}>
-                    <div style={{ color: '#E24B4A', fontWeight: 600, fontSize: 13, marginBottom: 6 }}>⛔ {ptResult.blockingLevels.length} Key Level{ptResult.blockingLevels.length > 1 ? 's' : ''} Blocking Your Path</div>
-                    {ptResult.blockingLevels.map((l, i) => (
-                      <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: '#ccc', marginBottom: i < ptResult.blockingLevels.length - 1 ? 4 : 0 }}>
-                        <span style={{ fontWeight: 500 }}>{l.name} @ {l.price}</span>
-                        <span style={{ color: '#E24B4A', fontSize: 12 }}>{Math.round(Math.abs(l.price - parseFloat(ptEntry)))} pts from entry · {Math.round(Math.abs(parseFloat(ptTarget) - l.price))} pts before your target</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                {ptResult.suggestions.length > 0 && (
-                  <div style={{ background: '#185FA512', border: '1px solid #185FA544', borderRadius: 8, padding: '10px 12px' }}>
-                    <div style={{ fontSize: 12, color: '#185FA5', fontWeight: 600, marginBottom: 8 }}>💡 Recommended Targets Instead</div>
-                    {ptResult.suggestions.map((s, i) => (
-                      <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: i < ptResult.suggestions.length - 1 ? 8 : 0, background: '#111', borderRadius: 6, padding: '7px 10px' }}>
-                        <div><div style={{ fontSize: 14, color: '#ccc', fontWeight: 600 }}>@ {s.price}</div><div style={{ fontSize: 11, color: '#666' }}>{s.label} · {s.note}</div></div>
-                        <div style={{ textAlign: 'right' }}><div style={{ fontSize: 13, fontWeight: 600, color: s.rr >= 1.5 ? '#1D9E75' : '#BA7517' }}>{s.rr}:1 R:R</div><div style={{ fontSize: 11, color: '#1D9E75' }}>+${s.gain} max</div></div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                <div style={{ background: '#111', borderRadius: 8, padding: '10px 12px' }}>
-                  <div style={{ fontSize: 11, color: '#666', marginBottom: 4 }}>Nearest Key Level to Target</div>
-                  {ptResult.nearestToTarget ? (
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ color: '#ccc', fontWeight: 500 }}>{ptResult.nearestToTarget.name} @ {ptResult.nearestToTarget.price}</span>
-                      <span style={{ fontSize: 12, color: ptResult.nearestDist <= 10 ? '#1D9E75' : ptResult.nearestDist <= 20 ? '#BA7517' : '#E24B4A' }}>{ptResult.nearestDist} pts away {ptResult.targetAtLevel ? '✅' : ptResult.nearestDist <= 20 ? '⚠️' : '❌'}</span>
-                    </div>
-                  ) : <span style={{ color: '#666' }}>No levels saved for {ptSymbol}</span>}
-                </div>
-                {ptResult.warnings.filter(w => !w.includes('blocking')).length > 0 && (
-                  <div style={{ background: '#E24B4A12', border: '1px solid #E24B4A44', borderRadius: 8, padding: '10px 12px' }}>
-                    {ptResult.warnings.filter(w => !w.includes('blocking')).map((w, i) => <div key={i} style={{ color: '#E24B4A', fontSize: 13, marginBottom: i < ptResult.warnings.length - 1 ? 4 : 0 }}>⚠️ {w}</div>)}
-                  </div>
-                )}
-                {ptResult.warnings.length === 0 && (
-                  <div style={{ background: '#1D9E7512', border: '1px solid #1D9E7544', borderRadius: 8, padding: '10px 12px', color: '#1D9E75', fontSize: 13 }}>✅ Clean path to target — no blocking levels, target sits at a key level</div>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
-      </div>}
-    </div>
-  );
-}
-
+// ─── App ──────────────────────────────────────────────────────────────────────
 export default function App() {
   const [authed, setAuthed] = useState(() => sessionStorage.getItem('tl_auth') === '1');
   const [trades, setTrades] = useState([]);
+  const [strategies, setStrategies] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('tl_strategies') || '[]'); } catch { return []; }
+  });
   const [loading, setLoading] = useState(true);
   const [seeding, setSeeding] = useState(false);
-  const [activeFilter, setActiveFilter] = useState('all');
-  const [showForm, setShowForm] = useState(false);
-  const [editingTrade, setEditingTrade] = useState(null);
-  const [form, setForm] = useState({ ...EMPTY_FORM });
-  const [uploading, setUploading] = useState(false);
   const [msg, setMsg] = useState('');
-  const [chartModal, setChartModal] = useState(null);
-  const [sortCol, setSortCol] = useState('date');
-  const [sortDir, setSortDir] = useState('desc');
-  const [page, setPage] = useState(1);
-  const PAGE_SIZE = 25;
-
-  const handleSort = (col) => {
-    if (sortCol === col) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
-    else { setSortCol(col); setSortDir('asc'); }
-    setPage(1);
-  };
-
-  const nextTradeNumber = () => {
-    if (!trades.length) return 1;
-    const nums = trades.map(t => t.trade_number).filter(Boolean);
-    return nums.length ? Math.max(...nums) + 1 : trades.length + 1;
-  };
+  const [page, setPage] = useState('dashboard');
+  const [account, setAccount] = useState('both');
+  const [dateRange, setDateRange] = useState(getDefaultDateRange());
+  const [chatOpen, setChatOpen] = useState(false);
 
   const loadTrades = useCallback(async () => {
     const { data, error } = await supabase.from('trades').select('*').order('date', { ascending: false }).order('time', { ascending: false });
@@ -912,10 +101,27 @@ export default function App() {
 
   useEffect(() => { loadTrades(); }, [loadTrades]);
 
+  const saveStrategies = (updated) => {
+    setStrategies(updated);
+    localStorage.setItem('tl_strategies', JSON.stringify(updated));
+  };
+
+  const seedDatabase = async () => {
+    setSeeding(true); setMsg('Seeding trades...');
+    const { error } = await supabase.from('trades').insert(seedTrades);
+    if (error) { setMsg('Error: ' + error.message); } else { setMsg('Trades loaded!'); await loadTrades(); }
+    setSeeding(false); setTimeout(() => setMsg(''), 3000);
+  };
+
   const exportCSV = () => {
     if (!trades.length) { alert('No trades to export'); return; }
-    const headers = ['trade_number','date','time','account','symbol','direction','entry','exit_price','stop','target','exit_reason','al_strength','al_touches','al_age','al_tier','sl_quality','sl_touches','sl_age','sl_tier','sl_price','grade','session','yellow_levels','confirmations','notes','pnl'];
-    const rows = trades.map(t => headers.map(h => { const v = t[h]; if (v === null || v === undefined) return ''; if (typeof v === 'string' && v.includes(',')) return '"' + v.replace(/"/g, '""') + '"'; return v; }).join(','));
+    const headers = ['trade_number','date','time','account','symbol','direction','entry','exit_price','stop','target','exit_reason','al_strength','al_touches','al_age','al_tier','sl_quality','sl_touches','sl_age','sl_tier','sl_price','grade','session','yellow_levels','confirmations','notes','pnl','strategy_id'];
+    const rows = trades.map(t => headers.map(h => {
+      const v = t[h];
+      if (v === null || v === undefined) return '';
+      if (typeof v === 'string' && v.includes(',')) return '"' + v.replace(/"/g, '""') + '"';
+      return v;
+    }).join(','));
     const csv = [headers.join(','), ...rows].join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
@@ -923,260 +129,111 @@ export default function App() {
     URL.revokeObjectURL(url);
   };
 
-  const seedDatabase = async () => {
-    setSeeding(true); setMsg('Seeding 61 trades...');
-    const { error } = await supabase.from('trades').insert(seedTrades);
-    if (error) { setMsg('Error: ' + error.message); } else { setMsg('61 trades loaded!'); await loadTrades(); }
-    setSeeding(false); setTimeout(() => setMsg(''), 3000);
-  };
+  const filteredTrades = filterTradesByRange(trades, dateRange, account);
 
-  const buildTradePayload = async (form, existingChartUrl = null) => {
-    let chart_url = existingChartUrl;
-    if (form.chart_file) {
-      const file = form.chart_file;
-      const path = `charts/trade-${form.trade_number}-${Date.now()}.${file.name.split('.').pop()}`;
-      const { error: upErr } = await supabase.storage.from('trade-charts').upload(path, file);
-      if (!upErr) { const { data: urlData } = supabase.storage.from('trade-charts').getPublicUrl(path); chart_url = urlData.publicUrl; }
-    }
-    const pnl = calcPnL({ ...form, exit_price: parseFloat(form.exit_price), entry: parseFloat(form.entry) });
-    const session = getSession(form.time);
-    const confs = Array.isArray(form.confirmations) ? form.confirmations.join(',') : (form.confirmations || '');
-    const trade = {
-      ...form,
-      entry: form.entry ? parseFloat(form.entry) : null,
-      exit_price: form.exit_price ? parseFloat(form.exit_price) : null,
-      stop: form.stop ? parseFloat(form.stop) : null,
-      target: form.target ? parseFloat(form.target) : null,
-      sl_price: form.sl_price ? parseFloat(form.sl_price) : null,
-      trade_number: form.trade_number ? parseInt(form.trade_number) : null,
-      al_touches: form.al_touches ? parseInt(form.al_touches) : null,
-      sl_touches: form.sl_touches ? parseInt(form.sl_touches) : null,
-      al_tier: form.al_tier || 'Primary', sl_tier: form.sl_tier || 'Primary',
-      contracts: form.contracts ? parseFloat(form.contracts) : 1,
-      custom_symbol: form.custom_symbol || null,
-      custom_multiplier: form.custom_multiplier ? parseFloat(form.custom_multiplier) : null,
-      confirmations: confs, session, chart_url, pnl
-    };
-    delete trade.chart_file;
-    return trade;
-  };
-
-  const submitTrade = async () => {
-    setUploading(true);
-    const trade = await buildTradePayload(form);
-    const { error } = await supabase.from('trades').insert([trade]);
-    if (error) { setMsg('Error: ' + error.message); } else { setMsg('Trade logged!'); setShowForm(false); setForm({ ...EMPTY_FORM }); await loadTrades(); }
-    setUploading(false); setTimeout(() => setMsg(''), 3000);
-  };
-
-  const updateTrade = async () => {
-    setUploading(true);
-    const trade = await buildTradePayload(form, form.chart_url);
-    const { id, created_at, ...rest } = trade;
-    const { error } = await supabase.from('trades').update(rest).eq('id', editingTrade.id);
-    if (error) { setMsg('Error: ' + error.message); } else { setMsg('Trade updated!'); setEditingTrade(null); setShowForm(false); setForm({ ...EMPTY_FORM }); await loadTrades(); }
-    setUploading(false); setTimeout(() => setMsg(''), 3000);
-  };
-
-  const startEdit = (trade) => {
-    const confs = typeof trade.confirmations === 'string' ? trade.confirmations.split(',').filter(Boolean) : (trade.confirmations || []);
-    setForm({ ...trade, confirmations: confs, chart_file: null, al_tier: trade.al_tier || 'Primary', sl_tier: trade.sl_tier || 'Primary', contracts: trade.contracts ? String(trade.contracts) : '1', custom_symbol: trade.custom_symbol || '', custom_multiplier: trade.custom_multiplier ? String(trade.custom_multiplier) : '' });
-    setEditingTrade(trade); setShowForm(true);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  const cancelForm = () => { setShowForm(false); setEditingTrade(null); setForm({ ...EMPTY_FORM }); };
-  const openNewTradeForm = () => { cancelForm(); setForm({ ...EMPTY_FORM, trade_number: nextTradeNumber() }); setShowForm(true); };
-  const deleteTrade = async (id) => { if (!window.confirm('Delete this trade?')) return; await supabase.from('trades').delete().eq('id', id); await loadTrades(); };
-
-  const getWeekRange = () => {
-    const now = new Date(); const day = now.getDay(); const diffToMon = day === 0 ? -6 : 1 - day;
-    const monday = new Date(now); monday.setDate(now.getDate() + diffToMon); monday.setHours(0, 0, 0, 0);
-    const sunday = new Date(monday); sunday.setDate(monday.getDate() + 6); sunday.setHours(23, 59, 59, 999);
-    return { monday, sunday };
-  };
-
-  const filteredTrades = () => {
-    if (activeFilter === 'all') return trades;
-    if (activeFilter === 'win') return trades.filter(t => t.pnl > 0);
-    if (activeFilter === 'loss') return trades.filter(t => t.pnl < 0);
-    if (activeFilter === 'week') { const { monday, sunday } = getWeekRange(); return trades.filter(t => { if (!t.date) return false; const d = new Date(t.date + 'T12:00:00'); return d >= monday && d <= sunday; }); }
-    if (activeFilter === 'A1' || activeFilter === 'A2') return trades.filter(t => t.account === activeFilter);
-    if (['aplus', 'a', 'aminus'].includes(activeFilter)) return trades.filter(t => t.grade === activeFilter);
-    if (['MGC', 'MNQ'].includes(activeFilter)) return trades.filter(t => t.symbol === activeFilter);
-    if (activeFilter === 'al-primary') return trades.filter(t => t.al_tier === 'Primary');
-    if (activeFilter === 'al-secondary') return trades.filter(t => t.al_tier === 'Secondary');
-    if (activeFilter === 'al-tertiary') return trades.filter(t => t.al_tier === 'Tertiary');
-    if (activeFilter === 'sl-primary') return trades.filter(t => t.sl_tier === 'Primary');
-    if (activeFilter === 'sl-secondary') return trades.filter(t => t.sl_tier === 'Secondary');
-    if (activeFilter === 'sl-tertiary') return trades.filter(t => t.sl_tier === 'Tertiary');
-    return trades;
-  };
-
-  const closed = trades.filter(t => t.pnl !== null);
-  const wins = closed.filter(t => t.pnl > 0);
-  const losses = closed.filter(t => t.pnl < 0);
-  const net = closed.reduce((s, t) => s + (t.pnl || 0), 0);
-  const avgW = wins.length ? Math.round(wins.reduce((s, t) => s + t.pnl, 0) / wins.length) : null;
-  const avgL = losses.length ? Math.round(losses.reduce((s, t) => s + t.pnl, 0) / losses.length) : null;
-  const wr = closed.length ? Math.round(wins.length / closed.length * 100) : null;
-
-  const insightData = (key, labels) => labels.map(({ k, l }) => {
-    const ts = closed.filter(t => t[key] === k);
-    if (!ts.length) return null;
-    const w = ts.filter(t => t.pnl > 0).length;
-    return { label: l, wr: Math.round(w / ts.length * 100), net: Math.round(ts.reduce((s, t) => s + t.pnl, 0)) };
-  }).filter(Boolean);
-
-  const ft = (() => {
-    const base = filteredTrades();
-    return [...base].sort((a, b) => {
-      let av = a[sortCol], bv = b[sortCol];
-      if (av === null || av === undefined) av = ''; if (bv === null || bv === undefined) bv = '';
-      if (typeof av === 'number' && typeof bv === 'number') return sortDir === 'asc' ? av - bv : bv - av;
-      return sortDir === 'asc' ? String(av).localeCompare(String(bv)) : String(bv).localeCompare(String(av));
-    });
-  })();
-
-  const totalPages = Math.ceil(ft.length / PAGE_SIZE);
-  const paginatedFt = ft.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
-  const weekTrades = filteredTrades().filter(t => activeFilter === 'week' && t.pnl !== null);
-  const weekNet = weekTrades.reduce((s, t) => s + (t.pnl || 0), 0);
-  const weekWins = weekTrades.filter(t => t.pnl > 0).length;
-  const weekLosses = weekTrades.filter(t => t.pnl < 0).length;
-
-  const tierFilterGroups = [
-    { key: 'al-primary', label: 'AL: Primary', color: TIER_COLORS['Primary'] },
-    { key: 'al-secondary', label: 'AL: Secondary', color: TIER_COLORS['Secondary'] },
-    { key: 'al-tertiary', label: 'AL: Tertiary', color: TIER_COLORS['Tertiary'] },
-    { key: 'sl-primary', label: 'SL: Primary', color: TIER_COLORS['Primary'] },
-    { key: 'sl-secondary', label: 'SL: Secondary', color: TIER_COLORS['Secondary'] },
-    { key: 'sl-tertiary', label: 'SL: Tertiary', color: TIER_COLORS['Tertiary'] },
+  const navItems = [
+    { id: 'dashboard', icon: 'ti-layout-dashboard', label: 'Dashboard' },
+    { id: 'reports', icon: 'ti-chart-bar', label: 'Reports' },
+    { id: 'tradeview', icon: 'ti-list', label: 'Trade View' },
+    { id: 'strategies', icon: 'ti-bulb', label: 'Strategies' },
   ];
 
+  const fmtDate = (d) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  const dateLabel = `${fmtDate(dateRange.start)} – ${fmtDate(dateRange.end)}`;
+  const acctLabel = account === 'both' ? 'Both Accounts' : account.toUpperCase() + ' Only';
+
+  const pageProps = { trades, filteredTrades, loading, dateRange, account, dateLabel, acctLabel, strategies, saveStrategies, reloadTrades: loadTrades, msg, setMsg, seedDatabase, seeding, exportCSV };
+
+  if (!authed) return <Login onSuccess={() => setAuthed(true)} />;
+
   return (
-    <div className="app">
-      {!authed && <Login onSuccess={() => setAuthed(true)} />}
-      {authed && (<>
-        <div className="header">
-          <div><h1>Trade Log</h1><p className="subtitle">Trendline Break Strategy · MGC / MNQ · Both Accounts</p></div>
-          <div className="header-actions">
-            {msg && <span className="msg">{msg}</span>}
-            {trades.length === 0 && <button className="btn-seed" onClick={seedDatabase} disabled={seeding}>{seeding ? 'Loading...' : 'Load 61 trades'}</button>}
-            <button className="btn-export" onClick={exportCSV}>↓ Export CSV</button>
-            <button className="btn-primary" onClick={() => { if (showForm && !editingTrade) { cancelForm(); } else { openNewTradeForm(); } }}>{showForm && !editingTrade ? 'Cancel' : '+ New Trade'}</button>
+    <div style={{ display: 'flex', height: '100vh', background: '#0a0a0a', overflow: 'hidden' }}>
+
+      {/* Sidebar */}
+      <div style={{ width: 200, minWidth: 200, background: '#111', borderRight: '1px solid #222', display: 'flex', flexDirection: 'column', padding: '16px 0' }}>
+        <div style={{ padding: '0 16px 14px', borderBottom: '1px solid #222', marginBottom: 10 }}>
+          <div style={{ fontSize: 14, fontWeight: 600, color: '#ccc' }}>Trade Log</div>
+          <div style={{ fontSize: 11, color: '#555' }}>Trendline Break Strategy</div>
+        </div>
+        <div style={{ fontSize: 10, color: '#444', padding: '10px 16px 4px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Main</div>
+        {navItems.map(item => (
+          <div key={item.id} onClick={() => setPage(item.id)} style={{
+            display: 'flex', alignItems: 'center', gap: 10, padding: '9px 16px', cursor: 'pointer', fontSize: 13,
+            color: page === item.id ? '#185FA5' : '#888',
+            background: page === item.id ? '#185FA522' : 'transparent',
+            borderRight: page === item.id ? '2px solid #185FA5' : '2px solid transparent',
+          }}>
+            <i className={`ti ${item.icon}`} style={{ fontSize: 16 }} />
+            {item.label}
           </div>
+        ))}
+        <div style={{ fontSize: 10, color: '#444', padding: '10px 16px 4px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Tools</div>
+        <div onClick={() => setChatOpen(o => !o)} style={{
+          display: 'flex', alignItems: 'center', gap: 10, padding: '9px 16px', cursor: 'pointer', fontSize: 13,
+          color: chatOpen ? '#185FA5' : '#888',
+          background: chatOpen ? '#185FA522' : 'transparent',
+        }}>
+          <i className="ti ti-message" style={{ fontSize: 16 }} />
+          AI Chat
         </div>
-
-        <div className="stats-grid">
-          <StatCard label="Total Trades" value={trades.length} />
-          <StatCard label="Win Rate" value={wr !== null ? wr + '%' : '—'} color={wr >= 50 ? '#1D9E75' : wr !== null ? '#E24B4A' : undefined} />
-          <StatCard label="Net P&L" value={closed.length ? (net >= 0 ? '+$' : '-$') + Math.abs(Math.round(net)) : '$0'} color={net > 0 ? '#1D9E75' : net < 0 ? '#E24B4A' : undefined} />
-          <StatCard label="Avg Winner" value={avgW !== null ? '+$' + avgW : '—'} color="#1D9E75" />
-          <StatCard label="Avg Loser" value={avgL !== null ? '-$' + Math.abs(avgL) : '—'} color="#E24B4A" />
+        <div style={{ marginTop: 'auto', padding: '12px 16px', borderTop: '1px solid #222' }}>
+          <div style={{ fontSize: 11, color: '#444' }}>v2.0 · May 2026</div>
         </div>
+      </div>
 
-        <div className="insights-grid">
-          <InsightCard title="By Instrument" data={insightData('symbol', [{ k: 'MGC', l: 'MGC Gold' }, { k: 'MNQ', l: 'MNQ NQ' }])} />
-          <InsightCard title="By Grade" data={insightData('grade', [{ k: 'aplus', l: 'A+' }, { k: 'a', l: 'A' }, { k: 'aminus', l: 'A-' }])} />
-          <InsightCard title="By Safety Line" data={insightData('sl_quality', [{ k: 'strong', l: '★ Strong' }, { k: 'weak', l: 'Weak' }])} />
-          <InsightCard title="By Session" data={insightData('session', SESSIONS.map(s => ({ k: s, l: s })))} />
-          <TierInsightCard trades={trades} />
-        </div>
+      {/* Main content */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
 
-        <ProgressCalendar trades={trades} />
-        <ManageLevels />
-
-        {showForm && (
-          <TradeForm form={form} setForm={setForm} onSubmit={editingTrade ? updateTrade : submitTrade} onCancel={cancelForm} uploading={uploading} isEdit={!!editingTrade} />
-        )}
-
-        <div className="table-card">
-          <div className="table-header">
-            <h2>Trade History ({ft.length})</h2>
-            {activeFilter === 'week' && weekTrades.length > 0 && (
-              <div style={{ fontSize: 13, fontFamily: 'var(--mono)', display: 'flex', gap: 16, alignItems: 'center' }}>
-                <span style={{ color: weekNet >= 0 ? '#1D9E75' : '#E24B4A', fontWeight: 600 }}>{weekNet >= 0 ? '+$' : '-$'}{Math.abs(Math.round(weekNet))} net</span>
-                <span style={{ color: '#1D9E75' }}>{weekWins}W</span>
-                <span style={{ color: '#E24B4A' }}>{weekLosses}L</span>
-                <span style={{ color: '#888' }}>{weekTrades.length > 0 ? Math.round(weekWins / weekTrades.length * 100) : 0}%</span>
-              </div>
-            )}
-          </div>
-          <div className="filter-row">
-            {['all','A1','A2','MGC','MNQ','aplus','a','aminus','win','loss','week'].map(f => (
-              <button key={f} className={`filter-btn ${activeFilter === f ? 'active' : ''}`} onClick={() => { setActiveFilter(f); setPage(1); }}>
-                {f === 'aplus' ? 'A+' : f === 'aminus' ? 'A-' : f === 'week' ? 'This Week' : f.charAt(0).toUpperCase() + f.slice(1)}
-              </button>
+        {/* Global filter bar */}
+        <div style={{ padding: '8px 20px', borderBottom: '1px solid #222', background: '#111', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', zIndex: 100, position: 'relative' }}>
+          <DateRangePicker dateRange={dateRange} setDateRange={setDateRange} />
+          <div style={{ width: 1, height: 20, background: '#2a2a2a' }} />
+          <span style={{ fontSize: 11, color: '#555' }}>Account:</span>
+          <div style={{ display: 'flex', gap: 2, background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 8, padding: '2px 3px' }}>
+            {['both', 'a1', 'a2'].map(a => (
+              <button key={a} onClick={() => setAccount(a)} style={{
+                padding: '3px 12px', borderRadius: 6, fontSize: 12, fontWeight: 500, cursor: 'pointer',
+                border: 'none', background: account === a ? '#185FA522' : 'transparent',
+                color: account === a ? '#185FA5' : '#666',
+              }}>{a === 'both' ? 'Both' : a.toUpperCase()}</button>
             ))}
           </div>
-          <div className="filter-row" style={{ marginTop: 4 }}>
-            <span style={{ fontSize: 11, color: '#555', alignSelf: 'center', marginRight: 4, whiteSpace: 'nowrap' }}>Tier:</span>
-            {tierFilterGroups.map(({ key, label, color }) => (
-              <button key={key} className={`filter-btn ${activeFilter === key ? 'active' : ''}`}
-                style={activeFilter === key ? { borderColor: color, color: color, background: color + '22' } : { borderColor: '#2a2a2a' }}
-                onClick={() => { setActiveFilter(activeFilter === key ? 'all' : key); setPage(1); }}>{label}</button>
-            ))}
+          <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
+            {msg && <span style={{ fontSize: 12, color: '#1D9E75' }}>{msg}</span>}
+            {trades.length === 0 && <button onClick={seedDatabase} disabled={seeding} style={{ fontSize: 12, padding: '4px 12px', borderRadius: 6, border: '1px solid #2a2a2a', background: 'transparent', color: '#888', cursor: 'pointer' }}>{seeding ? 'Loading...' : 'Load sample trades'}</button>}
+            <button onClick={exportCSV} style={{ fontSize: 12, padding: '4px 12px', borderRadius: 6, border: '1px solid #2a2a2a', background: 'transparent', color: '#888', cursor: 'pointer' }}>↓ CSV</button>
           </div>
-
-          {loading ? <div className="empty">Loading...</div> : ft.length === 0 ? (
-            <div className="empty">No trades. {trades.length === 0 && <button className="btn-link" onClick={seedDatabase}>Load 61 historical trades</button>}</div>
-          ) : (
-            <div className="table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    {[['trade_number','#'],['date','Date'],['time','Time'],['account','Acct'],['symbol','Symbol'],['direction','Dir'],['grade','Grade'],['al_strength','AL'],['al_tier','AL Tier'],['sl_quality','SL'],['sl_tier','SL Tier'],['entry','Entry'],['exit_price','Exit'],['pnl','P&L'],['exit_reason','Result'],['session','Session']].map(([col, label]) => (
-                      <th key={col} onClick={() => handleSort(col)} style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}>
-                        {label} {sortCol === col ? (sortDir === 'asc' ? '↑' : '↓') : ''}
-                      </th>
-                    ))}
-                    <th>Chart</th><th>Edit</th><th>Del</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {paginatedFt.map(t => {
-                    const pnlColor = t.pnl > 0 ? '#1D9E75' : t.pnl < 0 ? '#E24B4A' : '#888';
-                    return (
-                      <tr key={t.id}>
-                        <td>{t.trade_number || '—'}</td>
-                        <td style={{ whiteSpace: 'nowrap' }}>{t.date}</td>
-                        <td>{t.time || '—'}</td>
-                        <td>{t.account}</td>
-                        <td>{t.symbol === 'OTHER' ? (t.custom_symbol || 'OTHER') : t.symbol}</td>
-                        <td><span style={{ color: t.direction === 'long' ? '#1D9E75' : '#E24B4A', fontWeight: 600, fontSize: 11 }}>{t.direction?.toUpperCase()}</span></td>
-                        <td><span style={{ background: GRADE_COLORS[t.grade] + '33', color: GRADE_COLORS[t.grade], padding: '2px 8px', borderRadius: 4, fontSize: 12, fontWeight: 600 }}>{GRADES[t.grade] || t.grade}</span></td>
-                        <td><span style={{ fontSize: 11, color: t.al_strength === 'strong' ? '#1D9E75' : '#888' }}>{t.al_strength === 'strong' ? '★' : '○'} {t.al_touches || '?'}t {t.al_age || ''}</span></td>
-                        <td><span style={{ fontSize: 11, color: TIER_COLORS[t.al_tier] || '#888', background: (TIER_COLORS[t.al_tier] || '#888') + '22', padding: '2px 7px', borderRadius: 4 }}>{t.al_tier || '—'}</span></td>
-                        <td><span style={{ fontSize: 11, color: t.sl_quality === 'strong' ? '#1D9E75' : '#E24B4A' }}>{t.sl_quality === 'strong' ? '★' : '✗'} {t.sl_touches || '?'}t {t.sl_age || ''}</span></td>
-                        <td><span style={{ fontSize: 11, color: TIER_COLORS[t.sl_tier] || '#888', background: (TIER_COLORS[t.sl_tier] || '#888') + '22', padding: '2px 7px', borderRadius: 4 }}>{t.sl_tier || '—'}</span></td>
-                        <td style={{ fontFamily: 'var(--mono)', fontSize: 12 }}>{t.entry}</td>
-                        <td style={{ fontFamily: 'var(--mono)', fontSize: 12 }}>{t.exit_price || '—'}</td>
-                        <td style={{ color: pnlColor, fontWeight: 600, fontFamily: 'var(--mono)', fontSize: 13 }}>{t.pnl !== null ? (t.pnl >= 0 ? '+$' : '-$') + Math.abs(t.pnl) : '—'}</td>
-                        <td><span style={{ fontSize: 11, color: '#888' }}>{t.exit_reason || '—'}</span></td>
-                        <td><span style={{ fontSize: 11, color: '#666' }}>{t.session || '—'}</span></td>
-                        <td>{t.chart_url ? <button className="btn-link" onClick={() => setChartModal(t.chart_url)}>View</button> : '—'}</td>
-                        <td><button className="btn-link" onClick={() => startEdit(t)}>Edit</button></td>
-                        <td><button className="btn-link" style={{ color: '#E24B4A' }} onClick={() => deleteTrade(t.id)}>Del</button></td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-          {totalPages > 1 && (
-            <div style={{ display: 'flex', gap: 8, justifyContent: 'center', padding: '12px 0', alignItems: 'center' }}>
-              <button className="filter-btn" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>‹ Prev</button>
-              <span style={{ fontSize: 13, color: '#888' }}>Page {page} of {totalPages}</span>
-              <button className="filter-btn" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}>Next ›</button>
-            </div>
-          )}
         </div>
 
-        <ChartModal url={chartModal} onClose={() => setChartModal(null)} />
-        <AIChat trades={trades} />
-      </>)}
+        {/* Page content */}
+        <div style={{ flex: 1, overflow: 'auto' }}>
+          {page === 'dashboard' && <Dashboard {...pageProps} />}
+          {page === 'reports' && <Reports {...pageProps} />}
+          {page === 'tradeview' && <TradeView {...pageProps} />}
+          {page === 'strategies' && <Strategies {...pageProps} />}
+        </div>
+      </div>
+
+      {/* Floating AI Chat */}
+      {chatOpen && (
+        <div style={{ position: 'fixed', bottom: 80, right: 20, width: 380, height: 520, background: '#111', border: '1px solid #222', borderRadius: 12, zIndex: 1000, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          <div style={{ padding: '12px 16px', borderBottom: '1px solid #222', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span style={{ fontSize: 14, fontWeight: 600, color: '#ccc' }}>AI Chat</span>
+            <button onClick={() => setChatOpen(false)} style={{ background: 'none', border: 'none', color: '#888', fontSize: 18, cursor: 'pointer' }}>×</button>
+          </div>
+          <div style={{ flex: 1, overflow: 'hidden' }}>
+            <AIChat trades={filteredTrades} />
+          </div>
+        </div>
+      )}
+      <button onClick={() => setChatOpen(o => !o)} style={{
+        position: 'fixed', bottom: 20, right: 20, width: 48, height: 48, borderRadius: '50%',
+        background: chatOpen ? '#185FA5' : '#1a1a1a', border: '1px solid #2a2a2a',
+        color: chatOpen ? '#fff' : '#888', fontSize: 20, cursor: 'pointer', zIndex: 1001,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}>
+        <i className={`ti ${chatOpen ? 'ti-x' : 'ti-message'}`} />
+      </button>
     </div>
   );
 }
