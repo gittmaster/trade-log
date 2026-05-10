@@ -77,7 +77,7 @@ function TradeForm({ form, setForm, onSubmit, onCancel, uploading, isEdit, strat
         )}
         {stratError && (
           <div style={{ marginTop: 6, fontSize: 12, color: '#E24B4A', display: 'flex', alignItems: 'center', gap: 4 }}>
-            <span>⚠️</span> Please select a strategy before logging this trade.
+            ⚠️ Please select a strategy before logging this trade.
           </div>
         )}
       </div>
@@ -87,13 +87,16 @@ function TradeForm({ form, setForm, onSubmit, onCancel, uploading, isEdit, strat
         <div className="field"><label>Date</label><input type="date" value={form.date || ''} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} /></div>
         <div className="field"><label>Time (EST)</label><input type="time" value={form.time || ''} onChange={e => setForm(f => ({ ...f, time: e.target.value }))} /></div>
       </div>
+
       <div className="form-grid-3">
         <div className="field"><label>Account</label>
           <div className="toggle-row">{['A1','A2'].map(a => <button key={a} className={tog(form.account===a)} onClick={() => setForm(f => ({ ...f, account: a }))}>{a}</button>)}</div>
         </div>
         <div className="field"><label>Symbol</label>
           <div className="toggle-row">
-            {['MGC','MNQ','MYM','MCL','OTHER'].map(s => <button key={s} className={tog(form.symbol===s)} onClick={() => setForm(f => ({ ...f, symbol: s, custom_symbol: '', custom_multiplier: '' }))}>{s}</button>)}
+            {['MGC','MNQ','MYM','MCL','OTHER'].map(s => (
+              <button key={s} className={tog(form.symbol===s)} onClick={() => setForm(f => ({ ...f, symbol: s, custom_symbol: '', custom_multiplier: '' }))}>{s}</button>
+            ))}
           </div>
           {form.symbol === 'OTHER' && (
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 6 }}>
@@ -110,7 +113,9 @@ function TradeForm({ form, setForm, onSubmit, onCancel, uploading, isEdit, strat
         </div>
         <div className="field"><label>Contracts</label>
           <div className="toggle-row">
-            {['1','2','3'].map(n => <button key={n} className={tog(form.contracts===n)} onClick={() => setForm(f => ({ ...f, contracts: n }))}>{n}</button>)}
+            {['1','2','3'].map(n => (
+              <button key={n} className={tog(form.contracts===n)} onClick={() => setForm(f => ({ ...f, contracts: n }))}>{n}</button>
+            ))}
             <input type="number" min="1" placeholder="Other" value={!['1','2','3'].includes(form.contracts) ? form.contracts : ''} onChange={e => setForm(f => ({ ...f, contracts: e.target.value }))} style={{ width: 60, background: '#0d0d0d', border: '1px solid #2a2a2a', borderRadius: 6, padding: '4px 8px', color: '#ccc', fontSize: 12 }} />
           </div>
         </div>
@@ -210,7 +215,7 @@ const DEFAULT_LEVELS = [
   { id: 6, name: 'M($4400)', price: 4400, symbol: 'MGC' },
 ];
 
-function ManageLevels({ allTrades }) {
+function ManageLevels() {
   const storageKey = 'tl_key_levels';
   const [levels, setLevels] = useState(() => {
     try { const s = localStorage.getItem(storageKey) || sessionStorage.getItem(storageKey); return s ? JSON.parse(s) : DEFAULT_LEVELS; } catch { return DEFAULT_LEVELS; }
@@ -289,12 +294,15 @@ function ManageLevels({ allTrades }) {
       {open && (
         <div style={{ border: '1px solid #222', borderTop: 'none', borderRadius: '0 0 8px 8px', padding: 16 }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+
             {/* Key Levels */}
             <div className="table-card" style={{ marginBottom: 0 }}>
               <div className="table-header" style={{ marginBottom: 12 }}>
                 <h2>Key Levels</h2>
                 <div style={{ display: 'flex', gap: 4 }}>
-                  {allSymbols.map(s => <button key={s} onClick={() => setLvlSymbol(s)} style={{ padding: '3px 10px', borderRadius: 6, fontSize: 12, cursor: 'pointer', border: '1px solid', borderColor: lvlSymbol===s?'#185FA5':'#2a2a2a', background: lvlSymbol===s?'#185FA522':'transparent', color: lvlSymbol===s?'#185FA5':'#888' }}>{s}</button>)}
+                  {allSymbols.map(s => (
+                    <button key={s} onClick={() => setLvlSymbol(s)} style={{ padding: '3px 10px', borderRadius: 6, fontSize: 12, cursor: 'pointer', border: '1px solid', borderColor: lvlSymbol===s?'#185FA5':'#2a2a2a', background: lvlSymbol===s?'#185FA522':'transparent', color: lvlSymbol===s?'#185FA5':'#888' }}>{s}</button>
+                  ))}
                 </div>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 80px 70px auto', gap: 8, marginBottom: 14 }}>
@@ -319,15 +327,21 @@ function ManageLevels({ allTrades }) {
                   </>)}
                 </div>
               ))}
-              {levels.filter(l => l.symbol === lvlSymbol).length === 0 && <div style={{ color: '#444', fontSize: 13 }}>No {lvlSymbol} levels saved yet.</div>}
+              {levels.filter(l => l.symbol === lvlSymbol).length === 0 && (
+                <div style={{ color: '#444', fontSize: 13 }}>No {lvlSymbol} levels saved yet.</div>
+              )}
             </div>
 
             {/* Pre-Trade Check */}
             <div className="table-card" style={{ marginBottom: 0 }}>
               <div className="table-header" style={{ marginBottom: 14 }}><h2>Pre-Trade Check</h2></div>
               <div style={{ display: 'flex', gap: 6, marginBottom: 10, flexWrap: 'wrap' }}>
-                {allSymbols.map(s => <button key={s} onClick={() => { setPtSymbol(s); setPtResult(null); }} style={{ padding: '5px 14px', borderRadius: 6, fontSize: 13, cursor: 'pointer', border: '1px solid', borderColor: ptSymbol===s?'#185FA5':'#2a2a2a', background: ptSymbol===s?'#185FA522':'transparent', color: ptSymbol===s?'#185FA5':'#888' }}>{s}</button>)}
-                {['short','long'].map(d => <button key={d} onClick={() => { setPtDirection(d); setPtResult(null); }} style={{ padding: '5px 14px', borderRadius: 6, fontSize: 13, cursor: 'pointer', border: '1px solid', borderColor: ptDirection===d?(d==='short'?'#E24B4A':'#1D9E75'):'#2a2a2a', background: ptDirection===d?(d==='short'?'#E24B4A22':'#1D9E7522'):'transparent', color: ptDirection===d?(d==='short'?'#E24B4A':'#1D9E75'):'#888' }}>{d.charAt(0).toUpperCase()+d.slice(1)}</button>)}
+                {allSymbols.map(s => (
+                  <button key={s} onClick={() => { setPtSymbol(s); setPtResult(null); }} style={{ padding: '5px 14px', borderRadius: 6, fontSize: 13, cursor: 'pointer', border: '1px solid', borderColor: ptSymbol===s?'#185FA5':'#2a2a2a', background: ptSymbol===s?'#185FA522':'transparent', color: ptSymbol===s?'#185FA5':'#888' }}>{s}</button>
+                ))}
+                {['short','long'].map(d => (
+                  <button key={d} onClick={() => { setPtDirection(d); setPtResult(null); }} style={{ padding: '5px 14px', borderRadius: 6, fontSize: 13, cursor: 'pointer', border: '1px solid', borderColor: ptDirection===d?(d==='short'?'#E24B4A':'#1D9E75'):'#2a2a2a', background: ptDirection===d?(d==='short'?'#E24B4A22':'#1D9E7522'):'transparent', color: ptDirection===d?(d==='short'?'#E24B4A':'#1D9E75'):'#888' }}>{d.charAt(0).toUpperCase()+d.slice(1)}</button>
+                ))}
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 10 }}>
                 {[['Entry',ptEntry,setPtEntry],['Stop',ptStop,setPtStop],['Target',ptTarget,setPtTarget]].map(([label,val,setter]) => (
@@ -401,7 +415,7 @@ function ManageLevels({ allTrades }) {
 // ─── Trade View Page ──────────────────────────────────────────────────────────
 const PAGE_SIZE = 25;
 
-export default function TradeView({ trades, filteredTrades, dateLabel, acctLabel, strategies, reloadTrades, setMsg }) {
+export default function TradeView({ trades, filteredTrades, strategies, reloadTrades, setMsg }) {
   const [activeFilter, setActiveFilter] = useState('all');
   const [sortCol, setSortCol] = useState('date');
   const [sortDir, setSortDir] = useState('desc');
@@ -411,6 +425,9 @@ export default function TradeView({ trades, filteredTrades, dateLabel, acctLabel
   const [form, setForm] = useState({ ...EMPTY_FORM });
   const [uploading, setUploading] = useState(false);
   const [chartModal, setChartModal] = useState(null);
+
+  // filteredTrades here is actually ALL trades (passed from App.js)
+  const allTrades = filteredTrades;
 
   const nextTradeNumber = () => {
     if (!trades.length) return 1;
@@ -424,7 +441,7 @@ export default function TradeView({ trades, filteredTrades, dateLabel, acctLabel
     setTablePage(1);
   };
 
-  const symbols = [...new Set(trades.map(t => t.symbol === 'OTHER' ? (t.custom_symbol || 'OTHER') : t.symbol))];
+  const symbols = [...new Set(allTrades.map(t => t.symbol === 'OTHER' ? (t.custom_symbol || 'OTHER') : t.symbol))];
 
   const getWeekRange = () => {
     const now = new Date(), day = now.getDay(), diffToMon = day === 0 ? -6 : 1 - day;
@@ -440,7 +457,11 @@ export default function TradeView({ trades, filteredTrades, dateLabel, acctLabel
     if (activeFilter === 'no-strategy') return base.filter(t => !t.strategy_id);
     if (activeFilter === 'week') {
       const { monday, sunday } = getWeekRange();
-      return base.filter(t => { if (!t.date) return false; const d = new Date(t.date+'T12:00:00'); return d >= monday && d <= sunday; });
+      return base.filter(t => {
+        if (!t.date) return false;
+        const d = new Date(t.date + 'T12:00:00');
+        return d >= monday && d <= sunday;
+      });
     }
     if (['aplus','a','aminus'].includes(activeFilter)) return base.filter(t => t.grade === activeFilter);
     if (symbols.includes(activeFilter)) return base.filter(t => (t.symbol === 'OTHER' ? t.custom_symbol : t.symbol) === activeFilter);
@@ -451,24 +472,22 @@ export default function TradeView({ trades, filteredTrades, dateLabel, acctLabel
     if (activeFilter === 'sl-secondary') return base.filter(t => t.sl_tier === 'Secondary');
     if (activeFilter === 'sl-tertiary') return base.filter(t => t.sl_tier === 'Tertiary');
     // filter by strategy id
-    const strat = strategies.find(s => s.id === activeFilter);
-    if (strat) return base.filter(t => t.strategy_id === activeFilter);
+    if (strategies.find(s => s.id === activeFilter)) return base.filter(t => t.strategy_id === activeFilter);
     return base;
   };
 
-  const localFiltered = applyLocalFilter(filteredTrades);
+  const localFiltered = applyLocalFilter(allTrades);
   const sorted = [...localFiltered].sort((a, b) => {
     let av = a[sortCol], bv = b[sortCol];
-    if (av === null || av === undefined) av = ''; if (bv === null || bv === undefined) bv = '';
+    if (av === null || av === undefined) av = '';
+    if (bv === null || bv === undefined) bv = '';
     if (typeof av === 'number' && typeof bv === 'number') return sortDir === 'asc' ? av - bv : bv - av;
     return sortDir === 'asc' ? String(av).localeCompare(String(bv)) : String(bv).localeCompare(String(av));
   });
 
   const totalPages = Math.ceil(sorted.length / PAGE_SIZE);
   const paginated = sorted.slice((tablePage - 1) * PAGE_SIZE, tablePage * PAGE_SIZE);
-
-  // Count trades without strategy
-  const noStratCount = filteredTrades.filter(t => !t.strategy_id).length;
+  const noStratCount = allTrades.filter(t => !t.strategy_id).length;
 
   const buildPayload = async (f, existingChartUrl = null) => {
     let chart_url = existingChartUrl;
@@ -491,7 +510,8 @@ export default function TradeView({ trades, filteredTrades, dateLabel, acctLabel
       trade_number: f.trade_number ? parseInt(f.trade_number) : null,
       al_touches: f.al_touches ? parseInt(f.al_touches) : null,
       sl_touches: f.sl_touches ? parseInt(f.sl_touches) : null,
-      al_tier: f.al_tier || 'Primary', sl_tier: f.sl_tier || 'Primary',
+      al_tier: f.al_tier || 'Primary',
+      sl_tier: f.sl_tier || 'Primary',
       contracts: f.contracts ? parseFloat(f.contracts) : 1,
       custom_symbol: f.custom_symbol || null,
       custom_multiplier: f.custom_multiplier ? parseFloat(f.custom_multiplier) : null,
@@ -506,7 +526,8 @@ export default function TradeView({ trades, filteredTrades, dateLabel, acctLabel
     setUploading(true);
     const trade = await buildPayload(form);
     const { error } = await supabase.from('trades').insert([trade]);
-    if (error) { setMsg('Error: ' + error.message); } else { setMsg('Trade logged!'); setShowForm(false); setForm({ ...EMPTY_FORM }); await reloadTrades(); }
+    if (error) { setMsg('Error: ' + error.message); }
+    else { setMsg('Trade logged!'); setShowForm(false); setForm({ ...EMPTY_FORM }); await reloadTrades(); }
     setUploading(false); setTimeout(() => setMsg(''), 3000);
   };
 
@@ -515,20 +536,32 @@ export default function TradeView({ trades, filteredTrades, dateLabel, acctLabel
     const trade = await buildPayload(form, form.chart_url);
     const { id, created_at, ...rest } = trade;
     const { error } = await supabase.from('trades').update(rest).eq('id', editingTrade.id);
-    if (error) { setMsg('Error: ' + error.message); } else { setMsg('Trade updated!'); setEditingTrade(null); setShowForm(false); setForm({ ...EMPTY_FORM }); await reloadTrades(); }
+    if (error) { setMsg('Error: ' + error.message); }
+    else { setMsg('Trade updated!'); setEditingTrade(null); setShowForm(false); setForm({ ...EMPTY_FORM }); await reloadTrades(); }
     setUploading(false); setTimeout(() => setMsg(''), 3000);
   };
 
   const startEdit = (trade) => {
     const confs = typeof trade.confirmations === 'string' ? trade.confirmations.split(',').filter(Boolean) : (trade.confirmations || []);
-    setForm({ ...trade, confirmations: confs, chart_file: null, al_tier: trade.al_tier||'Primary', sl_tier: trade.sl_tier||'Primary', contracts: trade.contracts ? String(trade.contracts) : '1', custom_symbol: trade.custom_symbol||'', custom_multiplier: trade.custom_multiplier ? String(trade.custom_multiplier) : '', strategy_id: trade.strategy_id || null });
+    setForm({
+      ...trade, confirmations: confs, chart_file: null,
+      al_tier: trade.al_tier || 'Primary', sl_tier: trade.sl_tier || 'Primary',
+      contracts: trade.contracts ? String(trade.contracts) : '1',
+      custom_symbol: trade.custom_symbol || '',
+      custom_multiplier: trade.custom_multiplier ? String(trade.custom_multiplier) : '',
+      strategy_id: trade.strategy_id || null,
+    });
     setEditingTrade(trade); setShowForm(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const cancelForm = () => { setShowForm(false); setEditingTrade(null); setForm({ ...EMPTY_FORM }); };
   const openNewForm = () => { cancelForm(); setForm({ ...EMPTY_FORM, trade_number: nextTradeNumber() }); setShowForm(true); };
-  const deleteTrade = async (id) => { if (!window.confirm('Delete this trade?')) return; await supabase.from('trades').delete().eq('id', id); await reloadTrades(); };
+  const deleteTrade = async (id) => {
+    if (!window.confirm('Delete this trade?')) return;
+    await supabase.from('trades').delete().eq('id', id);
+    await reloadTrades();
+  };
 
   const tierGroups = [
     { key: 'al-primary', label: 'AL: Primary', color: TIER_COLORS['Primary'] },
@@ -541,12 +574,19 @@ export default function TradeView({ trades, filteredTrades, dateLabel, acctLabel
 
   return (
     <div style={{ padding: '16px 20px' }}>
+
+      {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
         <div>
           <div style={{ fontSize: 18, fontWeight: 500, color: '#ccc', marginBottom: 2 }}>Trade View</div>
-          <div style={{ fontSize: 12, color: '#555' }}>{dateLabel} · {acctLabel}</div>
+          <div style={{ fontSize: 12, color: '#555' }}>All trades ({allTrades.length} total)</div>
         </div>
-        <button onClick={() => showForm && !editingTrade ? cancelForm() : openNewForm()} style={{ padding: '7px 16px', borderRadius: 8, border: 'none', background: showForm && !editingTrade ? '#2a2a2a' : '#185FA5', color: showForm && !editingTrade ? '#888' : '#fff', fontSize: 13, fontWeight: 500, cursor: 'pointer' }}>
+        <button onClick={() => showForm && !editingTrade ? cancelForm() : openNewForm()} style={{
+          padding: '7px 16px', borderRadius: 8, border: 'none',
+          background: showForm && !editingTrade ? '#2a2a2a' : '#185FA5',
+          color: showForm && !editingTrade ? '#888' : '#fff',
+          fontSize: 13, fontWeight: 500, cursor: 'pointer',
+        }}>
           {showForm && !editingTrade ? 'Cancel' : '+ New Trade'}
         </button>
       </div>
@@ -564,79 +604,97 @@ export default function TradeView({ trades, filteredTrades, dateLabel, acctLabel
         </div>
       )}
 
-      <ManageLevels allTrades={trades} />
+      {/* Key Levels */}
+      <ManageLevels />
 
+      {/* Trade Form */}
       {showForm && (
         <TradeForm
           form={form} setForm={setForm}
           onSubmit={editingTrade ? updateTrade : submitTrade}
-          onCancel={cancelForm} uploading={uploading}
-          isEdit={!!editingTrade} strategies={strategies}
+          onCancel={cancelForm}
+          uploading={uploading}
+          isEdit={!!editingTrade}
+          strategies={strategies}
         />
       )}
 
+      {/* Trade Table */}
       <div className="table-card">
         <div className="table-header">
-          <h2>Trade History ({sorted.length})</h2>
+          <h2>Trade History ({sorted.length}{activeFilter !== 'all' ? ` filtered` : ''})</h2>
         </div>
 
-        {/* Filters row 1 */}
+        {/* Filter row 1 — general */}
         <div className="filter-row">
           {[
-            ['all','All'],
-            ['win','Win'],
-            ['loss','Loss'],
-            ['week','This Week'],
-            ['aplus','A+'],
-            ['a','A'],
-            ['aminus','A-'],
+            ['all', 'All'],
+            ['win', 'Win'],
+            ['loss', 'Loss'],
+            ['week', 'This Week'],
+            ['aplus', 'A+'],
+            ['a', 'A'],
+            ['aminus', 'A-'],
             ...symbols.map(s => [s, s]),
           ].map(([f, label]) => (
             <button key={f} className={`filter-btn ${activeFilter === f ? 'active' : ''}`} onClick={() => { setActiveFilter(f); setTablePage(1); }}>{label}</button>
           ))}
           {noStratCount > 0 && (
-            <button className={`filter-btn ${activeFilter === 'no-strategy' ? 'active' : ''}`}
-              style={activeFilter === 'no-strategy' ? {} : { borderColor: '#BA751744', color: '#BA7517' }}
-              onClick={() => { setActiveFilter(activeFilter === 'no-strategy' ? 'all' : 'no-strategy'); setTablePage(1); }}>
+            <button
+              className={`filter-btn ${activeFilter === 'no-strategy' ? 'active' : ''}`}
+              style={activeFilter !== 'no-strategy' ? { borderColor: '#BA751744', color: '#BA7517' } : {}}
+              onClick={() => { setActiveFilter(activeFilter === 'no-strategy' ? 'all' : 'no-strategy'); setTablePage(1); }}
+            >
               ⚠️ No Strategy ({noStratCount})
             </button>
           )}
         </div>
 
-        {/* Filters row 2 — strategies */}
+        {/* Filter row 2 — by strategy */}
         {strategies.length > 0 && (
-          <div className="filter-row" style={{ marginTop: 4 }}>
+          <div className="filter-row" style={{ marginTop: 0, borderTop: 'none' }}>
             <span style={{ fontSize: 11, color: '#444', alignSelf: 'center', marginRight: 4 }}>Strategy:</span>
             {strategies.map(s => (
-              <button key={s.id} className={`filter-btn ${activeFilter === s.id ? 'active' : ''}`}
+              <button key={s.id}
+                className={`filter-btn ${activeFilter === s.id ? 'active' : ''}`}
                 style={activeFilter === s.id ? { borderColor: s.color || '#185FA5', color: s.color || '#185FA5', background: (s.color || '#185FA5') + '22' } : { borderColor: '#2a2a2a' }}
-                onClick={() => { setActiveFilter(activeFilter === s.id ? 'all' : s.id); setTablePage(1); }}>
+                onClick={() => { setActiveFilter(activeFilter === s.id ? 'all' : s.id); setTablePage(1); }}
+              >
                 {s.icon} {s.name}
               </button>
             ))}
           </div>
         )}
 
-        {/* Filters row 3 — tiers */}
-        <div className="filter-row" style={{ marginTop: 4 }}>
+        {/* Filter row 3 — tiers */}
+        <div className="filter-row" style={{ marginTop: 0, borderTop: 'none' }}>
           <span style={{ fontSize: 11, color: '#444', alignSelf: 'center', marginRight: 4 }}>Tier:</span>
           {tierGroups.map(({ key, label, color }) => (
-            <button key={key} className={`filter-btn ${activeFilter === key ? 'active' : ''}`}
+            <button key={key}
+              className={`filter-btn ${activeFilter === key ? 'active' : ''}`}
               style={activeFilter === key ? { borderColor: color, color, background: color + '22' } : { borderColor: '#2a2a2a' }}
-              onClick={() => { setActiveFilter(activeFilter === key ? 'all' : key); setTablePage(1); }}>
+              onClick={() => { setActiveFilter(activeFilter === key ? 'all' : key); setTablePage(1); }}
+            >
               {label}
             </button>
           ))}
         </div>
 
         {sorted.length === 0 ? (
-          <div className="empty">No trades in this period.</div>
+          <div className="empty">No trades found.</div>
         ) : (
           <div className="table-wrap">
             <table>
               <thead>
                 <tr>
-                  {[['trade_number','#'],['date','Date'],['time','Time'],['account','Acct'],['symbol','Symbol'],['direction','Dir'],['grade','Grade'],['al_strength','AL'],['al_tier','AL Tier'],['sl_quality','SL'],['sl_tier','SL Tier'],['entry','Entry'],['exit_price','Exit'],['pnl','P&L'],['exit_reason','Result'],['session','Session']].map(([col, label]) => (
+                  {[
+                    ['trade_number','#'],['date','Date'],['time','Time'],['account','Acct'],
+                    ['symbol','Symbol'],['direction','Dir'],['grade','Grade'],
+                    ['al_strength','AL'],['al_tier','AL Tier'],
+                    ['sl_quality','SL'],['sl_tier','SL Tier'],
+                    ['entry','Entry'],['exit_price','Exit'],['pnl','P&L'],
+                    ['exit_reason','Result'],['session','Session'],
+                  ].map(([col, label]) => (
                     <th key={col} onClick={() => handleSort(col)} style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}>
                       {label} {sortCol === col ? (sortDir === 'asc' ? '↑' : '↓') : ''}
                     </th>
@@ -669,7 +727,9 @@ export default function TradeView({ trades, filteredTrades, dateLabel, acctLabel
                       <td><span style={{ fontSize: 11, color: '#555' }}>{t.session||'—'}</span></td>
                       <td>
                         {strat ? (
-                          <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 20, background: (strat.color||'#185FA5')+'22', color: strat.color||'#185FA5' }}>{strat.icon} {strat.name.slice(0,12)}</span>
+                          <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 20, background: (strat.color||'#185FA5')+'22', color: strat.color||'#185FA5', whiteSpace: 'nowrap' }}>
+                            {strat.icon} {strat.name.slice(0,14)}
+                          </span>
                         ) : (
                           <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 20, background: '#BA751722', color: '#BA7517' }}>⚠️ None</span>
                         )}
@@ -694,10 +754,14 @@ export default function TradeView({ trades, filteredTrades, dateLabel, acctLabel
         )}
       </div>
 
+      {/* Chart modal */}
       {chartModal && (
         <div className="modal-overlay" onClick={() => setChartModal(null)}>
           <div className="modal-content" onClick={e => e.stopPropagation()}>
-            <div className="modal-header"><span className="modal-title">Trade Chart</span><button className="modal-close" onClick={() => setChartModal(null)}>×</button></div>
+            <div className="modal-header">
+              <span className="modal-title">Trade Chart</span>
+              <button className="modal-close" onClick={() => setChartModal(null)}>×</button>
+            </div>
             <img src={chartModal} alt="Trade chart" className="modal-img" />
           </div>
         </div>
