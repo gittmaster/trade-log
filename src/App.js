@@ -313,17 +313,17 @@ export default function App() {
 
       {/* Floating chat button */}
       <button onClick={() => setChatOpen(o => !o)} title="AI Trading Coach" style={{
-        position: 'fixed', bottom: 20, right: 20, width: 52, height: 52,
+        position: 'fixed', bottom: 24, right: 24, width: 56, height: 56,
         borderRadius: '50%',
-        background: chatOpen ? '#185FA5' : 'linear-gradient(135deg, #1D9E75, #185FA5)',
-        border: 'none',
+        background: chatOpen ? '#E24B4A' : '#1D9E75',
+        border: '3px solid #fff',
         color: '#fff',
-        fontSize: 22, cursor: 'pointer', zIndex: 1001,
+        fontSize: 24, cursor: 'pointer', zIndex: 1001,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        boxShadow: '0 4px 16px rgba(29,158,117,0.4)',
+        boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
         transition: 'all 0.15s',
       }}>
-        {chatOpen ? '×' : '🤖'}
+        {chatOpen ? '✕' : '🤖'}
       </button>
     </div>
   );
