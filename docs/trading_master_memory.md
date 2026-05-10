@@ -1,5 +1,5 @@
 # Trading Master Memory File
-*Last updated: May 1, 2026*
+*Last updated: May 9, 2026*
 
 ---
 
@@ -247,17 +247,7 @@
 
 ## ACTIVE TRADES LOG
 
-### May 1, 2026 — MGC Short (Trades 91 & 92)
-| | A1 (Trade 92) | A2 (Trade 91) |
-|---|---|---|
-| Direction | Short | Short |
-| Entry | 4,630 (09:46 EST) | 4,638 (08:40 EST) |
-| Stop | 4,675 (above red descending AL) | 4,675 |
-| Target | HTF green ascending line / m($4600) | HTF green ascending line / m($4600) |
-| Grade | A | A |
-| Status | Open — stop removed during fake-out at 4673, now reinstated at 4675 |
-| Current price | 4,640 |
-| Thesis | Short valid — inside descending red channel, target green HTF line converging at m($4600) |
+*No active trades as of May 9, 2026. Trades 91 & 92 have been closed — log when confirmed.*
 
 ---
 
@@ -279,11 +269,9 @@
 ---
 
 ## NOTES FOR NEXT SESSION
-- Trades 91 & 92 still open — target m($4600) / green HTF line
-- Stop moved to 4662 (nearest resistance) before weekend close
-- If Tertiary SL crosses on 1-hour close → exit both immediately
-- Log trades 91 & 92 when closed, note the stop removal as behavioral flag
-- MGC price at close: 4620 — 20 points from target
+- Update active trades log once Trades 91 & 92 are confirmed closed
+- Continue logging all new trades into the web app at trendline-trades.vercel.app
+- Progress section: calendar view + Weekly/Monthly toggle + P&L labels on bars
 
 ---
 
@@ -301,3 +289,9 @@
 | May 4, 2026 | Key Levels panel — MGC/MNQ toggle tabs to filter levels by symbol |
 | May 4, 2026 | Key Levels panel — Clear button added to Pre-Trade Check |
 | May 4, 2026 | Fixed blank screen bug in Key Levels panel (missing lvlSymbol state) |
+| May 9, 2026 | Replaced bar/line Progress chart with calendar view (month nav, daily P&L, win rate, trade count per day, weekly summaries) |
+| May 9, 2026 | Added daily net cumulative P&L line chart inside Progress section |
+| May 9, 2026 | Added net daily P&L bar chart inside Progress section (green/red per day) |
+| May 9, 2026 | Pre-Trade Check — improved key level logic to recommend specific target prices |
+| May 9, 2026 | Added Weekly/Monthly toggle to both P&L charts |
+| May 9, 2026 | P&L values now shown as inline labels on daily bar chart bars (green above positive, red below negative) |
