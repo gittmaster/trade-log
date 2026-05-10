@@ -142,7 +142,7 @@ function ProgressCalendar({ trades }) {
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth());
   const [open, setOpen] = useState(false);
-  const [chartView, setChartView] = useState('monthly'); // 'weekly' | 'monthly'
+  const [chartView, setChartView] = useState('monthly');
   const cumulRef = useRef(null);
   const dailyRef = useRef(null);
   const cumulInstance = useRef(null);
@@ -160,7 +160,6 @@ function ProgressCalendar({ trades }) {
 
   const goToday = () => { setYear(now.getFullYear()); setMonth(now.getMonth()); };
 
-  // Day map for calendar grid (current month only)
   const dayMap = {};
   closed.forEach(t => {
     const [ty, tm, td] = t.date.split('-').map(Number);
@@ -175,7 +174,6 @@ function ProgressCalendar({ trades }) {
   const monthNet = Object.values(dayMap).reduce((s, d) => s + d.pnl, 0);
   const tradeDays = Object.keys(dayMap).length;
 
-  // Get monday of current week
   const getWeekStart = () => {
     const d = new Date(now);
     const day = d.getDay();
@@ -185,17 +183,13 @@ function ProgressCalendar({ trades }) {
     return d;
   };
 
-  // Build chart data filtered by view
   const buildChartData = (view) => {
-    // Group all closed trades by date
     const dateMap = {};
     [...closed].sort((a, b) => a.date.localeCompare(b.date)).forEach(t => {
       if (!dateMap[t.date]) dateMap[t.date] = 0;
       dateMap[t.date] += t.pnl;
     });
-
     let filteredDates = Object.keys(dateMap).sort();
-
     if (view === 'weekly') {
       const weekStart = getWeekStart();
       const weekEnd = new Date(weekStart);
@@ -205,12 +199,9 @@ function ProgressCalendar({ trades }) {
         return d >= weekStart && d <= weekEnd;
       });
     } else {
-      // monthly — filter to current calendar month shown
       const ym = `${year}-${String(month + 1).padStart(2, '0')}`;
       filteredDates = filteredDates.filter(date => date.startsWith(ym));
     }
-
-    // For cumulative, always start from zero within the filtered window
     let cum = 0;
     return filteredDates.map(date => {
       const daily = Math.round(dateMap[date] * 100) / 100;
@@ -223,7 +214,6 @@ function ProgressCalendar({ trades }) {
     });
   };
 
-  // Load Chart.js
   useEffect(() => {
     if (window.Chart) { setChartReady(true); return; }
     const script = document.createElement('script');
@@ -232,7 +222,6 @@ function ProgressCalendar({ trades }) {
     document.head.appendChild(script);
   }, []);
 
-  // Draw both charts
   useEffect(() => {
     if (!chartReady || !open || !cumulRef.current || !dailyRef.current) return;
     const data = buildChartData(chartView);
@@ -304,7 +293,7 @@ function ProgressCalendar({ trades }) {
       }
     });
 
-    // --- Daily bar chart ---
+    // --- Daily bar chart with inline labels ---
     const dCtx = dailyRef.current.getContext('2d');
     dailyInstance.current = new Chart(dCtx, {
       type: 'bar',
@@ -321,17 +310,40 @@ function ProgressCalendar({ trades }) {
       options: {
         responsive: true, maintainAspectRatio: false,
         interaction: { mode: 'index', intersect: false },
+        layout: { padding: { top: 24 } },
         plugins: {
           legend: { display: false },
-          tooltip: {
-            backgroundColor: '#1a1a1a', borderColor: '#333', borderWidth: 1,
-            titleColor: '#aaa', bodyColor: '#fff',
-            callbacks: { label: ctx => ` ${ctx.raw >= 0 ? '+$' : '-$'}${Math.abs(ctx.raw).toLocaleString()}` }
-          }
+          tooltip: { enabled: false },
         },
         scales: {
           x: { ticks: { color: '#555', font: { size: 11 }, maxTicksLimit: 10, maxRotation: 0 }, grid: { display: false }, border: { display: false } },
           y: { ticks: { color: '#555', font: { size: 11 }, callback: v => (v >= 0 ? '+$' : '-$') + Math.abs(v).toLocaleString() }, grid: { color: 'rgba(255,255,255,0.05)' }, border: { display: false } }
+        },
+        animation: {
+          onComplete: function () {
+            const chart = this;
+            const ctx = chart.ctx;
+            ctx.save();
+            ctx.font = '500 10px sans-serif';
+            ctx.textAlign = 'center';
+            chart.data.datasets.forEach((dataset, i) => {
+              const meta = chart.getDatasetMeta(i);
+              meta.data.forEach((bar, index) => {
+                const value = dataset.data[index];
+                if (value === null || value === undefined) return;
+                const label = (value >= 0 ? '+$' : '-$') + Math.abs(Math.round(value)).toLocaleString();
+                ctx.fillStyle = value >= 0 ? '#1D9E75' : '#E24B4A';
+                if (value >= 0) {
+                  ctx.textBaseline = 'bottom';
+                  ctx.fillText(label, bar.x, bar.y - 3);
+                } else {
+                  ctx.textBaseline = 'top';
+                  ctx.fillText(label, bar.x, bar.y + 3);
+                }
+              });
+            });
+            ctx.restore();
+          }
         }
       }
     });
@@ -354,23 +366,19 @@ function ProgressCalendar({ trades }) {
 
   const fmt = (v) => (v >= 0 ? '+$' : '-$') + Math.abs(Math.round(v)).toLocaleString();
 
-  // Chart summary stats for the selected view
   const chartData = open ? buildChartData(chartView) : [];
   const chartNet = chartData.reduce((s, d) => s + d.daily, 0);
-  const chartTrades = chartData.length;
+  const chartTradeDays = chartData.length;
 
   if (!closed.length) return null;
 
   const toggleBtn = (v, label) => (
-    <button
-      key={v}
-      onClick={e => { e.stopPropagation(); setChartView(v); }}
-      style={{
-        padding: '3px 14px', borderRadius: 6, fontSize: 12, fontWeight: 500, cursor: 'pointer',
-        border: '1px solid', borderColor: chartView === v ? '#185FA5' : '#2a2a2a',
-        background: chartView === v ? '#185FA522' : 'transparent',
-        color: chartView === v ? '#185FA5' : '#888',
-      }}>{label}</button>
+    <button key={v} onClick={e => { e.stopPropagation(); setChartView(v); }} style={{
+      padding: '3px 14px', borderRadius: 6, fontSize: 12, fontWeight: 500, cursor: 'pointer',
+      border: '1px solid', borderColor: chartView === v ? '#185FA5' : '#2a2a2a',
+      background: chartView === v ? '#185FA522' : 'transparent',
+      color: chartView === v ? '#185FA5' : '#888',
+    }}>{label}</button>
   );
 
   return (
@@ -462,7 +470,7 @@ function ProgressCalendar({ trades }) {
               <span style={{ fontSize: 12, color: '#888' }}>{chartView === 'weekly' ? 'This week:' : `${MONTH_NAMES[month]}:`}</span>
               {chartData.length > 0 ? (<>
                 <span style={{ background: chartNet >= 0 ? '#1D9E7522' : '#E24B4A22', color: chartNet >= 0 ? '#1D9E75' : '#E24B4A', borderRadius: 20, padding: '3px 12px', fontSize: 13, fontWeight: 600 }}>{fmt(chartNet)}</span>
-                <span style={{ background: '#1a1a1a', color: '#aaa', borderRadius: 20, padding: '3px 12px', fontSize: 13 }}>{chartTrades} days</span>
+                <span style={{ background: '#1a1a1a', color: '#aaa', borderRadius: 20, padding: '3px 12px', fontSize: 13 }}>{chartTradeDays} days</span>
               </>) : <span style={{ fontSize: 12, color: '#555' }}>No trades</span>}
             </div>
           </div>
@@ -481,7 +489,7 @@ function ProgressCalendar({ trades }) {
             <div style={{ fontSize: 13, fontWeight: 600, color: '#888', marginBottom: 12 }}>Net daily P&L</div>
             {chartData.length === 0
               ? <div style={{ height: 80, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#555', fontSize: 13 }}>No trades in this {chartView === 'weekly' ? 'week' : 'month'}</div>
-              : <div style={{ position: 'relative', width: '100%', height: 260 }}><canvas ref={dailyRef} /></div>
+              : <div style={{ position: 'relative', width: '100%', height: 300 }}><canvas ref={dailyRef} /></div>
             }
           </div>
 
