@@ -21,24 +21,22 @@ function formatTradesForAI(trades) {
   return `TRADE DATA (${trades.length} trades):\n${summary}`;
 }
 
-export default function AIChat({ trades }) {
+// ─── Shared chat UI — used in both embedded and standalone modes ──────────────
+function ChatUI({ trades, inputRef, onClose }) {
   const [messages, setMessages] = useState([
     { role: 'assistant', content: 'Hi! I have access to all your trade data. Ask me anything — win rates, patterns, what to improve, or whether a setup is worth taking.' }
   ]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
-  const [open, setOpen] = useState(false);
-  const [maximized, setMaximized] = useState(false);
   const bottomRef = useRef(null);
-  const inputRef = useRef(null);
 
   useEffect(() => {
     if (bottomRef.current) bottomRef.current.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
   useEffect(() => {
-    if (open && inputRef.current) inputRef.current.focus();
-  }, [open]);
+    if (inputRef?.current) inputRef.current.focus();
+  }, []);
 
   const send = async () => {
     const text = input.trim();
@@ -95,6 +93,66 @@ export default function AIChat({ trades }) {
     'Compare my two accounts',
   ];
 
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <div className="ai-messages" style={{ flex: 1, maxHeight: 'none' }}>
+        {messages.map((m, i) => (
+          <div key={i} className={`ai-msg ${m.role}`}>
+            <div className="ai-msg-content">{m.content}</div>
+          </div>
+        ))}
+        {loading && (
+          <div className="ai-msg assistant">
+            <div className="ai-msg-content ai-thinking">Thinking...</div>
+          </div>
+        )}
+        <div ref={bottomRef} />
+      </div>
+
+      {messages.length <= 1 && (
+        <div className="ai-quick">
+          {quickQuestions.map((q, i) => (
+            <button key={i} className="ai-quick-btn" onClick={() => { setInput(q); setTimeout(() => inputRef?.current?.focus(), 50); }}>
+              {q}
+            </button>
+          ))}
+        </div>
+      )}
+
+      <div className="ai-input-row">
+        <textarea
+          ref={inputRef}
+          className="ai-input"
+          value={input}
+          onChange={e => setInput(e.target.value)}
+          onKeyDown={handleKey}
+          placeholder="Ask about your trades..."
+          rows={2}
+        />
+        <button className="ai-send" onClick={send} disabled={loading || !input.trim()}>
+          {loading ? '...' : '↑'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Main export — supports embedded={true} for use inside the floating panel ─
+export default function AIChat({ trades, embedded = false }) {
+  const [open, setOpen] = useState(false);
+  const [maximized, setMaximized] = useState(false);
+  const inputRef = useRef(null);
+
+  useEffect(() => {
+    if (open && inputRef.current) inputRef.current.focus();
+  }, [open]);
+
+  // Embedded mode — just render the chat UI directly, no FAB or wrapper panel
+  if (embedded) {
+    return <ChatUI trades={trades} inputRef={inputRef} />;
+  }
+
+  // Standalone mode — original FAB + floating panel behavior
   const panelClass = maximized ? 'ai-panel ai-panel-max' : 'ai-panel';
 
   return (
@@ -117,45 +175,7 @@ export default function AIChat({ trades }) {
               <button className="ai-close" onClick={() => { setOpen(false); setMaximized(false); }}>×</button>
             </div>
           </div>
-
-          <div className="ai-messages">
-            {messages.map((m, i) => (
-              <div key={i} className={`ai-msg ${m.role}`}>
-                <div className="ai-msg-content">{m.content}</div>
-              </div>
-            ))}
-            {loading && (
-              <div className="ai-msg assistant">
-                <div className="ai-msg-content ai-thinking">Thinking...</div>
-              </div>
-            )}
-            <div ref={bottomRef} />
-          </div>
-
-          {messages.length <= 1 && (
-            <div className="ai-quick">
-              {quickQuestions.map((q, i) => (
-                <button key={i} className="ai-quick-btn" onClick={() => { setInput(q); setTimeout(() => inputRef.current?.focus(), 50); }}>
-                  {q}
-                </button>
-              ))}
-            </div>
-          )}
-
-          <div className="ai-input-row">
-            <textarea
-              ref={inputRef}
-              className="ai-input"
-              value={input}
-              onChange={e => setInput(e.target.value)}
-              onKeyDown={handleKey}
-              placeholder="Ask about your trades..."
-              rows={2}
-            />
-            <button className="ai-send" onClick={send} disabled={loading || !input.trim()}>
-              {loading ? '...' : '↑'}
-            </button>
-          </div>
+          <ChatUI trades={trades} inputRef={inputRef} onClose={() => { setOpen(false); setMaximized(false); }} />
         </div>
       )}
     </>

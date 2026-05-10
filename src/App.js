@@ -306,7 +306,7 @@ export default function App() {
             }}>×</button>
           </div>
           <div style={{ flex: 1, overflow: 'hidden' }}>
-            <AIChat trades={trades} />
+            <AIChat trades={trades} embedded={true} />
           </div>
         </div>
       )}
