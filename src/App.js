@@ -312,15 +312,18 @@ export default function App() {
       )}
 
       {/* Floating chat button */}
-      <button onClick={() => setChatOpen(o => !o)} style={{
-        position: 'fixed', bottom: 20, right: 20, width: 48, height: 48,
-        borderRadius: '50%', background: chatOpen ? '#185FA5' : '#1a1a1a',
-        border: '1px solid #2a2a2a', color: chatOpen ? '#fff' : '#666',
-        fontSize: 20, cursor: 'pointer', zIndex: 1001,
+      <button onClick={() => setChatOpen(o => !o)} title="AI Trading Coach" style={{
+        position: 'fixed', bottom: 20, right: 20, width: 52, height: 52,
+        borderRadius: '50%',
+        background: chatOpen ? '#185FA5' : 'linear-gradient(135deg, #1D9E75, #185FA5)',
+        border: 'none',
+        color: '#fff',
+        fontSize: 22, cursor: 'pointer', zIndex: 1001,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
+        boxShadow: '0 4px 16px rgba(29,158,117,0.4)',
         transition: 'all 0.15s',
       }}>
-        <i className={`ti ${chatOpen ? 'ti-x' : 'ti-message'}`} />
+        {chatOpen ? '×' : '🤖'}
       </button>
     </div>
   );

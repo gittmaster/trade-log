@@ -59,10 +59,12 @@ function getStrategyIdForTrade(trade) {
 }
 
 export default function Strategies({ trades, strategies, saveStrategies, reloadTrades, setMsg }) {
-  const effectiveStrategies = strategies.length > 0 ? strategies : DEFAULT_STRATEGIES;
+  // Force replace old strategies if they don't have the new AL/SL based IDs
+  const hasNewStrategies = strategies.some(s => s.id === 'strat-aplus-prime');
+  const effectiveStrategies = hasNewStrategies ? strategies : DEFAULT_STRATEGIES;
 
   const didSeed = React.useRef(false);
-  if (!didSeed.current && strategies.length === 0) {
+  if (!didSeed.current && !hasNewStrategies) {
     didSeed.current = true;
     saveStrategies(DEFAULT_STRATEGIES);
   }
