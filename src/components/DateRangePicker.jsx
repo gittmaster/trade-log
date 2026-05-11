@@ -93,7 +93,7 @@ export default function DateRangePicker({ dateRange, setDateRange }) {
     const prevDays = new Date(year, month, 0).getDate();
     const cells = [];
 
-    DAYS.forEach(d => cells.push(<div key={'h'+d} style={{ fontSize: 10, color: '#555', textAlign: 'center', padding: '3px 0', fontWeight: 500 }}>{d}</div>));
+    DAYS.forEach(d => cells.push(<div key={'h'+d} style={{ fontSize: 12, color: '#555', textAlign: 'center', padding: '3px 0', fontWeight: 700 }}>{d}</div>));
 
     for (let i = 0; i < first; i++) {
       const day = new Date(year, month - 1, prevDays - first + i + 1);
@@ -123,8 +123,8 @@ export default function DateRangePicker({ dateRange, setDateRange }) {
 
     return (
       <div key={ts} onClick={() => pickDay(d)} style={{
-        fontSize: 12, textAlign: 'center', padding: '5px 2px', borderRadius: radius,
-        cursor: 'pointer', color, background: bg, fontWeight: isStart || isEnd ? 600 : 400,
+        fontSize: 14, textAlign: 'center', padding: '5px 2px', borderRadius: radius,
+        cursor: 'pointer', color, background: bg, fontWeight: 700,
       }}
         onMouseEnter={e => { if (!isStart && !isEnd && !inRange) e.currentTarget.style.background = '#1a1a1a'; }}
         onMouseLeave={e => { if (!isStart && !isEnd && !inRange) e.currentTarget.style.background = 'transparent'; }}
@@ -141,11 +141,11 @@ export default function DateRangePicker({ dateRange, setDateRange }) {
       <div onClick={() => setOpen(o => !o)} style={{
         display: 'flex', alignItems: 'center', gap: 7, background: '#1a1a1a',
         border: '1px solid #2a2a2a', borderRadius: 8, padding: '5px 10px',
-        cursor: 'pointer', fontSize: 12, fontWeight: 500, color: '#ccc', userSelect: 'none',
+        cursor: 'pointer', fontSize: 15, fontWeight: 700, color: '#ccc', userSelect: 'none',
       }}>
-        <i className="ti ti-calendar" style={{ fontSize: 14, color: '#666' }} />
+        <i className="ti ti-calendar" style={{ fontSize: 16, color: '#666' }} />
         <span>{label}</span>
-        <span onClick={clearRange} style={{ fontSize: 12, color: '#555', marginLeft: 2 }}>
+        <span onClick={clearRange} style={{ fontSize: 13, fontWeight: 700, color: '#555', marginLeft: 2 }}>
           <i className="ti ti-x" style={{ fontSize: 11 }} />
         </span>
         <i className="ti ti-chevron-down" style={{ fontSize: 12, color: '#555' }} />
@@ -161,14 +161,14 @@ export default function DateRangePicker({ dateRange, setDateRange }) {
             <div style={{ padding: 16, display: 'flex', gap: 0 }}>
               {/* Left month */}
               <div style={{ width: 210 }}>
-                <div style={{ fontSize: 11, color: '#666', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <span style={{ fontWeight: 500, color: '#aaa' }}>{tempStart ? fmt(tempStart) : '—'}</span>
+                <div style={{ fontSize: 13, fontWeight: 700, color: '#666', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ fontWeight: 700, color: '#aaa' }}>{tempStart ? fmt(tempStart) : '—'}</span>
                   <i className="ti ti-arrow-right" style={{ fontSize: 11 }} />
-                  <span style={{ fontWeight: 500, color: '#aaa' }}>{tempEnd ? fmt(tempEnd) : '—'}</span>
+                  <span style={{ fontWeight: 700, color: '#aaa' }}>{tempEnd ? fmt(tempEnd) : '—'}</span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
                   <button onClick={() => navMonth(-1)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#666', fontSize: 14, padding: '2px 6px' }}>‹</button>
-                  <span style={{ fontSize: 13, fontWeight: 500, color: '#ccc' }}>{MONTHS_FULL[leftMonth]} {leftYear}</span>
+                  <span style={{ fontSize: 15, fontWeight: 700, color: '#ccc' }}>{MONTHS_FULL[leftMonth]} {leftYear}</span>
                   <button onClick={() => navMonth(1)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#666', fontSize: 14, padding: '2px 6px' }}>›</button>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 1 }}>
@@ -184,7 +184,7 @@ export default function DateRangePicker({ dateRange, setDateRange }) {
                 <div style={{ height: 26, marginBottom: 10 }} />
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
                   <div style={{ width: 28 }} />
-                  <span style={{ fontSize: 13, fontWeight: 500, color: '#ccc' }}>{MONTHS_FULL[rightMonth]} {rightYear}</span>
+                  <span style={{ fontSize: 15, fontWeight: 700, color: '#ccc' }}>{MONTHS_FULL[rightMonth]} {rightYear}</span>
                   <div style={{ width: 28 }} />
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 1 }}>
@@ -197,9 +197,9 @@ export default function DateRangePicker({ dateRange, setDateRange }) {
             <div style={{ width: 160, borderLeft: '1px solid #222', padding: '12px 0', display: 'flex', flexDirection: 'column' }}>
               {presets.map(p => (
                 <div key={p.key} onClick={() => applyPreset(p)} style={{
-                  fontSize: 12, padding: '9px 16px', cursor: 'pointer',
+                  fontSize: 13, padding: '9px 16px', cursor: 'pointer',
                   color: activePreset === p.key ? '#185FA5' : '#888',
-                  fontWeight: activePreset === p.key ? 500 : 400,
+                  fontWeight: 700,
                   background: activePreset === p.key ? '#185FA511' : 'transparent',
                 }}
                   onMouseEnter={e => { if (activePreset !== p.key) e.currentTarget.style.background = '#1a1a1a'; }}
@@ -211,8 +211,8 @@ export default function DateRangePicker({ dateRange, setDateRange }) {
 
           {/* Footer */}
           <div style={{ padding: '10px 16px', borderTop: '1px solid #222', display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-            <button onClick={() => setOpen(false)} style={{ fontSize: 12, padding: '5px 16px', borderRadius: 6, cursor: 'pointer', background: 'transparent', border: '1px solid #2a2a2a', color: '#888' }}>Cancel</button>
-            <button onClick={apply} style={{ fontSize: 12, padding: '5px 16px', borderRadius: 6, cursor: 'pointer', background: '#185FA5', border: 'none', color: '#fff', fontWeight: 500 }}>Apply</button>
+            <button onClick={() => setOpen(false)} style={{ fontSize: 13, fontWeight: 700, padding: '5px 16px', borderRadius: 6, cursor: 'pointer', background: 'transparent', border: '1px solid #2a2a2a', color: '#888' }}>Cancel</button>
+            <button onClick={apply} style={{ fontSize: 13, fontWeight: 700, padding: '5px 16px', borderRadius: 6, cursor: 'pointer', background: '#185FA5', border: 'none', color: '#fff' }}>Apply</button>
           </div>
         </div>
       )}
