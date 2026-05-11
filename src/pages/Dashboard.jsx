@@ -111,29 +111,29 @@ function ProgressCalendar({ trades, dateRange }) {
   return (
     <div style={{ marginBottom: 20 }}>
       <div onClick={() => setOpen(o => !o)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#111', border: '1px solid #222', borderRadius: open ? '8px 8px 0 0' : 8, padding: '10px 16px', cursor: 'pointer', userSelect: 'none' }}>
-        <span style={{ fontWeight: 500, fontSize: 14, color: '#ccc' }}>📅 Progress</span>
-        <span style={{ color: '#666', fontSize: 13 }}>{open ? '▲ Hide' : '▼ Show'}</span>
+        <span style={{ fontWeight: 700, fontSize: 16, color: '#ccc' }}>📅 Progress</span>
+        <span style={{ color: '#666', fontSize: 14, fontWeight: 600 }}>{open ? '▲ Hide' : '▼ Show'}</span>
       </div>
       {open && (
         <div style={{ border: '1px solid #222', borderTop: 'none', borderRadius: '0 0 8px 8px', padding: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, flexWrap: 'wrap', gap: 8 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <button onClick={e => { e.stopPropagation(); changeMonth(-1); }} style={{ background: 'transparent', border: '1px solid #2a2a2a', borderRadius: 6, padding: '3px 10px', cursor: 'pointer', color: '#ccc' }}>‹</button>
-              <span style={{ fontSize: 14, fontWeight: 500, color: '#ccc', minWidth: 130, textAlign: 'center' }}>{MONTH_NAMES[calMonth]} {calYear}</span>
+              <span style={{ fontSize: 17, fontWeight: 700, color: '#ccc', minWidth: 130, textAlign: 'center' }}>{MONTH_NAMES[calMonth]} {calYear}</span>
               <button onClick={e => { e.stopPropagation(); changeMonth(1); }} style={{ background: 'transparent', border: '1px solid #2a2a2a', borderRadius: 6, padding: '3px 10px', cursor: 'pointer', color: '#ccc' }}>›</button>
-              <button onClick={e => { e.stopPropagation(); setCalYear(now.getFullYear()); setCalMonth(now.getMonth()); }} style={{ background: 'transparent', border: '1px solid #2a2a2a', borderRadius: 6, padding: '3px 12px', cursor: 'pointer', color: '#888', fontSize: 12 }}>This month</button>
+              <button onClick={e => { e.stopPropagation(); setCalYear(now.getFullYear()); setCalMonth(now.getMonth()); }} style={{ background: 'transparent', border: '1px solid #2a2a2a', borderRadius: 6, padding: '3px 12px', cursor: 'pointer', color: '#888', fontSize: 13, fontWeight: 600 }}>This month</button>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ fontSize: 12, color: '#666' }}>Monthly:</span>
-              <span style={{ background: monthNet >= 0 ? '#1D9E7522' : '#E24B4A22', color: monthNet >= 0 ? '#1D9E75' : '#E24B4A', borderRadius: 20, padding: '3px 12px', fontSize: 13, fontWeight: 500 }}>{fmt(monthNet)}</span>
-              <span style={{ background: '#1a1a1a', color: '#888', borderRadius: 20, padding: '3px 12px', fontSize: 12 }}>{tradeDays} days</span>
+              <span style={{ fontSize: 14, fontWeight: 600, color: '#666' }}>Monthly:</span>
+              <span style={{ background: monthNet >= 0 ? '#1D9E7522' : '#E24B4A22', color: monthNet >= 0 ? '#1D9E75' : '#E24B4A', borderRadius: 20, padding: '3px 12px', fontSize: 15, fontWeight: 700 }}>{fmt(monthNet)}</span>
+              <span style={{ background: '#1a1a1a', color: '#888', borderRadius: 20, padding: '3px 12px', fontSize: 14, fontWeight: 600 }}>{tradeDays} days</span>
             </div>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 0, alignItems: 'start' }}>
             <div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 3, marginBottom: 3 }}>
                 {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d => (
-                  <div key={d} style={{ textAlign: 'center', fontSize: 11, color: '#444', padding: '3px 0' }}>{d}</div>
+                  <div key={d} style={{ textAlign: 'center', fontSize: 13, fontWeight: 700, color: '#444', padding: '3px 0' }}>{d}</div>
                 ))}
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
@@ -149,11 +149,11 @@ function ProgressCalendar({ trades, dateRange }) {
                       const wr = d && d.count ? Math.round(d.wins / d.count * 100) : 0;
                       return (
                         <div key={di} style={{ background: bg, border: `${isToday ? '1.5px' : '1px'} solid ${borderColor}`, borderRadius: 6, padding: '4px 6px', minHeight: 68, display: 'flex', flexDirection: 'column', gap: 2, position: 'relative' }}>
-                          <span style={{ fontSize: 10, color: '#444', textAlign: 'right' }}>{day}</span>
+                          <span style={{ fontSize: 13, fontWeight: 700, color: '#444', textAlign: 'right' }}>{day}</span>
                           {d && (<>
-                            <span style={{ fontSize: 12, fontWeight: 500, color: d.pnl >= 0 ? '#1D9E75' : '#E24B4A' }}>{d.pnl >= 0 ? '+$' : '-$'}{Math.abs(Math.round(d.pnl)).toLocaleString()}</span>
-                            <span style={{ fontSize: 10, color: '#555' }}>{d.count} trade{d.count !== 1 ? 's' : ''}</span>
-                            <span style={{ fontSize: 10, color: '#555' }}>{wr}%</span>
+                            <span style={{ fontSize: 14, fontWeight: 700, color: d.pnl >= 0 ? '#1D9E75' : '#E24B4A' }}>{d.pnl >= 0 ? '+$' : '-$'}{Math.abs(Math.round(d.pnl)).toLocaleString()}</span>
+                            <span style={{ fontSize: 12, fontWeight: 600, color: '#555' }}>{d.count} trade{d.count !== 1 ? 's' : ''}</span>
+                            <span style={{ fontSize: 12, fontWeight: 600, color: '#555' }}>{wr}%</span>
                             {d.pnl < 0 && <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#E24B4A', position: 'absolute', bottom: 4, left: 6 }} />}
                           </>)}
                         </div>
@@ -169,11 +169,11 @@ function ProgressCalendar({ trades, dateRange }) {
                 week.forEach(day => { if (day && dayMap[day]) { wNet += dayMap[day].pnl; wDays++; } });
                 return (
                   <div key={wi} style={{ background: '#111', border: '1px solid #222', borderRadius: 6, padding: '7px 10px', minWidth: 85, minHeight: 68, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 2 }}>
-                    <span style={{ fontSize: 10, color: '#444' }}>Week {wi + 1}</span>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: '#444' }}>Week {wi + 1}</span>
                     {wDays > 0 ? (<>
-                      <span style={{ fontSize: 14, fontWeight: 500, color: wNet >= 0 ? '#1D9E75' : '#E24B4A' }}>{fmt(wNet)}</span>
-                      <span style={{ fontSize: 10, color: '#444' }}>{wDays} day{wDays !== 1 ? 's' : ''}</span>
-                    </>) : <span style={{ fontSize: 12, color: '#2a2a2a' }}>—</span>}
+                      <span style={{ fontSize: 16, fontWeight: 700, color: wNet >= 0 ? '#1D9E75' : '#E24B4A' }}>{fmt(wNet)}</span>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: '#444' }}>{wDays} day{wDays !== 1 ? 's' : ''}</span>
+                    </>) : <span style={{ fontSize: 13, fontWeight: 700, color: '#2a2a2a' }}>—</span>}
                   </div>
                 );
               })}

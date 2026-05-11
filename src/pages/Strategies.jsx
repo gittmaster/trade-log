@@ -320,8 +320,8 @@ export default function Strategies({ trades, strategies, saveStrategies, reloadT
             { label: 'Worst Strategy', value: worstStrat ? worstStrat.icon + ' ' + worstStrat.name : '—', color: '#E24B4A' },
           ].map((c, i) => (
             <div key={i} style={{ background: '#111', border: '1px solid #222', borderRadius: 8, padding: '10px 14px' }}>
-              <div style={{ fontSize: 11, color: '#555', marginBottom: 3 }}>{c.label}</div>
-              <div style={{ fontSize: 13, fontWeight: 500, color: c.color || '#ccc' }}>{c.value}</div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: '#555', marginBottom: 4 }}>{c.label}</div>
+              <div style={{ fontSize: 16, fontWeight: 700, color: c.color || '#ccc' }}>{c.value}</div>
             </div>
           ))}
         </div>
