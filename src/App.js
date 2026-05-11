@@ -249,7 +249,7 @@ export default function App() {
 
           <div style={{ width: 1, height: 20, background: '#222' }} />
 
-          <span style={{ fontSize: 14, fontWeight: 700, color: '#555' }}>Account:</span>
+          <span style={{ fontSize: 14, fontWeight: 700, color: '#fff' }}>Account:</span>
           <div style={{
             display: 'flex', gap: 2, background: '#1a1a1a',
             border: '1px solid #2a2a2a', borderRadius: 8, padding: '2px 3px',
@@ -259,7 +259,7 @@ export default function App() {
                 padding: '3px 12px', borderRadius: 6, fontSize: 14, fontWeight: 700,
                 cursor: 'pointer', border: 'none',
                 background: account === a ? '#185FA522' : 'transparent',
-                color: account === a ? '#185FA5' : '#555',
+                color: '#fff',
               }}>
                 {a === 'both' ? 'Both' : a.toUpperCase()}
               </button>
