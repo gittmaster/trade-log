@@ -242,3 +242,33 @@ Four strategies defined by AL/SL touch count and age. Auto-assigned by the app.
 | May 10, 2026 | Dashboard stat cards — values font-size 22px, font-weight 600 |
 | May 10, 2026 | Reports metric cards — values font-size 17px, font-weight 600, uppercase labels |
 | May 10, 2026 | Reports section titles — font-weight 600 |
+
+---
+
+## MAY 11, 2026 UI HANDOFF NOTES
+
+Upload-ready GitHub files were prepared under:
+`C:\Users\lax46\Documents\Codex\2026-05-10\files-mentioned-by-the-user-trading-2\github-upload`
+
+Current upload-ready files prepared:
+- `src/App.css`
+- `src/App.js`
+- `src/AIChat.js`
+- `src/components/DateRangePicker.jsx`
+- `src/pages/Dashboard.jsx`
+- `src/pages/Strategies.jsx`
+- `src/pages/Reports.jsx`
+
+Changes requested/prepared:
+- Table body rows enlarged/bolded via `src/App.css` upload-ready copy.
+- Strategies summary cards enlarged/bolded via `src/pages/Strategies.jsx` upload-ready copy.
+- Dashboard Progress widget dates/numbers enlarged/bolded via `src/pages/Dashboard.jsx` upload-ready copy.
+- AI Trading Coach panel made maximizable via `src/App.js` upload-ready copy, using a `Max` / `Min` control.
+- AI Chat file attachment support added via `src/AIChat.js`: images are sent as image blocks; text files are read into the prompt; other file types attach filename/type/size context.
+- Dashboard labels changed to white: stat card labels, insight section labels, `By Tier`, `Action Line`, and `Safety Line`.
+- Sidebar labels changed to white: `Main`, `Dashboard`, `Reports`, `Trade View`, `Strategies`, `Tools`, and `AI Chat`.
+
+Important UX decisions:
+- User prefers targeted label color changes, not a broad global white override.
+- User specifically said: do NOT globally bold everything; use white color only where requested.
+- For GitHub, user wants copy/commit commands for changed files only, not direct repo edits unless explicitly asked.
