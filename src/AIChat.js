@@ -21,14 +21,38 @@ function formatTradesForAI(trades) {
   return `TRADE DATA (${trades.length} trades):\n${summary}`;
 }
 
+function fileToDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+function fileToText(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsText(file);
+  });
+}
+
+function isTextFile(file) {
+  return file.type.startsWith('text/') || /\.(csv|txt|md|json|js|jsx|ts|tsx|css|html|xml|log)$/i.test(file.name);
+}
+
 // ─── Shared chat UI — used in both embedded and standalone modes ──────────────
 function ChatUI({ trades, inputRef, onClose }) {
   const [messages, setMessages] = useState([
     { role: 'assistant', content: 'Hi! I have access to all your trade data. Ask me anything — win rates, patterns, what to improve, or whether a setup is worth taking.' }
   ]);
   const [input, setInput] = useState('');
+  const [attachment, setAttachment] = useState(null);
   const [loading, setLoading] = useState(false);
   const bottomRef = useRef(null);
+  const fileRef = useRef(null);
 
   useEffect(() => {
     if (bottomRef.current) bottomRef.current.scrollIntoView({ behavior: 'smooth' });
@@ -38,11 +62,59 @@ function ChatUI({ trades, inputRef, onClose }) {
     if (inputRef?.current) inputRef.current.focus();
   }, []);
 
+  const buildAttachmentContent = async (file) => {
+    if (!file) return { blocks: [], note: '' };
+
+    const fileInfo = `Attached file: ${file.name} (${file.type || 'unknown type'}, ${Math.round(file.size / 1024)} KB)`;
+
+    if (file.type.startsWith('image/')) {
+      const dataUrl = await fileToDataUrl(file);
+      const base64 = String(dataUrl).split(',')[1];
+      return {
+        blocks: [
+          {
+            type: 'image',
+            source: {
+              type: 'base64',
+              media_type: file.type,
+              data: base64,
+            },
+          },
+        ],
+        note: `${fileInfo}\nPlease analyze the attached image along with my question.`,
+      };
+    }
+
+    if (isTextFile(file)) {
+      const content = await fileToText(file);
+      return {
+        blocks: [],
+        note: `${fileInfo}\n\nFile contents:\n${String(content).slice(0, 20000)}`,
+      };
+    }
+
+    return {
+      blocks: [],
+      note: `${fileInfo}\nThis file type cannot be read directly in the browser chat. Use the filename and my question as context, and ask me for details if needed.`,
+    };
+  };
+
   const send = async () => {
     const text = input.trim();
-    if (!text || loading) return;
+    if ((!text && !attachment) || loading) return;
     setInput('');
-    const userMsg = { role: 'user', content: text };
+    const currentAttachment = attachment;
+    setAttachment(null);
+
+    const { blocks, note } = await buildAttachmentContent(currentAttachment);
+    const messageText = [text || 'Please review this attachment.', note].filter(Boolean).join('\n\n');
+    const userContent = [{ type: 'text', text: messageText }, ...blocks];
+    const userMsg = {
+      role: 'user',
+      content: userContent,
+      displayContent: text || 'Please review this attachment.',
+      attachmentName: currentAttachment?.name || null,
+    };
     setMessages(prev => [...prev, userMsg]);
     setLoading(true);
 
@@ -63,8 +135,8 @@ function ChatUI({ trades, inputRef, onClose }) {
           max_tokens: 1000,
           system: systemWithData,
           messages: [
-            ...messages.filter(m => m.role !== 'system').slice(-10),
-            userMsg
+            ...messages.filter(m => m.role !== 'system').slice(-10).map(({ role, content }) => ({ role, content })),
+            { role: userMsg.role, content: userMsg.content }
           ]
         })
       });
@@ -79,6 +151,13 @@ function ChatUI({ trades, inputRef, onClose }) {
       setMessages(prev => [...prev, { role: 'assistant', content: 'Connection error. Check your API key in Vercel environment variables.' }]);
     }
     setLoading(false);
+  };
+
+  const chooseFile = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setAttachment(file);
+    e.target.value = '';
   };
 
   const handleKey = (e) => {
@@ -98,7 +177,12 @@ function ChatUI({ trades, inputRef, onClose }) {
       <div className="ai-messages" style={{ flex: 1, maxHeight: 'none' }}>
         {messages.map((m, i) => (
           <div key={i} className={`ai-msg ${m.role}`}>
-            <div className="ai-msg-content">{m.content}</div>
+            <div className="ai-msg-content">
+              {m.displayContent || (typeof m.content === 'string' ? m.content : m.content?.find?.(b => b.type === 'text')?.text || '')}
+              {m.attachmentName && (
+                <div style={{ marginTop: 6, fontSize: 12, opacity: 0.75 }}>Attachment: {m.attachmentName}</div>
+              )}
+            </div>
           </div>
         ))}
         {loading && (
@@ -119,7 +203,24 @@ function ChatUI({ trades, inputRef, onClose }) {
         </div>
       )}
 
+      {attachment && (
+        <div style={{ padding: '8px 12px', borderTop: '0.5px solid #2a2a2a', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: 12, color: '#ccc', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+            Attached: {attachment.name}
+          </span>
+          <button onClick={() => setAttachment(null)} style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer', fontSize: 14 }}>Remove</button>
+        </div>
+      )}
+
       <div className="ai-input-row">
+        <input ref={fileRef} type="file" onChange={chooseFile} style={{ display: 'none' }} />
+        <button
+          onClick={() => fileRef.current?.click()}
+          title="Attach image or file"
+          style={{ width: 36, height: 36, borderRadius: 8, background: '#111', border: '0.5px solid #333', color: '#ccc', cursor: 'pointer', flexShrink: 0 }}
+        >
+          +
+        </button>
         <textarea
           ref={inputRef}
           className="ai-input"
@@ -129,7 +230,7 @@ function ChatUI({ trades, inputRef, onClose }) {
           placeholder="Ask about your trades..."
           rows={2}
         />
-        <button className="ai-send" onClick={send} disabled={loading || !input.trim()}>
+        <button className="ai-send" onClick={send} disabled={loading || (!input.trim() && !attachment)}>
           {loading ? '...' : '↑'}
         </button>
       </div>
