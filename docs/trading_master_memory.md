@@ -1,5 +1,5 @@
 # Trading Master Memory File
-*Last updated: May 9, 2026*
+*Last updated: May 10, 2026*
 
 ---
 
@@ -8,6 +8,7 @@
 - MNQ (Micro Nasdaq Futures)
 - Multiple accounts: A1, A2
 - **Trading 1 contract, sometimes 2 — partial profit NOT possible**
+- App supports any instrument via custom symbol + multiplier field
 
 ---
 
@@ -15,8 +16,7 @@
 
 ### Entry
 - Wait for AL trendline to fully break/cross — never anticipate
-- At least ONE side (AL or SL) must have 4 touches minimum
-- If neither AL nor SL has 4 touches → SKIP the trade
+- At least ONE side (AL or SL) must have 3+ touches minimum
 - Same-day touch does NOT count toward touch total
 
 ### Stop Loss
@@ -29,7 +29,6 @@
 ### Target
 - Target is ALWAYS the next major S/R level (W/M/4 levels) or HTF trendline confluence
 - Must be able to name the specific level before entering — no arbitrary numbers
-- If you cannot name the level your target is sitting at → target is wrong, find the right level
 - Key MGC levels: W($4900), 4($4642.1), W($4600), M($4600), M($4400)
 
 ### Intraday SL Management (Discretionary)
@@ -37,7 +36,6 @@
 - Read: candle pattern + time spent at level + rejection signal
 - If price crosses SL but shows rejection candle → can hold, may be fake-out
 - If price crosses SL and keeps moving aggressively → real break, exit immediately
-- **This is a skill, not a flaw — but must be disciplined**
 
 ### Overnight Hold Rules
 - Hard stop at SL — no changes, no discretion
@@ -51,7 +49,6 @@
 
 ### Action Line (AL)
 - The trendline that price must CROSS/BREAK to trigger entry
-- Can be ascending or descending
 - AL break = entry signal
 
 ### Safety Line (SL)
@@ -69,9 +66,6 @@
 
 ### ⚠️ TERTIARY SL CROSS = EXIT SIGNAL
 **When price closes a 1-hour candle through the Tertiary SL while in a trade → EXIT IMMEDIATELY**
-- Do not wait for Primary/Secondary SL
-- Tertiary cross is early warning — if you ignore it you will get stopped at full loss
-- This is what happened on Trades 91 & 92 (May 1, 2026) — price crossed Tertiary SL, ignored, then hit Primary SL for full –$560 after being up +$1,000
 
 ### Grading System
 | Grade | AL | SL |
@@ -89,108 +83,71 @@
 
 ---
 
+## STRATEGY DEFINITIONS (AL/SL Combination Based)
+
+Four strategies defined by AL/SL touch count and age. Auto-assigned by the app.
+
+**Assignment logic:**
+- AL strong = `al_touches >= 3` AND `al_age === '1wk+'`
+- SL strong = `sl_touches >= 3` AND `sl_age === '1wk+'`
+
+| Strategy ID | Icon | Name | AL | SL | Color |
+|---|---|---|---|---|---|
+| `strat-aplus-prime` | ⭐ | A+ Prime | Strong | Strong | Green |
+| `strat-strong-al-weak-sl` | 📈 | Strong AL / Weak SL | Strong | Weak | Blue |
+| `strat-weak-al-strong-sl` | 🛡️ | Weak AL / Strong SL | Weak | Strong | Amber |
+| `strat-both-weak` | ⚠️ | Both Weak | Weak | Weak | Red |
+
+**Historical performance:**
+| Strategy | Result |
+|---|---|
+| A+ Prime (3+t 1wk+ both sides) | +$3,311 · 88% WR ✅ |
+| Strong AL / Weak SL | +$1,090–$1,173 ✅ |
+| Weak AL / Strong SL | +$959 ✅ |
+| Both Weak | –$228 to –$1,136 ❌ |
+
+---
+
 ## CRITICAL RULES
 
 ### Entry Rules
 1. Wait for AL to fully break/cross before entering — never anticipate
-2. At least ONE side (AL or SL) must have 4 touches minimum
-3. If neither AL nor SL has 4 touches → SKIP the trade
-4. Same-day touch does NOT count toward touch count
-5. If the confirming touch happened today → downgrade that line's strength
-6. **LONG trades require A+ grade minimum — longs are net –$1,736 all-time, never take A- or A longs**
-7. **No trades on Thursday unless A+ grade — Thursday is only losing day (–$1,210)**
-8. **After any loss → mandatory 30-minute break before next entry — no exceptions**
-9. **Best trading window is 09:00–13:00 EST (+$2,886) — prioritize this window**
+2. At least ONE side (AL or SL) must have 3+ touches minimum
+3. Same-day touch does NOT count toward touch count
+4. If the confirming touch happened today → downgrade that line's strength
+5. **LONG trades require A+ grade minimum — longs are net –$1,736 all-time**
+6. **No trades on Thursday unless A+ grade — Thursday is only losing day (–$1,210)**
+7. **After any loss → mandatory 30-minute break before next entry**
+8. **Best trading window is 09:00–13:00 EST (+$2,886)**
 
-### Exit Rules (NEW — May 1, 2026)
+### Exit Rules
 1. **Tertiary SL cross on 1-hour close → EXIT. No exceptions.**
 2. **Aggressive move through Primary/Secondary SL → EXIT. Don't wait for candle close.**
 3. **Slow/rejected move through SL → can hold, watch next candle**
 4. Target must be a named level — W/M/4 or HTF trendline confluence
 5. Cannot do partial profit (1 contract) — stop management is the ONLY tool
 
-### Apex Compression Rule
-- If 3+ trendlines are converging → SKIP, wait for break
-- Trade the direction of the break after apex resolves
-
 ### Session Rules
 | Session | Window | Rule |
 |---|---|---|
 | Pre-open / Morning | 07:00–15:00 EST | ✅ Best entries |
-| Late session dead zone | 15:00–19:00 EST | ❌ No new entries, consider closing |
+| Late session dead zone | 15:00–19:00 EST | ❌ No new entries |
 | Overnight carry | 19:00–23:00 EST | ✅ Valid hold window |
-| Dead zone | 23:00–07:00 EST | ❌ No entries, avoid holding |
-
----
-
-## WHAT TO AVOID — FROM TRADE ANALYSIS
-
-### AL Combinations to Avoid
-| AL | SL | Result |
-|---|---|---|
-| 2 touches | 2 touches | –$1,136 (27 trades, 30% WR) ❌ |
-| 3 touches | 2 touches | –$782 (7 trades, 43% WR) ❌ |
-| 3 touches | 3 touches | –$228 (10 trades, 50% WR) ❌ |
-
-### The Winning Combinations
-| AL | SL | Result |
-|---|---|---|
-| 4 touches + 1wk+ | 4 touches + 1wk+ | +$3,311 (88% WR) ✅ |
-| 4 touches | 3 touches | +$1,173 (100% WR) ✅ |
-| 4 touches | 2 touches | +$1,090 (75% WR) ✅ |
-| 2 touches | 4 touches | +$959 (100% WR) ✅ |
-
-### Key Insight
-**At least one side must have 4 touches. No exceptions.**
+| Dead zone | 23:00–07:00 EST | ❌ No entries |
 
 ---
 
 ## BIGGEST BEHAVIORAL MISTAKES
 
-### 1. Ignoring Tertiary SL Cross (NEW)
-- Trades 91 & 92: price crossed Tertiary SL, held, then hit Primary SL
-- Went from +$1,000 to –$560 — a $1,560 swing
-- **Rule: Tertiary SL 1-hour close = exit immediately**
-
-### 2. Closing Winners Too Early
-- Multiple trades hit target AFTER manual early exit
-- Fear, slow price, news = bad reasons to exit
-- **Rule: Let target work unless SL cross rule triggers or session rule triggers**
-
-### 3. Taking A- Trades with Weak SL
-- A- + Weak SL = –$1,001 across 35 trades, only +$7/trade avg in April
-- **Rule: Never take A- with Weak SL**
-
-### 4. Same-Day SL Touch
-- Trades 73 and 84 both failed because confirming touch was same day
-- **Rule: Last touch must be at least 1 day old**
-
-### 5. Removing Stop Completely
-- Trade 84: removed stop = large loss
-- **Rule: Never remove stop. Use discretion at the level but keep stop in platform**
-
-### 7. Trading Longs (NEW — May 1, 2026)
-- All-time: longs are net –$1,736, shorts are net +$4,820
-- You are a short trader — your edge is on the short side
-- **Rule: Only take longs at A+ grade. Never A or A- longs.**
-
-### 8. Revenge Trading After a Loss (NEW — May 1, 2026)
-- 44 trades taken after a loss: 39% WR, –$1,052 combined
-- 24 out of 44 revenge trades were A- grade — standards drop after loss
-- 7 consecutive losses in March cost –$2,443 — all driven by revenge cycle
-- **Rule: Mandatory 30-minute break after any loss. No exceptions.**
-
-### 9. Trading on Thursday (NEW — May 1, 2026)
-- Thursday: 18 trades, 44% WR, –$1,210 — only losing day of the week
-- Likely driven by Thursday news events (jobless claims, Fed speakers)
-- **Rule: No trades on Thursday unless A+ grade setup**
-
-### 10. Trading Outside 09:00–15:00 Window (NEW — May 1, 2026)
-- Late session 15:00–19:00: 11 trades, 27% WR, –$944
-- Dead zone 23:00–07:00: 2 trades, 0% WR, –$490
-- Combined outside-window losses: –$1,434 (more than entire April profit)
-- Best window 09:00–13:00: +$2,886 combined
-- **Rule: No new entries after 15:00 EST. Stick to 09:00–13:00 as primary window.**
+1. **Ignoring Tertiary SL Cross** — Trades 91 & 92: +$1,000 → –$560 swing
+2. **Closing Winners Too Early** — Let target work unless SL cross or session rule
+3. **Taking A- with Weak SL** — –$1,001 across 35 trades
+4. **Same-Day SL Touch** — Last touch must be at least 1 day old
+5. **Removing Stop Completely** — Trade 84, never again
+6. **Trading Longs** — Net –$1,736 all-time; only at A+ grade
+7. **Revenge Trading** — 44 trades: 39% WR, –$1,052; mandatory 30-min break after loss
+8. **Trading Thursday** — 18 trades, 44% WR, –$1,210; A+ only
+9. **Outside 09:00–15:00** — Late session + dead zone combined: –$1,434
 
 ---
 
@@ -204,18 +161,6 @@
 | Win rate | 50% |
 | Avg win | +$312 |
 | Avg loss | –$272 |
-
-### April 2026 (38 closed trades)
-| Metric | Value |
-|---|---|
-| Total trades | 38 |
-| P&L | +$1,391 |
-| Win rate | 53% |
-| Best week | Mar 30 (+$1,261, 90% WR) |
-| Worst week | Apr 6 (–$1,014, 22% WR) |
-| A+ trades | 1 trade, 100% WR, +$272 |
-| A trades | 18 trades, 61% WR, +$984 |
-| A- trades | 19 trades, 42% WR, +$136 |
 
 ### Direction Bias (All-time)
 | Direction | Trades | WR | P&L |
@@ -246,32 +191,24 @@
 ---
 
 ## ACTIVE TRADES LOG
-
-*No active trades as of May 9, 2026. Trades 91 & 92 have been closed — log when confirmed.*
+*No active trades as of May 10, 2026.*
 
 ---
 
 ## KEY LEVELS — MGC
 - W($4900) — Weekly resistance ceiling
-- 4($4642.1) — Key intermediate level (strong magnetic level)
+- 4($4642.1) — Key intermediate level
 - W($4600) — Weekly support floor
 - M($4600) — Monthly support (converges with HTF green ascending line)
 - M($4400) — Deep monthly support
 
 ---
 
-## CHART READING NOTES (May 1, 2026)
-- Red descending trendline = AL resistance
-- Green ascending HTF trendline = profit target zone (converging at 4590–4600)
-- When short: green line is TARGET, red line rejection above = confirmation trade still valid
-- Tertiary SL is the early warning line — cross on 1hr close = exit
-
----
-
 ## NOTES FOR NEXT SESSION
-- Update active trades log once Trades 91 & 92 are confirmed closed
-- Continue logging all new trades into the web app at trendline-trades.vercel.app
-- Progress section: calendar view + Weekly/Monthly toggle + P&L labels on bars
+- All 93 trades auto-assigned to strategies via ⚡ Auto-assign on Strategies page
+- `strategy_id` column added to Supabase `trades` table (SQL: `ALTER TABLE trades ADD COLUMN IF NOT EXISTS strategy_id text;`)
+- New trades require strategy selection before logging
+- Continue logging all trades at trendline-trades.vercel.app
 
 ---
 
@@ -281,17 +218,27 @@
 | Apr 2026 | Initial app built — trade log, Supabase backend, login |
 | May 1, 2026 | Added AL/SL tier tracking (Primary/Secondary/Tertiary) |
 | May 1, 2026 | Added weekly/monthly progress chart with Chart.js |
-| May 1, 2026 | Progress chart tooltips show trade count, WR%, W/L on hover |
-| May 1, 2026 | Summary cards show trades breakdown (e.g. 38 trades, 20W/18L) |
-| May 2, 2026 | Made Progress section collapsible |
-| May 2, 2026 | Made Key Levels & Pre-Trade Check section collapsible |
+| May 2, 2026 | Made Progress + Key Levels sections collapsible |
 | May 2, 2026 | Added pagination to trade table — 25 trades per page |
-| May 4, 2026 | Key Levels panel — MGC/MNQ toggle tabs to filter levels by symbol |
-| May 4, 2026 | Key Levels panel — Clear button added to Pre-Trade Check |
-| May 4, 2026 | Fixed blank screen bug in Key Levels panel (missing lvlSymbol state) |
-| May 9, 2026 | Replaced bar/line Progress chart with calendar view (month nav, daily P&L, win rate, trade count per day, weekly summaries) |
-| May 9, 2026 | Added daily net cumulative P&L line chart inside Progress section |
-| May 9, 2026 | Added net daily P&L bar chart inside Progress section (green/red per day) |
-| May 9, 2026 | Pre-Trade Check — improved key level logic to recommend specific target prices |
-| May 9, 2026 | Added Weekly/Monthly toggle to both P&L charts |
-| May 9, 2026 | P&L values now shown as inline labels on daily bar chart bars (green above positive, red below negative) |
+| May 4, 2026 | Key Levels panel — symbol tabs, clear button |
+| May 9, 2026 | **Major rewrite — multi-page app v2** |
+| May 9, 2026 | Sidebar navigation: Dashboard, Reports, Trade View, Strategies |
+| May 9, 2026 | Global date range picker (dual-month calendar + presets) + Account filter |
+| May 9, 2026 | Dashboard — stats, insight cards, progress calendar (default expanded) |
+| May 9, 2026 | Reports — Overview tab: cumulative + daily P&L charts, daily/weekly/monthly toggle |
+| May 9, 2026 | Reports — By Strategy tab: comparison table, win rate chart, P&L chart, donut, long/short breakdown |
+| May 9, 2026 | Trade View — full trade table showing ALL trades (not date filtered), strategy filter pills |
+| May 9, 2026 | Trade View — Key Levels & Pre-Trade Check moved here |
+| May 9, 2026 | Strategies page — 4 AL/SL strategies pre-built, ⚡ Auto-assign all trades button |
+| May 9, 2026 | Strategies page — bulk trade assignment panel with manual assign/unassign |
+| May 9, 2026 | Strategy field mandatory on trade form — cannot log without selecting strategy |
+| May 9, 2026 | ⚠️ No Strategy badge + warning banner on trades without strategy |
+| May 9, 2026 | Added `strategy_id` column to Supabase trades table |
+| May 9, 2026 | AI Chat floating button — 🤖 green with shadow, embedded mode inside panel |
+| May 9, 2026 | Progress calendar — default expanded, shows on Dashboard |
+| May 9, 2026 | P&L values shown as inline labels on daily bar chart |
+| May 9, 2026 | Weekly/Monthly toggle on P&L charts |
+| May 10, 2026 | Sidebar nav — font-size 14px, font-weight 500, brighter color |
+| May 10, 2026 | Dashboard stat cards — values font-size 22px, font-weight 600 |
+| May 10, 2026 | Reports metric cards — values font-size 17px, font-weight 600, uppercase labels |
+| May 10, 2026 | Reports section titles — font-weight 600 |
