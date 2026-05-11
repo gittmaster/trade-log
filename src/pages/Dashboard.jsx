@@ -6,7 +6,7 @@ const MONTH_NAMES = ['January','February','March','April','May','June','July','A
 function StatCard({ label, value, color }) {
   return (
     <div style={{ background: '#111', border: '1px solid #222', borderRadius: 8, padding: '10px 14px' }}>
-      <div style={{ fontSize: 11, color: '#555', marginBottom: 3 }}>{label}</div>
+      <div style={{ fontSize: 11, color: '#fff', marginBottom: 3 }}>{label}</div>
       <div style={{ fontSize: 16, fontWeight: 500, color: color || '#ccc' }}>{value}</div>
     </div>
   );
@@ -15,7 +15,7 @@ function StatCard({ label, value, color }) {
 function InsightCard({ title, data }) {
   return (
     <div style={{ background: '#111', border: '1px solid #222', borderRadius: 8, padding: '12px 14px' }}>
-      <div style={{ fontSize: 11, color: '#555', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{title}</div>
+      <div style={{ fontSize: 11, color: '#fff', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{title}</div>
       {data.map((row, i) => (
         <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: i < data.length - 1 ? 6 : 0 }}>
           <span style={{ fontSize: 12, color: '#888' }}>{row.label}</span>
@@ -39,17 +39,17 @@ function TierInsightCard({ trades }) {
   const slData = tierData('sl_tier');
   if (!alData.length && !slData.length) return (
     <div style={{ background: '#111', border: '1px solid #222', borderRadius: 8, padding: '12px 14px', gridColumn: 'span 2' }}>
-      <div style={{ fontSize: 11, color: '#555', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>By Tier (AL / SL)</div>
+      <div style={{ fontSize: 11, color: '#fff', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>By Tier (AL / SL)</div>
       <div style={{ fontSize: 12, color: '#444' }}>No tier data yet</div>
     </div>
   );
   return (
     <div style={{ background: '#111', border: '1px solid #222', borderRadius: 8, padding: '12px 14px', gridColumn: 'span 2' }}>
-      <div style={{ fontSize: 11, color: '#555', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>By Tier (AL / SL)</div>
+      <div style={{ fontSize: 11, color: '#fff', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>By Tier (AL / SL)</div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 20px' }}>
         {[['Action Line', alData], ['Safety Line', slData]].map(([title, data]) => (
           <div key={title}>
-            <div style={{ fontSize: 10, color: '#555', marginBottom: 4 }}>{title}</div>
+            <div style={{ fontSize: 10, color: '#fff', marginBottom: 4 }}>{title}</div>
             {data.map((row, i) => (
               <div key={i} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
                 <span style={{ fontSize: 12, color: '#888', display: 'flex', alignItems: 'center', gap: 5 }}>
