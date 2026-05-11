@@ -145,22 +145,13 @@ tr:hover td { background: #1e1e1e; }
 html, body, #root { height: 100%; margin: 0; padding: 0; }
 
 /* Global readability boost across every page */
-.main-content :is(div, span, button, label, input, textarea, select, td, th, p),
-.sidebar-nav :is(div, span, button, label, input, textarea, select, td, th, p),
-.global-filter-bar :is(div, span, button, label, input, textarea, select, td, th, p) {
+#root :is(div, span, button, label, input, textarea, select, td, th, p, a, i) {
   font-size: max(14px, 1em) !important;
   font-weight: 700 !important;
-}
-
-.main-content :is(div, span, button, label, input, textarea, select, td, th, p):not([style*="#1D9E75"]):not([style*="#E24B4A"]):not([style*="#185FA5"]):not([style*="#BA7517"]),
-.sidebar-nav :is(div, span, button, label, input, textarea, select, td, th, p):not([style*="#1D9E75"]):not([style*="#E24B4A"]):not([style*="#185FA5"]):not([style*="#BA7517"]),
-.global-filter-bar :is(div, span, button, label, input, textarea, select, td, th, p):not([style*="#1D9E75"]):not([style*="#E24B4A"]):not([style*="#185FA5"]):not([style*="#BA7517"]) {
   color: #fff !important;
 }
 
-.main-content :is(h1, h2, h3, h4),
-.sidebar-nav :is(h1, h2, h3, h4),
-.global-filter-bar :is(h1, h2, h3, h4) {
+#root :is(h1, h2, h3, h4) {
   font-weight: 700 !important;
   color: #fff !important;
 }
