@@ -292,7 +292,7 @@ export default function Reports({ filteredTrades, dateLabel, acctLabel, strategi
 
   const card = (label, value, color) => (
     <div style={{ background: '#111', border: '1px solid #222', borderRadius: 8, padding: '10px 14px' }}>
-      <div style={{ fontSize: 11, color: '#666', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 500 }}>{label}</div>
+      <div style={{ fontSize: 14, color: '#fff', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>{label}</div>
       <div style={{ fontSize: 17, fontWeight: 600, color: color || '#ccc' }}>{value}</div>
     </div>
   );
