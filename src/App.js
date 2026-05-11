@@ -197,10 +197,12 @@ export default function App() {
           <div key={item.id} onClick={() => setPage(item.id)} style={{
             display: 'flex', alignItems: 'center', gap: 10,
             padding: '9px 16px', cursor: 'pointer', fontSize: 13,
-            color: page === item.id ? '#185FA5' : '#666',
+            color: page === item.id ? '#185FA5' : '#888',
             background: page === item.id ? '#185FA511' : 'transparent',
             borderRight: page === item.id ? '2px solid #185FA5' : '2px solid transparent',
             transition: 'all 0.12s',
+            fontWeight: 500,
+            fontSize: 14,
           }}
             onMouseEnter={e => { if (page !== item.id) e.currentTarget.style.color = '#aaa'; }}
             onMouseLeave={e => { if (page !== item.id) e.currentTarget.style.color = '#666'; }}
@@ -215,9 +217,11 @@ export default function App() {
         <div onClick={() => setChatOpen(o => !o)} style={{
           display: 'flex', alignItems: 'center', gap: 10,
           padding: '9px 16px', cursor: 'pointer', fontSize: 13,
-          color: chatOpen ? '#185FA5' : '#666',
+          color: chatOpen ? '#185FA5' : '#888',
           background: chatOpen ? '#185FA511' : 'transparent',
           transition: 'all 0.12s',
+          fontWeight: 500,
+          fontSize: 14,
         }}
           onMouseEnter={e => { if (!chatOpen) e.currentTarget.style.color = '#aaa'; }}
           onMouseLeave={e => { if (!chatOpen) e.currentTarget.style.color = chatOpen ? '#185FA5' : '#666'; }}

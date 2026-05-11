@@ -71,7 +71,7 @@ function ProgressCalendar({ trades, dateRange }) {
   const now = new Date();
   const [calYear, setCalYear] = useState(dateRange.start.getFullYear());
   const [calMonth, setCalMonth] = useState(dateRange.start.getMonth());
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(true);
 
   const changeMonth = (dir) => {
     setCalMonth(m => {
