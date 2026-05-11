@@ -144,16 +144,6 @@ tr:hover td { background: #1e1e1e; }
 /* ─── Multi-page layout v2 ─────────────────────────────────────────────────── */
 html, body, #root { height: 100%; margin: 0; padding: 0; }
 
-/* Global readability boost across every page */
-#root :is(div, span, button, label, input, textarea, select, td, th, p, a, i) {
-  font-size: max(14px, 1em) !important;
-  color: #fff !important;
-}
-
-#root :is(h1, h2, h3, h4) {
-  color: #fff !important;
-}
-
 /* Sidebar nav */
 .sidebar-nav { width: 200px; min-width: 200px; height: 100vh; background: #111; border-right: 1px solid #222; display: flex; flex-direction: column; position: fixed; left: 0; top: 0; z-index: 50; }
 .sidebar-logo { padding: 16px; border-bottom: 1px solid #222; }
