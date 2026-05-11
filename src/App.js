@@ -92,6 +92,7 @@ export default function App() {
   const [account, setAccount] = useState('both');
   const [dateRange, setDateRange] = useState(getDefaultDateRange());
   const [chatOpen, setChatOpen] = useState(false);
+  const [chatMaximized, setChatMaximized] = useState(false);
 
   const loadTrades = useCallback(async () => {
     const { data, error } = await supabase
@@ -296,18 +297,31 @@ export default function App() {
       {/* ── Floating AI Chat panel ── */}
       {chatOpen && (
         <div style={{
-          position: 'fixed', bottom: 80, right: 20, width: 380, height: 520,
+          position: 'fixed',
+          bottom: chatMaximized ? 24 : 80,
+          right: chatMaximized ? 24 : 20,
+          width: chatMaximized ? 'calc(100vw - 48px)' : 380,
+          height: chatMaximized ? 'calc(100vh - 48px)' : 520,
+          maxWidth: chatMaximized ? 'none' : 'calc(100vw - 40px)',
+          maxHeight: chatMaximized ? 'none' : 'calc(100vh - 120px)',
           background: '#111', border: '1px solid #222', borderRadius: 12,
           zIndex: 1000, display: 'flex', flexDirection: 'column', overflow: 'hidden',
+          transition: 'all 0.18s ease',
         }}>
           <div style={{
             padding: '12px 16px', borderBottom: '1px solid #222',
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           }}>
             <span style={{ fontSize: 14, fontWeight: 600, color: '#ccc' }}>AI Chat</span>
-            <button onClick={() => setChatOpen(false)} style={{
-              background: 'none', border: 'none', color: '#666', fontSize: 20, cursor: 'pointer',
-            }}>×</button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <button onClick={() => setChatMaximized(m => !m)} title={chatMaximized ? 'Restore' : 'Maximize'} style={{
+                background: 'none', border: 'none', color: '#888', fontSize: 18, cursor: 'pointer',
+                width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>{chatMaximized ? 'Min' : 'Max'}</button>
+              <button onClick={() => { setChatOpen(false); setChatMaximized(false); }} style={{
+                background: 'none', border: 'none', color: '#666', fontSize: 20, cursor: 'pointer',
+              }}>×</button>
+            </div>
           </div>
           <div style={{ flex: 1, overflow: 'hidden' }}>
             <AIChat trades={trades} embedded={true} />
