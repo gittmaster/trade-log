@@ -192,40 +192,40 @@ export default function App() {
           <div style={{ fontSize: 11, color: '#444', marginTop: 2 }}>Trendline Break Strategy</div>
         </div>
 
-        <div style={{ fontSize: 10, color: '#333', padding: '8px 16px 4px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Main</div>
+        <div style={{ fontSize: 10, color: '#fff', padding: '8px 16px 4px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Main</div>
 
         {navItems.map(item => (
           <div key={item.id} onClick={() => setPage(item.id)} style={{
             display: 'flex', alignItems: 'center', gap: 10,
             padding: '9px 16px', cursor: 'pointer', fontSize: 13,
-            color: page === item.id ? '#185FA5' : '#888',
+            color: '#fff',
             background: page === item.id ? '#185FA511' : 'transparent',
             borderRight: page === item.id ? '2px solid #185FA5' : '2px solid transparent',
             transition: 'all 0.12s',
             fontWeight: 500,
             fontSize: 14,
           }}
-            onMouseEnter={e => { if (page !== item.id) e.currentTarget.style.color = '#aaa'; }}
-            onMouseLeave={e => { if (page !== item.id) e.currentTarget.style.color = '#666'; }}
+            onMouseEnter={e => { e.currentTarget.style.color = '#fff'; }}
+            onMouseLeave={e => { e.currentTarget.style.color = '#fff'; }}
           >
             <i className={`ti ${item.icon}`} style={{ fontSize: 16 }} />
             {item.label}
           </div>
         ))}
 
-        <div style={{ fontSize: 10, color: '#333', padding: '10px 16px 4px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Tools</div>
+        <div style={{ fontSize: 10, color: '#fff', padding: '10px 16px 4px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Tools</div>
 
         <div onClick={() => setChatOpen(o => !o)} style={{
           display: 'flex', alignItems: 'center', gap: 10,
           padding: '9px 16px', cursor: 'pointer', fontSize: 13,
-          color: chatOpen ? '#185FA5' : '#888',
+          color: '#fff',
           background: chatOpen ? '#185FA511' : 'transparent',
           transition: 'all 0.12s',
           fontWeight: 500,
           fontSize: 14,
         }}
-          onMouseEnter={e => { if (!chatOpen) e.currentTarget.style.color = '#aaa'; }}
-          onMouseLeave={e => { if (!chatOpen) e.currentTarget.style.color = chatOpen ? '#185FA5' : '#666'; }}
+          onMouseEnter={e => { e.currentTarget.style.color = '#fff'; }}
+          onMouseLeave={e => { e.currentTarget.style.color = '#fff'; }}
         >
           <i className="ti ti-message" style={{ fontSize: 16 }} />
           AI Chat
