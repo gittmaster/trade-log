@@ -52,7 +52,7 @@ function TradeForm({ form, setForm, onSubmit, onCancel, uploading, isEdit, strat
 
       {/* Strategy — required, shown first */}
       <div id="strategy-field" className="field" style={{ marginBottom: 16 }}>
-        <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#fff', fontWeight: 700 }}>
           Strategy
           <span style={{ fontSize: 11, color: '#E24B4A', fontWeight: 500 }}>* required</span>
         </label>
@@ -63,8 +63,8 @@ function TradeForm({ form, setForm, onSubmit, onCancel, uploading, isEdit, strat
                 padding: '6px 14px', borderRadius: 8, fontSize: 13, cursor: 'pointer',
                 border: `1.5px solid ${form.strategy_id === s.id ? (s.color || '#185FA5') : stratError ? '#E24B4A55' : '#2a2a2a'}`,
                 background: form.strategy_id === s.id ? (s.color || '#185FA5') + '22' : stratError ? '#E24B4A08' : 'transparent',
-                color: form.strategy_id === s.id ? (s.color || '#185FA5') : stratError ? '#E24B4A88' : '#888',
-                fontWeight: form.strategy_id === s.id ? 500 : 400,
+                color: '#fff',
+                fontWeight: 700,
               }}>
                 {s.icon} {s.name}
               </button>
