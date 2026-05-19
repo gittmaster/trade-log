@@ -320,8 +320,8 @@ export default function Reports({ filteredTrades, dateLabel, acctLabel, strategi
       {tab === 'overview' && (<>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, marginBottom: 20 }}>
           {card('Net P&L', (netPnl >= 0 ? '+$' : '-$') + Math.abs(netPnl).toLocaleString(), netPnl >= 0 ? '#1D9E75' : '#E24B4A')}
-          {card('Avg win week', avgWinWeek > 0 ? '+$' + avgWinWeek : '—', '#1D9E75')}
-          {card('Avg loss week', avgLossWeek < 0 ? '-$' + Math.abs(avgLossWeek) : '—', '#E24B4A')}
+          {card('Avg win week', winWeeks.length ? '+$' + avgWinWeek : '—', '#1D9E75')}
+          {card('Avg loss week', lossWeeks.length ? '-$' + Math.abs(avgLossWeek) : '—', '#E24B4A')}
           {card('Win / loss weeks', `${winWeeks.length}W · ${lossWeeks.length}L`, winWeeks.length >= lossWeeks.length ? '#1D9E75' : '#E24B4A')}
         </div>
 
@@ -332,8 +332,8 @@ export default function Reports({ filteredTrades, dateLabel, acctLabel, strategi
             {toggleBtn('monthly', 'Monthly')}
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
-            {card('Best week', `${fmtWk(bestWeekKey)} ${bestWeekVal > 0 ? '+$' + bestWeekVal : '—'}`, '#1D9E75')}
-            {card('Worst week', `${fmtWk(worstWeekKey)} ${worstWeekVal < 0 ? '-$' + Math.abs(worstWeekVal) : '—'}`, '#E24B4A')}
+            {card('Best week', bestWeekKey ? `${fmtWk(bestWeekKey)} ${bestWeekVal >= 0 ? '+$' : '-$'}${Math.abs(bestWeekVal)}` : '—', '#1D9E75')}
+            {card('Worst week', worstWeekKey ? `${fmtWk(worstWeekKey)} ${worstWeekVal >= 0 ? '+$' : '-$'}${Math.abs(worstWeekVal)}` : '—', '#E24B4A')}
           </div>
         </div>
 
