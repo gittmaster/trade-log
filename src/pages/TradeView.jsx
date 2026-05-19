@@ -416,7 +416,7 @@ function ManageLevels() {
 // ─── Trade View Page ──────────────────────────────────────────────────────────
 const PAGE_SIZE = 25;
 
-export default function TradeView({ trades, filteredTrades, safeStrategies, reloadTrades, setMsg }) {
+export default function TradeView({ trades, filteredTrades, strategies, reloadTrades, setMsg }) {
   const [activeFilter, setActiveFilter] = useState('all');
   const [sortCol, setSortCol] = useState('date');
   const [sortDir, setSortDir] = useState('desc');
