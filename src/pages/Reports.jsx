@@ -121,7 +121,7 @@ export default function Reports({ filteredTrades, dateLabel, acctLabel, strategi
     cumulInstance.current = new Chart(cCtx, {
       type: 'line',
       data: { labels, datasets: [{ data: cumulValues, borderColor: lastVal >= 0 ? '#1D9E75' : '#E24B4A', borderWidth: 2, pointRadius: 0, pointHoverRadius: 5, fill: true, backgroundColor: grad, tension: 0.3 }] },
-      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { backgroundColor: '#1a1a1a', borderColor: '#333', borderWidth: 1, titleColor: '#aaa', bodyColor: '#fff', callbacks: { label: ctx => ` ${ctx.raw >= 0 ? '+$' : '-$'}${Math.abs(ctx.raw).toLocaleString()}` } } }, scales: { x: { ticks: { color: '#555', font: { size: 11 }, maxTicksLimit: 10, maxRotation: 0 }, grid: { display: false }, border: { display: false } }, y: { ticks: { color: '#555', font: { size: 11 }, callback: v => (v >= 0 ? '+$' : '-$') + Math.abs(v).toLocaleString() }, grid: { color: 'rgba(255,255,255,0.05)' }, border: { display: false } } } }
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { backgroundColor: '#1a1a1a', borderColor: '#333', borderWidth: 1, titleColor: '#aaa', bodyColor: '#fff', callbacks: { label: ctx => ` ${ctx.raw >= 0 ? '+$' : '-$'}${Math.abs(ctx.raw).toLocaleString()}` } } }, scales: { x: { ticks: { color: '#aaa', font: { size: 11 }, maxTicksLimit: 10, maxRotation: 0 }, grid: { display: false }, border: { display: false } }, y: { ticks: { color: '#aaa', font: { size: 11 }, callback: v => (v >= 0 ? '+$' : '-$') + Math.abs(v).toLocaleString() }, grid: { color: 'rgba(255,255,255,0.05)' }, border: { display: false } } } }
     });
 
     const dCtx = dailyRef.current.getContext('2d');
@@ -131,7 +131,7 @@ export default function Reports({ filteredTrades, dateLabel, acctLabel, strategi
       options: {
         responsive: true, maintainAspectRatio: false, layout: { padding: { top: 24 } },
         plugins: { legend: { display: false }, tooltip: { enabled: false } },
-        scales: { x: { ticks: { color: '#555', font: { size: 11 }, maxTicksLimit: 10, maxRotation: 0 }, grid: { display: false }, border: { display: false } }, y: { ticks: { color: '#555', font: { size: 11 }, callback: v => (v >= 0 ? '+$' : '-$') + Math.abs(v).toLocaleString() }, grid: { color: 'rgba(255,255,255,0.05)' }, border: { display: false } } },
+        scales: { x: { ticks: { color: '#aaa', font: { size: 11 }, maxTicksLimit: 10, maxRotation: 0 }, grid: { display: false }, border: { display: false } }, y: { ticks: { color: '#aaa', font: { size: 11 }, callback: v => (v >= 0 ? '+$' : '-$') + Math.abs(v).toLocaleString() }, grid: { color: 'rgba(255,255,255,0.05)' }, border: { display: false } } },
         animation: { onComplete: function() {
           const chart = this; const ctx = chart.ctx; ctx.save(); ctx.font = '500 10px sans-serif'; ctx.textAlign = 'center';
           chart.data.datasets.forEach((ds, i) => {
@@ -176,7 +176,7 @@ export default function Reports({ filteredTrades, dateLabel, acctLabel, strategi
         indexAxis: 'y', responsive: true, maintainAspectRatio: false, layout: { padding: { right: 50 } },
         plugins: { legend: { display: false }, tooltip: { backgroundColor: '#1a1a1a', borderColor: '#333', borderWidth: 1, callbacks: { label: ctx => ` ${ctx.raw}% win rate · ${stratData[ctx.dataIndex].stats.trades} trades` } } },
         scales: {
-          x: { min: 0, max: 100, ticks: { color: '#555', font: { size: 11 }, callback: v => v + '%' }, grid: { color: 'rgba(255,255,255,0.05)' }, border: { display: false } },
+          x: { min: 0, max: 100, ticks: { color: '#aaa', font: { size: 11 }, callback: v => v + '%' }, grid: { color: 'rgba(255,255,255,0.05)' }, border: { display: false } },
           y: { ticks: { color: '#aaa', font: { size: 12 } }, grid: { display: false }, border: { display: false } }
         },
         animation: { onComplete: function() {
@@ -205,7 +205,7 @@ export default function Reports({ filteredTrades, dateLabel, acctLabel, strategi
         indexAxis: 'y', responsive: true, maintainAspectRatio: false, layout: { padding: { right: 80 } },
         plugins: { legend: { display: false }, tooltip: { backgroundColor: '#1a1a1a', borderColor: '#333', borderWidth: 1, callbacks: { label: ctx => ` ${ctx.raw >= 0 ? '+$' : '-$'}${Math.abs(ctx.raw).toLocaleString()}` } } },
         scales: {
-          x: { ticks: { color: '#555', font: { size: 11 }, callback: v => (v >= 0 ? '+$' : '-$') + Math.abs(v).toLocaleString() }, grid: { color: 'rgba(255,255,255,0.05)' }, border: { display: false } },
+          x: { ticks: { color: '#aaa', font: { size: 11 }, callback: v => (v >= 0 ? '+$' : '-$') + Math.abs(v).toLocaleString() }, grid: { color: 'rgba(255,255,255,0.05)' }, border: { display: false } },
           y: { ticks: { color: '#aaa', font: { size: 12 } }, grid: { display: false }, border: { display: false } }
         },
         animation: { onComplete: function() {
@@ -308,7 +308,7 @@ export default function Reports({ filteredTrades, dateLabel, acctLabel, strategi
 
 
   const toggleBtn = (v, label) => (
-    <button key={v} onClick={() => setChartView(v)} style={{ padding: '3px 14px', borderRadius: 6, fontSize: 12, fontWeight: 500, cursor: 'pointer', border: '1px solid', borderColor: chartView === v ? '#185FA5' : '#2a2a2a', background: chartView === v ? '#185FA522' : 'transparent', color: chartView === v ? '#185FA5' : '#666' }}>{label}</button>
+    <button key={v} onClick={() => setChartView(v)} style={{ padding: '3px 14px', borderRadius: 6, fontSize: 12, fontWeight: 500, cursor: 'pointer', border: '1px solid', borderColor: chartView === v ? '#185FA5' : '#2a2a2a', background: chartView === v ? '#185FA522' : 'transparent', color: chartView === v ? '#185FA5' : '#ccc', fontWeight: chartView === v ? 700 : 600 }}>{label}</button>
   );
 
   const card = (label, value, color) => (
@@ -328,7 +328,7 @@ export default function Reports({ filteredTrades, dateLabel, acctLabel, strategi
     <div style={{ padding: '16px 20px' }}>
       <div style={{ marginBottom: 16 }}>
         <div style={{ fontSize: 18, fontWeight: 500, color: '#ccc', marginBottom: 2 }}>Reports</div>
-        <div style={{ fontSize: 12, color: '#555' }}>{dateLabel} · {acctLabel}</div>
+        <div style={{ fontSize: 12, color: '#aaa' }}>{dateLabel} · {acctLabel}</div>
       </div>
 
       {/* Tab switcher */}
@@ -359,24 +359,24 @@ export default function Reports({ filteredTrades, dateLabel, acctLabel, strategi
         </div>
 
         {data.length === 0 ? (
-          <div style={{ padding: '40px 0', textAlign: 'center', color: '#444', fontSize: 13 }}>No closed trades in this period</div>
+          <div style={{ padding: '40px 0', textAlign: 'center', color: '#999', fontSize: 13 }}>No closed trades in this period</div>
         ) : (<>
           <div style={{ marginBottom: 24 }}>
-            <div style={{ fontSize: 12, color: '#555', marginBottom: 10, fontWeight: 500 }}>Cumulative P&L</div>
+            <div style={{ fontSize: 12, color: '#aaa', marginBottom: 10, fontWeight: 500 }}>Cumulative P&L</div>
             <div style={{ position: 'relative', width: '100%', height: 220 }}><canvas ref={cumulRef} /></div>
           </div>
           <div style={{ marginBottom: 28 }}>
-            <div style={{ fontSize: 12, color: '#555', marginBottom: 10, fontWeight: 500 }}>Net P&L per {chartView === 'daily' ? 'day' : chartView === 'weekly' ? 'week' : 'month'}</div>
+            <div style={{ fontSize: 12, color: '#aaa', marginBottom: 10, fontWeight: 500 }}>Net P&L per {chartView === 'daily' ? 'day' : chartView === 'weekly' ? 'week' : 'month'}</div>
             <div style={{ position: 'relative', width: '100%', height: 260 }}><canvas ref={dailyRef} /></div>
           </div>
         </>)}
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
           <div style={{ background: '#111', border: '1px solid #222', borderRadius: 8, padding: '14px 16px' }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: '#fff', marginBottom: 12 }}>By day of week</div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: '#fff', marginBottom: 12 }}>By day of week</div>
             {dayStats.map((d, i) => (
               <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-                <span style={{ fontSize: 12, color: '#666', width: 28 }}>{d.label}</span>
+                <span style={{ fontSize: 12, color: '#bbb', width: 28 }}>{d.label}</span>
                 <div style={{ flex: 1, height: 6, background: '#1a1a1a', borderRadius: 3, overflow: 'hidden' }}>
                   <div style={{ width: d.trades ? Math.max(d.wr, 4) + '%' : '0%', height: '100%', background: d.wr >= 50 ? '#1D9E75' : '#E24B4A', borderRadius: 3 }} />
                 </div>
@@ -386,7 +386,7 @@ export default function Reports({ filteredTrades, dateLabel, acctLabel, strategi
             ))}
           </div>
           <div style={{ background: '#111', border: '1px solid #222', borderRadius: 8, padding: '14px 16px' }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: '#fff', marginBottom: 12 }}>By time of day (EST)</div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: '#fff', marginBottom: 12 }}>By time of day (EST)</div>
             {timeStats.map((d, i) => (
               <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
                 <span style={{ fontSize: 12, color: '#ccc', width: 40 }}>{d.label}</span>
@@ -405,24 +405,24 @@ export default function Reports({ filteredTrades, dateLabel, acctLabel, strategi
       {/* ── DURATION SECTION ── */}
       {tab === 'overview' && avgDurMins !== null && (
         <div style={{ background: '#111', border: '1px solid #222', borderRadius: 8, padding: '14px 16px', marginBottom: 20 }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: '#fff', marginBottom: 14 }}>Trade Duration ({tradesWithDuration.length} trades with exit time)</div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: '#fff', marginBottom: 14 }}>Trade Duration ({tradesWithDuration.length} trades with exit time)</div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 14 }}>
             <div style={{ background: '#1a1a1a', borderRadius: 8, padding: '10px 14px', textAlign: 'center' }}>
-              <div style={{ fontSize: 11, color: '#555', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Avg Duration</div>
+              <div style={{ fontSize: 11, color: '#aaa', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Avg Duration</div>
               <div style={{ fontSize: 20, fontWeight: 600, color: '#ccc' }}>{fmtDur(avgDurMins)}</div>
             </div>
             <div style={{ background: '#1a1a1a', borderRadius: 8, padding: '10px 14px', textAlign: 'center' }}>
-              <div style={{ fontSize: 11, color: '#555', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Avg Winner</div>
+              <div style={{ fontSize: 11, color: '#aaa', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Avg Winner</div>
               <div style={{ fontSize: 20, fontWeight: 600, color: '#1D9E75' }}>{avgWinDur !== null ? fmtDur(avgWinDur) : '—'}</div>
             </div>
             <div style={{ background: '#1a1a1a', borderRadius: 8, padding: '10px 14px', textAlign: 'center' }}>
-              <div style={{ fontSize: 11, color: '#555', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Avg Loser</div>
+              <div style={{ fontSize: 11, color: '#aaa', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Avg Loser</div>
               <div style={{ fontSize: 20, fontWeight: 600, color: '#E24B4A' }}>{avgLossDur !== null ? fmtDur(avgLossDur) : '—'}</div>
             </div>
           </div>
           {durations.length > 0 && (
             <div>
-              <div style={{ fontSize: 11, color: '#444', marginBottom: 8 }}>Duration distribution</div>
+              <div style={{ fontSize: 11, color: '#999', marginBottom: 8 }}>Duration distribution</div>
               <div style={{ display: 'flex', gap: 3, alignItems: 'flex-end', height: 56 }}>
                 {['0-30m','30-60m','1-2h','2-4h','4h+'].map((label, i) => {
                   const ranges = [[0,30],[30,60],[60,120],[120,240],[240,9999]];
@@ -431,9 +431,9 @@ export default function Reports({ filteredTrades, dateLabel, acctLabel, strategi
                   const pct = durations.length ? count / durations.length : 0;
                   return (
                     <div key={label} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
-                      <div style={{ fontSize: 10, color: '#555' }}>{count || ''}</div>
+                      <div style={{ fontSize: 10, color: '#aaa' }}>{count || ''}</div>
                       <div style={{ width: '100%', background: '#185FA5', borderRadius: '3px 3px 0 0', height: Math.max(pct * 40, count ? 3 : 0) }} />
-                      <div style={{ fontSize: 10, color: '#444', whiteSpace: 'nowrap' }}>{label}</div>
+                      <div style={{ fontSize: 10, color: '#999', whiteSpace: 'nowrap' }}>{label}</div>
                     </div>
                   );
                 })}
@@ -455,7 +455,7 @@ export default function Reports({ filteredTrades, dateLabel, acctLabel, strategi
         </div>
 
         {stratData.length === 0 ? (
-          <div style={{ padding: '40px 0', textAlign: 'center', color: '#444', fontSize: 13 }}>No strategies found — go to the Strategies page to set them up.</div>
+          <div style={{ padding: '40px 0', textAlign: 'center', color: '#999', fontSize: 13 }}>No strategies found — go to the Strategies page to set them up.</div>
         ) : (<>
 
           {/* Strategy comparison table */}
@@ -465,7 +465,7 @@ export default function Reports({ filteredTrades, dateLabel, acctLabel, strategi
               <thead>
                 <tr style={{ borderBottom: '1px solid #1a1a1a' }}>
                   {[['Strategy','left'],['Trades','right'],['Win rate','right'],['Net P&L','right'],['Avg winner','right'],['Avg loser','right'],['Profit factor','right'],['Long','right'],['Short','right']].map(([l,a]) => (
-                    <th key={l} style={{ fontSize: 10, fontWeight: 500, color: '#444', padding: '8px 14px', textAlign: a, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{l}</th>
+                    <th key={l} style={{ fontSize: 10, fontWeight: 500, color: '#999', padding: '8px 14px', textAlign: a, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{l}</th>
                   ))}
                 </tr>
               </thead>
@@ -490,8 +490,8 @@ export default function Reports({ filteredTrades, dateLabel, acctLabel, strategi
                       <td style={{ padding: '10px 14px', textAlign: 'right', fontSize: 13, color: st.avgWin > 0 ? '#1D9E75' : '#555' }}>{st.avgWin > 0 ? '+$' + st.avgWin : '—'}</td>
                       <td style={{ padding: '10px 14px', textAlign: 'right', fontSize: 13, color: st.avgLoss < 0 ? '#E24B4A' : '#555' }}>{st.avgLoss < 0 ? '-$' + Math.abs(st.avgLoss) : '—'}</td>
                       <td style={{ padding: '10px 14px', textAlign: 'right', fontSize: 13, fontWeight: 500, color: pfColor }}>{st.pf > 0 ? (st.pf === 999 ? '∞' : st.pf.toFixed(2)) : '—'}</td>
-                      <td style={{ padding: '10px 14px', textAlign: 'right', fontSize: 12, color: '#666' }}>{st.longTrades || '—'}</td>
-                      <td style={{ padding: '10px 14px', textAlign: 'right', fontSize: 12, color: '#666' }}>{st.shortTrades || '—'}</td>
+                      <td style={{ padding: '10px 14px', textAlign: 'right', fontSize: 12, color: '#bbb' }}>{st.longTrades || '—'}</td>
+                      <td style={{ padding: '10px 14px', textAlign: 'right', fontSize: 12, color: '#bbb' }}>{st.shortTrades || '—'}</td>
                     </tr>
                   );
                 })}
@@ -503,14 +503,14 @@ export default function Reports({ filteredTrades, dateLabel, acctLabel, strategi
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
             {/* Win rate chart */}
             <div style={{ background: '#111', border: '1px solid #222', borderRadius: 8, padding: '14px 16px' }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: '#fff', marginBottom: 12 }}>Win rate by strategy</div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: '#fff', marginBottom: 12 }}>Win rate by strategy</div>
               <div style={{ position: 'relative', width: '100%', height: stratData.length * 52 + 20 }}>
                 <canvas ref={wrBarRef} />
               </div>
             </div>
             {/* Net P&L chart */}
             <div style={{ background: '#111', border: '1px solid #222', borderRadius: 8, padding: '14px 16px' }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: '#fff', marginBottom: 12 }}>Net P&L by strategy</div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: '#fff', marginBottom: 12 }}>Net P&L by strategy</div>
               <div style={{ position: 'relative', width: '100%', height: stratData.length * 52 + 20 }}>
                 <canvas ref={pnlBarRef} />
               </div>
@@ -521,7 +521,7 @@ export default function Reports({ filteredTrades, dateLabel, acctLabel, strategi
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
             {/* Trade distribution donut */}
             <div style={{ background: '#111', border: '1px solid #222', borderRadius: 8, padding: '14px 16px' }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: '#fff', marginBottom: 12 }}>Trade distribution</div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: '#fff', marginBottom: 12 }}>Trade distribution</div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
                 <div style={{ position: 'relative', width: 140, height: 140, flexShrink: 0 }}>
                   <canvas ref={donutRef} />
@@ -534,9 +534,9 @@ export default function Reports({ filteredTrades, dateLabel, acctLabel, strategi
                     return (
                       <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
                         <span style={{ width: 10, height: 10, borderRadius: 2, background: color, flexShrink: 0 }} />
-                        <span style={{ fontSize: 12, color: '#888', flex: 1 }}>{s.name}</span>
+                        <span style={{ fontSize: 12, color: '#ccc', flex: 1 }}>{s.name}</span>
                         <span style={{ fontSize: 12, fontWeight: 500, color: '#ccc' }}>{s.stats.trades}</span>
-                        <span style={{ fontSize: 11, color: '#555', width: 30, textAlign: 'right' }}>{pct}%</span>
+                        <span style={{ fontSize: 11, color: '#aaa', width: 30, textAlign: 'right' }}>{pct}%</span>
                       </div>
                     );
                   })}
@@ -546,7 +546,7 @@ export default function Reports({ filteredTrades, dateLabel, acctLabel, strategi
 
             {/* Long vs Short per strategy */}
             <div style={{ background: '#111', border: '1px solid #222', borderRadius: 8, padding: '14px 16px' }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: '#fff', marginBottom: 12 }}>Long vs Short per strategy</div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: '#fff', marginBottom: 12 }}>Long vs Short per strategy</div>
               {stratData.map(s => {
                 const total = s.stats.longTrades + s.stats.shortTrades;
                 const longPct = total > 0 ? Math.round(s.stats.longTrades / total * 100) : 0;
@@ -554,11 +554,11 @@ export default function Reports({ filteredTrades, dateLabel, acctLabel, strategi
                 return (
                   <div key={s.id} style={{ marginBottom: 14 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                      <span style={{ fontSize: 12, color: '#888', display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span style={{ fontSize: 12, color: '#ccc', display: 'flex', alignItems: 'center', gap: 6 }}>
                         <span style={{ width: 8, height: 8, borderRadius: '50%', background: color }} />
                         {s.name}
                       </span>
-                      <span style={{ fontSize: 11, color: '#555' }}>{s.stats.longTrades}L · {s.stats.shortTrades}S</span>
+                      <span style={{ fontSize: 11, color: '#aaa' }}>{s.stats.longTrades}L · {s.stats.shortTrades}S</span>
                     </div>
                     <div style={{ height: 8, background: '#1a1a1a', borderRadius: 4, overflow: 'hidden', display: 'flex' }}>
                       <div style={{ width: longPct + '%', background: '#1D9E75', borderRadius: '4px 0 0 4px' }} />
