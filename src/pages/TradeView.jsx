@@ -20,6 +20,7 @@ function TertiaryWarning({ alTier, slTier }) {
 
 // ─── Trade Form ───────────────────────────────────────────────────────────────
 function TradeForm({ form, setForm, onSubmit, onCancel, uploading, isEdit, strategies }) {
+  const safeStrats = Array.isArray(strategies) ? safeStrats : [];
   const [stratError, setStratError] = useState(false);
 
   const confOptions = ['AL crossed', 'Yellow S/R cleared', 'SL identified', 'Open space'];
@@ -56,9 +57,9 @@ function TradeForm({ form, setForm, onSubmit, onCancel, uploading, isEdit, strat
           Strategy
           <span style={{ fontSize: 11, color: '#E24B4A', fontWeight: 500 }}>* required</span>
         </label>
-        {strategies && strategies.length > 0 ? (
+        {safeStrats && safeStrats.length > 0 ? (
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 4 }}>
-            {strategies.map(s => (
+            {safeStrats.map(s => (
               <button key={s.id} onClick={() => pickStrategy(s.id)} style={{
                 padding: '6px 14px', borderRadius: 8, fontSize: 13, cursor: 'pointer',
                 border: `1.5px solid ${form.strategy_id === s.id ? (s.color || '#185FA5') : stratError ? '#E24B4A55' : '#2a2a2a'}`,
@@ -72,7 +73,7 @@ function TradeForm({ form, setForm, onSubmit, onCancel, uploading, isEdit, strat
           </div>
         ) : (
           <div style={{ padding: '10px 14px', background: '#E24B4A12', border: '1px solid #E24B4A33', borderRadius: 8, fontSize: 13, color: '#E24B4A' }}>
-            ⚠️ No strategies found. Go to the <strong>Strategies</strong> page and create one first.
+            ⚠️ No safeStrats found. Go to the <strong>Strategies</strong> page and create one first.
           </div>
         )}
         {stratError && (
@@ -415,7 +416,7 @@ function ManageLevels() {
 // ─── Trade View Page ──────────────────────────────────────────────────────────
 const PAGE_SIZE = 25;
 
-export default function TradeView({ trades, filteredTrades, strategies, reloadTrades, setMsg }) {
+export default function TradeView({ trades, filteredTrades, safeStrategies, reloadTrades, setMsg }) {
   const [activeFilter, setActiveFilter] = useState('all');
   const [sortCol, setSortCol] = useState('date');
   const [sortDir, setSortDir] = useState('desc');
@@ -427,12 +428,14 @@ export default function TradeView({ trades, filteredTrades, strategies, reloadTr
   const [chartModal, setChartModal] = useState(null);
 
   // filteredTrades here is actually ALL trades (passed from App.js)
-  const allTrades = filteredTrades;
+  const allTrades = Array.isArray(filteredTrades) ? filteredTrades : [];
+  const safeTrades = Array.isArray(trades) ? trades : [];
+  const safeStrategies = Array.isArray(safeStrategies) ? safeStrategies : [];
 
   const nextTradeNumber = () => {
-    if (!trades.length) return 1;
-    const nums = trades.map(t => t.trade_number).filter(Boolean);
-    return nums.length ? Math.max(...nums) + 1 : trades.length + 1;
+    if (!safeTrades.length) return 1;
+    const nums = safeTrades.map(t => t.trade_number).filter(Boolean);
+    return nums.length ? Math.max(...nums) + 1 : safeTrades.length + 1;
   };
 
   const handleSort = (col) => {
@@ -472,7 +475,7 @@ export default function TradeView({ trades, filteredTrades, strategies, reloadTr
     if (activeFilter === 'sl-secondary') return base.filter(t => t.sl_tier === 'Secondary');
     if (activeFilter === 'sl-tertiary') return base.filter(t => t.sl_tier === 'Tertiary');
     // filter by strategy id
-    if (strategies.find(s => s.id === activeFilter)) return base.filter(t => t.strategy_id === activeFilter);
+    if (safeStrategies.find(s => s.id === activeFilter)) return base.filter(t => t.strategy_id === activeFilter);
     return base;
   };
 
@@ -615,7 +618,7 @@ export default function TradeView({ trades, filteredTrades, strategies, reloadTr
           onCancel={cancelForm}
           uploading={uploading}
           isEdit={!!editingTrade}
-          strategies={strategies}
+          safeStrategies={safeStrategies}
         />
       )}
 
@@ -651,10 +654,10 @@ export default function TradeView({ trades, filteredTrades, strategies, reloadTr
         </div>
 
         {/* Filter row 2 — by strategy */}
-        {strategies.length > 0 && (
+        {safeStrategies.length > 0 && (
           <div className="filter-row" style={{ marginTop: 0, borderTop: 'none' }}>
             <span style={{ fontSize: 11, color: '#444', alignSelf: 'center', marginRight: 4 }}>Strategy:</span>
-            {strategies.map(s => (
+            {safeStrategies.map(s => (
               <button key={s.id}
                 className={`filter-btn ${activeFilter === s.id ? 'active' : ''}`}
                 style={activeFilter === s.id ? { borderColor: s.color || '#185FA5', color: s.color || '#185FA5', background: (s.color || '#185FA5') + '22' } : { borderColor: '#2a2a2a' }}
@@ -706,7 +709,7 @@ export default function TradeView({ trades, filteredTrades, strategies, reloadTr
                 {paginated.map(t => {
                   const pnlColor = t.pnl > 0 ? '#1D9E75' : t.pnl < 0 ? '#E24B4A' : '#888';
                   const sym = t.symbol === 'OTHER' ? (t.custom_symbol || 'OTHER') : t.symbol;
-                  const strat = strategies.find(s => s.id === t.strategy_id);
+                  const strat = safeStrategies.find(s => s.id === t.strategy_id);
                   return (
                     <tr key={t.id}>
                       <td>{t.trade_number || '—'}</td>
