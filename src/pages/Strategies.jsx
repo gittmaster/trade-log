@@ -210,7 +210,7 @@ export default function Strategies({ trades, strategies, saveStrategies, reloadT
 
   const allStratRows = [
     ...effectiveStrategies,
-    { id: '__unassigned__', icon: '📋', name: 'Unassigned', desc: 'Trades not tagged to a strategy', color: '#555', _system: true },
+    { id: '__unassigned__', icon: '📋', name: 'Unassigned', desc: 'Trades not tagged to a strategy', color: '#aaa', _system: true },
   ];
 
   const stratWithStats = effectiveStrategies.map(s => ({ ...s, stats: getStratStats(s.id) }));
@@ -244,7 +244,7 @@ export default function Strategies({ trades, strategies, saveStrategies, reloadT
             <div style={{ width: 34, height: 34, borderRadius: 8, background: s.color ? s.color + '22' : '#1a1a1a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, border: `1px solid ${s.color || '#2a2a2a'}44`, flexShrink: 0 }}>{s.icon}</div>
             <div>
               <div style={{ fontSize: 13, fontWeight: 500, color: '#ccc' }}>{s.name}</div>
-              <div style={{ fontSize: 11, color: '#555' }}>{s.desc}</div>
+              <div style={{ fontSize: 11, color: '#aaa' }}>{s.desc}</div>
             </div>
           </div>
         </td>
@@ -262,9 +262,9 @@ export default function Strategies({ trades, strategies, saveStrategies, reloadT
         <td style={{ padding: '12px 8px' }}>
           {!s._system && (
             <div style={{ display: 'flex', gap: 2 }} onClick={e => e.stopPropagation()}>
-              <button onClick={e => { e.stopPropagation(); openPanel(s, 'assign'); }} title="Assign trades" style={{ background: 'none', border: 'none', color: '#555', cursor: 'pointer', padding: '3px 6px', borderRadius: 4, fontSize: 13 }}>🔗</button>
-              <button onClick={e => { e.stopPropagation(); openModal(s); }} title="Edit" style={{ background: 'none', border: 'none', color: '#555', cursor: 'pointer', padding: '3px 6px', borderRadius: 4, fontSize: 13 }}>✏️</button>
-              <button onClick={e => { e.stopPropagation(); deleteStrat(s.id); }} title="Delete" style={{ background: 'none', border: 'none', color: '#555', cursor: 'pointer', padding: '3px 6px', borderRadius: 4, fontSize: 13 }}>🗑️</button>
+              <button onClick={e => { e.stopPropagation(); openPanel(s, 'assign'); }} title="Assign trades" style={{ background: 'none', border: 'none', color: '#aaa', cursor: 'pointer', padding: '3px 6px', borderRadius: 4, fontSize: 13 }}>🔗</button>
+              <button onClick={e => { e.stopPropagation(); openModal(s); }} title="Edit" style={{ background: 'none', border: 'none', color: '#aaa', cursor: 'pointer', padding: '3px 6px', borderRadius: 4, fontSize: 13 }}>✏️</button>
+              <button onClick={e => { e.stopPropagation(); deleteStrat(s.id); }} title="Delete" style={{ background: 'none', border: 'none', color: '#aaa', cursor: 'pointer', padding: '3px 6px', borderRadius: 4, fontSize: 13 }}>🗑️</button>
             </div>
           )}
         </td>
@@ -284,7 +284,7 @@ export default function Strategies({ trades, strategies, saveStrategies, reloadT
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
           <div>
             <div style={{ fontSize: 18, fontWeight: 500, color: '#ccc', marginBottom: 2 }}>Strategies</div>
-            <div style={{ fontSize: 12, color: '#555' }}>Performance by AL/SL combination · all time</div>
+            <div style={{ fontSize: 12, color: '#aaa' }}>Performance by AL/SL combination · all time</div>
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
             {/* Auto-assign button */}
@@ -304,7 +304,7 @@ export default function Strategies({ trades, strategies, saveStrategies, reloadT
         {/* Auto-assign info banner */}
         <div style={{ background: '#185FA511', border: '1px solid #185FA533', borderRadius: 8, padding: '10px 16px', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 10 }}>
           <span style={{ fontSize: 16 }}>💡</span>
-          <div style={{ fontSize: 12, color: '#666', lineHeight: 1.5 }}>
+          <div style={{ fontSize: 12, color: '#bbb', lineHeight: 1.5 }}>
             <strong style={{ color: '#185FA5' }}>Auto-assign</strong> reads every trade's AL/SL touches and age to assign the correct strategy automatically.
             AL strong = 3+ touches &amp; 1wk+ · SL strong = 3+ touches &amp; 1wk+
           </div>
@@ -320,7 +320,7 @@ export default function Strategies({ trades, strategies, saveStrategies, reloadT
             { label: 'Worst Strategy', value: worstStrat ? worstStrat.icon + ' ' + worstStrat.name : '—', color: '#E24B4A' },
           ].map((c, i) => (
             <div key={i} style={{ background: '#111', border: '1px solid #222', borderRadius: 8, padding: '10px 14px' }}>
-              <div style={{ fontSize: 13, fontWeight: 600, color: '#555', marginBottom: 4 }}>{c.label}</div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: '#aaa', marginBottom: 4 }}>{c.label}</div>
               <div style={{ fontSize: 16, fontWeight: 700, color: c.color || '#ccc' }}>{c.value}</div>
             </div>
           ))}
@@ -346,7 +346,7 @@ export default function Strategies({ trades, strategies, saveStrategies, reloadT
               <tr style={{ borderBottom: '1px solid #222', background: '#0d0d0d' }}>
                 <th style={{ width: 36, padding: '9px 16px' }}></th>
                 {[['Strategy','left'],['Trades','right'],['Win rate','right'],['Avg winner','right'],['Avg loser','right'],['Total net P&L','right'],['Profit factor','right'],['','right']].map(([label, align]) => (
-                  <th key={label} style={{ fontSize: 11, fontWeight: 500, color: '#555', padding: '9px 16px', textAlign: align, whiteSpace: 'nowrap' }}>{label}</th>
+                  <th key={label} style={{ fontSize: 11, fontWeight: 500, color: '#aaa', padding: '9px 16px', textAlign: align, whiteSpace: 'nowrap' }}>{label}</th>
                 ))}
               </tr>
             </thead>
@@ -355,7 +355,7 @@ export default function Strategies({ trades, strategies, saveStrategies, reloadT
             </tbody>
           </table>
         </div>
-        <div style={{ fontSize: 11, color: '#444', marginTop: 8, textAlign: 'right' }}>Click a row for stats · 🔗 to manually assign trades · ✏️ to edit</div>
+        <div style={{ fontSize: 11, color: '#bbb', marginTop: 8, textAlign: 'right' }}>Click a row for stats · 🔗 to manually assign trades · ✏️ to edit</div>
       </div>
 
       {/* ── Side panel ── */}
@@ -366,10 +366,10 @@ export default function Strategies({ trades, strategies, saveStrategies, reloadT
               <span style={{ fontSize: 20 }}>{selectedStrat.icon}</span>
               <div>
                 <div style={{ fontSize: 14, fontWeight: 500, color: '#ccc' }}>{selectedStrat.name}</div>
-                <div style={{ fontSize: 11, color: '#555' }}>{selectedStrat.desc}</div>
+                <div style={{ fontSize: 11, color: '#aaa' }}>{selectedStrat.desc}</div>
               </div>
             </div>
-            <button onClick={() => setSelectedStrat(null)} style={{ background: 'none', border: 'none', color: '#555', fontSize: 20, cursor: 'pointer' }}>×</button>
+            <button onClick={() => setSelectedStrat(null)} style={{ background: 'none', border: 'none', color: '#aaa', fontSize: 20, cursor: 'pointer' }}>×</button>
           </div>
 
           {/* Tab toggle */}
@@ -393,8 +393,8 @@ export default function Strategies({ trades, strategies, saveStrategies, reloadT
               <div style={{ padding: 14 }}>
                 {selectedStrat.notes && (
                   <div style={{ background: '#0d0d0d', border: '1px solid #1a1a1a', borderRadius: 8, padding: '10px 12px', marginBottom: 14 }}>
-                    <div style={{ fontSize: 10, color: '#444', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 5 }}>Strategy rules</div>
-                    <div style={{ fontSize: 12, color: '#666', lineHeight: 1.6 }}>{selectedStrat.notes}</div>
+                    <div style={{ fontSize: 10, color: '#aaa', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 5 }}>Strategy rules</div>
+                    <div style={{ fontSize: 12, color: '#bbb', lineHeight: 1.6 }}>{selectedStrat.notes}</div>
                   </div>
                 )}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 14 }}>
@@ -407,22 +407,22 @@ export default function Strategies({ trades, strategies, saveStrategies, reloadT
                     { l: 'Avg loser', v: panelStats.avgLoss < 0 ? '-$' + Math.abs(panelStats.avgLoss) : '—', c: '#E24B4A' },
                   ].map((s, i) => (
                     <div key={i} style={{ background: '#1a1a1a', borderRadius: 6, padding: '8px 10px' }}>
-                      <div style={{ fontSize: 10, color: '#444', marginBottom: 3 }}>{s.l}</div>
+                      <div style={{ fontSize: 10, color: '#999', marginBottom: 3 }}>{s.l}</div>
                       <div style={{ fontSize: 14, fontWeight: 500, color: s.c || '#ccc' }}>{s.v}</div>
                     </div>
                   ))}
                 </div>
                 {panelStats.recent.length > 0 ? (<>
-                  <div style={{ fontSize: 11, color: '#444', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Recent trades</div>
+                  <div style={{ fontSize: 11, color: '#bbb', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Recent trades</div>
                   {panelStats.recent.map((t, i) => (
                     <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 0', borderBottom: i < panelStats.recent.length - 1 ? '1px solid #1a1a1a' : 'none' }}>
-                      <span style={{ fontSize: 12, color: '#555' }}>{t.date} · {t.symbol === 'OTHER' ? t.custom_symbol : t.symbol}</span>
+                      <span style={{ fontSize: 12, color: '#aaa' }}>{t.date} · {t.symbol === 'OTHER' ? t.custom_symbol : t.symbol}</span>
                       <span style={{ fontSize: 11, color: t.direction === 'long' ? '#1D9E75' : '#E24B4A' }}>{t.direction}</span>
                       <span style={{ fontSize: 12, fontWeight: 500, color: t.pnl >= 0 ? '#1D9E75' : '#E24B4A' }}>{t.pnl >= 0 ? '+$' : '-$'}{Math.abs(t.pnl)}</span>
                     </div>
                   ))}
                 </>) : (
-                  <div style={{ fontSize: 12, color: '#444', textAlign: 'center', padding: '20px 0' }}>
+                  <div style={{ fontSize: 12, color: '#ccc', textAlign: 'center', padding: '20px 0' }}>
                     No trades tagged yet.
                     <br />
                     <button onClick={() => autoAssignAll()} style={{ marginTop: 8, fontSize: 12, padding: '5px 14px', borderRadius: 6, border: '1px solid #1D9E7544', background: '#1D9E7511', color: '#1D9E75', cursor: 'pointer' }}>
@@ -437,21 +437,21 @@ export default function Strategies({ trades, strategies, saveStrategies, reloadT
             {assignView === 'assign' && (
               <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
                 <div style={{ padding: '10px 14px', borderBottom: '1px solid #1a1a1a', flexShrink: 0 }}>
-                  <div style={{ fontSize: 12, color: '#888', marginBottom: 8 }}>Manually assign trades to "{selectedStrat.name}"</div>
+                  <div style={{ fontSize: 12, color: '#ccc', marginBottom: 8 }}>Manually assign trades to "{selectedStrat.name}"</div>
                   <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
                     {[['unassigned','Untagged only'],['all','All trades']].map(([v, label]) => (
                       <button key={v} onClick={() => { setAssignFilter(v); setSelectedTradeIds(new Set()); }} style={{ fontSize: 11, padding: '3px 10px', borderRadius: 20, cursor: 'pointer', border: '1px solid', borderColor: assignFilter === v ? '#185FA5' : '#2a2a2a', background: assignFilter === v ? '#185FA522' : 'transparent', color: assignFilter === v ? '#185FA5' : '#666' }}>{label}</button>
                     ))}
                   </div>
                   <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                    <button onClick={selectAll} style={{ fontSize: 11, padding: '3px 10px', borderRadius: 6, border: '1px solid #2a2a2a', background: 'transparent', color: '#666', cursor: 'pointer' }}>Select all</button>
-                    <button onClick={clearAll} style={{ fontSize: 11, padding: '3px 10px', borderRadius: 6, border: '1px solid #2a2a2a', background: 'transparent', color: '#666', cursor: 'pointer' }}>Clear</button>
-                    <span style={{ fontSize: 11, color: '#555', marginLeft: 4 }}>{selectedTradeIds.size} selected</span>
+                    <button onClick={selectAll} style={{ fontSize: 11, padding: '3px 10px', borderRadius: 6, border: '1px solid #2a2a2a', background: 'transparent', color: '#bbb', cursor: 'pointer' }}>Select all</button>
+                    <button onClick={clearAll} style={{ fontSize: 11, padding: '3px 10px', borderRadius: 6, border: '1px solid #2a2a2a', background: 'transparent', color: '#bbb', cursor: 'pointer' }}>Clear</button>
+                    <span style={{ fontSize: 11, color: '#aaa', marginLeft: 4 }}>{selectedTradeIds.size} selected</span>
                   </div>
                 </div>
                 <div style={{ flex: 1, overflowY: 'auto' }}>
                   {assignableTrades.length === 0 ? (
-                    <div style={{ padding: '24px 14px', textAlign: 'center', fontSize: 13, color: '#444' }}>
+                    <div style={{ padding: '24px 14px', textAlign: 'center', fontSize: 13, color: '#999' }}>
                       {assignFilter === 'unassigned' ? 'All trades are tagged 🎉' : 'No trades found'}
                     </div>
                   ) : assignableTrades.map(t => {
@@ -468,14 +468,14 @@ export default function Strategies({ trades, strategies, saveStrategies, reloadT
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
                             <span style={{ fontSize: 12, fontWeight: 500, color: '#ccc' }}>#{t.trade_number || '—'}</span>
-                            <span style={{ fontSize: 11, color: '#555' }}>{t.date}</span>
-                            <span style={{ fontSize: 11, color: '#555' }}>{t.symbol === 'OTHER' ? t.custom_symbol : t.symbol}</span>
+                            <span style={{ fontSize: 11, color: '#aaa' }}>{t.date}</span>
+                            <span style={{ fontSize: 11, color: '#aaa' }}>{t.symbol === 'OTHER' ? t.custom_symbol : t.symbol}</span>
                             <span style={{ fontSize: 11, color: t.direction === 'long' ? '#1D9E75' : '#E24B4A' }}>{t.direction?.toUpperCase()}</span>
                           </div>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                             <span style={{ fontSize: 11, background: GRADE_COLORS[t.grade]+'33', color: GRADE_COLORS[t.grade], padding: '1px 6px', borderRadius: 4, fontWeight: 600 }}>{GRADES[t.grade] || t.grade}</span>
                             {currentStrat && <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 20, background: (currentStrat.color||'#185FA5')+'22', color: currentStrat.color||'#185FA5' }}>{currentStrat.icon} {currentStrat.name.slice(0,12)}</span>}
-                            {!t.strategy_id && suggestedStrat && <span style={{ fontSize: 10, color: '#444' }}>→ {suggestedStrat.icon} {suggestedStrat.name.slice(0,14)}</span>}
+                            {!t.strategy_id && suggestedStrat && <span style={{ fontSize: 10, color: '#999' }}>→ {suggestedStrat.icon} {suggestedStrat.name.slice(0,14)}</span>}
                           </div>
                         </div>
                         <span style={{ fontSize: 12, fontWeight: 500, color: t.pnl > 0 ? '#1D9E75' : t.pnl < 0 ? '#E24B4A' : '#555', flexShrink: 0 }}>
@@ -505,11 +505,11 @@ export default function Strategies({ trades, strategies, saveStrategies, reloadT
           <div style={{ background: '#111', border: '1px solid #2a2a2a', borderRadius: 12, width: 480, maxHeight: '90vh', overflow: 'auto' }}>
             <div style={{ padding: '16px 20px', borderBottom: '1px solid #222', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <span style={{ fontSize: 15, fontWeight: 500, color: '#ccc' }}>{editStrategy ? 'Edit Strategy' : 'New Strategy'}</span>
-              <button onClick={() => setShowModal(false)} style={{ background: 'none', border: 'none', color: '#666', fontSize: 18, cursor: 'pointer' }}>×</button>
+              <button onClick={() => setShowModal(false)} style={{ background: 'none', border: 'none', color: '#bbb', fontSize: 18, cursor: 'pointer' }}>×</button>
             </div>
             <div style={{ padding: 20 }}>
               <div style={{ marginBottom: 16 }}>
-                <label style={{ fontSize: 12, color: '#666', display: 'block', marginBottom: 8, fontWeight: 500 }}>Icon</label>
+                <label style={{ fontSize: 12, color: '#ccc', display: 'block', fontWeight: 500, marginBottom: 8, fontWeight: 500 }}>Icon</label>
                 <div onClick={() => setEmojiGridOpen(o => !o)} style={{ width: 52, height: 52, borderRadius: 10, background: '#1a1a1a', border: `1px solid ${emojiGridOpen ? '#185FA5' : '#2a2a2a'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 26, cursor: 'pointer', marginBottom: 8 }}>{form.icon}</div>
                 {emojiGridOpen && (
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(10, 1fr)', gap: 4, background: '#1a1a1a', borderRadius: 8, padding: 8, border: '1px solid #2a2a2a' }}>
@@ -518,34 +518,34 @@ export default function Strategies({ trades, strategies, saveStrategies, reloadT
                 )}
               </div>
               <div style={{ marginBottom: 14 }}>
-                <label style={{ fontSize: 12, color: '#666', display: 'block', marginBottom: 6, fontWeight: 500 }}>Strategy name *</label>
+                <label style={{ fontSize: 12, color: '#ccc', display: 'block', fontWeight: 500, marginBottom: 6, fontWeight: 500 }}>Strategy name *</label>
                 <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="e.g. A+ Prime" style={{ width: '100%', background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 8, padding: '8px 12px', fontSize: 13, color: '#ccc', fontFamily: 'inherit' }} />
               </div>
               <div style={{ marginBottom: 14 }}>
-                <label style={{ fontSize: 12, color: '#666', display: 'block', marginBottom: 6, fontWeight: 500 }}>Description</label>
+                <label style={{ fontSize: 12, color: '#ccc', display: 'block', fontWeight: 500, marginBottom: 6, fontWeight: 500 }}>Description</label>
                 <input value={form.desc} onChange={e => setForm(f => ({ ...f, desc: e.target.value }))} placeholder="Short description" style={{ width: '100%', background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 8, padding: '8px 12px', fontSize: 13, color: '#ccc', fontFamily: 'inherit' }} />
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
                 <div>
-                  <label style={{ fontSize: 12, color: '#666', display: 'block', marginBottom: 6, fontWeight: 500 }}>Default symbol</label>
+                  <label style={{ fontSize: 12, color: '#ccc', display: 'block', fontWeight: 500, marginBottom: 6, fontWeight: 500 }}>Default symbol</label>
                   <select value={form.symbol} onChange={e => setForm(f => ({ ...f, symbol: e.target.value }))} style={{ width: '100%', background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 8, padding: '8px 12px', fontSize: 13, color: '#ccc', fontFamily: 'inherit' }}>
                     {['Any','MGC','MNQ','MYM','MCL','ES','NQ','Other'].map(s => <option key={s}>{s}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label style={{ fontSize: 12, color: '#666', display: 'block', marginBottom: 6, fontWeight: 500 }}>Color</label>
+                  <label style={{ fontSize: 12, color: '#ccc', display: 'block', fontWeight: 500, marginBottom: 6, fontWeight: 500 }}>Color</label>
                   <div style={{ display: 'flex', gap: 8, paddingTop: 6 }}>
                     {COLORS.map(c => <div key={c} onClick={() => setForm(f => ({ ...f, color: c }))} style={{ width: 24, height: 24, borderRadius: '50%', background: c, cursor: 'pointer', border: form.color === c ? '2px solid #fff' : '2px solid transparent' }} />)}
                   </div>
                 </div>
               </div>
               <div>
-                <label style={{ fontSize: 12, color: '#666', display: 'block', marginBottom: 6, fontWeight: 500 }}>Rules / Notes</label>
+                <label style={{ fontSize: 12, color: '#ccc', display: 'block', fontWeight: 500, marginBottom: 6, fontWeight: 500 }}>Rules / Notes</label>
                 <textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} rows={3} placeholder="Entry conditions, exit rules..." style={{ width: '100%', background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 8, padding: '8px 12px', fontSize: 13, color: '#ccc', resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.5 }} />
               </div>
             </div>
             <div style={{ padding: '12px 20px', borderTop: '1px solid #222', display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-              <button onClick={() => setShowModal(false)} style={{ fontSize: 13, padding: '7px 18px', borderRadius: 8, cursor: 'pointer', background: 'transparent', border: '1px solid #2a2a2a', color: '#888', fontFamily: 'inherit' }}>Cancel</button>
+              <button onClick={() => setShowModal(false)} style={{ fontSize: 13, padding: '7px 18px', borderRadius: 8, cursor: 'pointer', background: 'transparent', border: '1px solid #2a2a2a', color: '#ccc', fontFamily: 'inherit' }}>Cancel</button>
               <button onClick={saveStrat} style={{ fontSize: 13, padding: '7px 18px', borderRadius: 8, cursor: 'pointer', background: '#185FA5', border: 'none', color: '#fff', fontWeight: 500, fontFamily: 'inherit' }}>Save Strategy</button>
             </div>
           </div>

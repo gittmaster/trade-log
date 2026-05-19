@@ -135,10 +135,10 @@ function TradeForm({ form, setForm, onSubmit, onCancel, uploading, isEdit, strat
           <div className="toggle-row">{['target','stop','manual','open'].map(r => <button key={r} className={tog(form.exit_reason===r)} onClick={() => setForm(f => ({ ...f, exit_reason: r }))}>{r}</button>)}</div>
         </div>
         <div className="field">
-          <label>Grade <span style={{ fontSize: 11, color: '#888', fontWeight: 400 }}>(auto-calculated)</span></label>
+          <label>Grade <span style={{ fontSize: 11, color: '#ccc', fontWeight: 400 }}>(auto-calculated)</span></label>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 4 }}>
             <span className="grade-badge" style={{ background: GRADE_COLORS[form.grade]+'33', color: GRADE_COLORS[form.grade], fontSize: 18, fontWeight: 700, padding: '6px 18px', borderRadius: 8, border: '1.5px solid '+GRADE_COLORS[form.grade] }}>{GRADES[form.grade]||form.grade}</span>
-            <span style={{ fontSize: 12, color: '#888' }}>{form.grade==='aplus'?'~80% win rate':form.grade==='a'?'~55% win rate':'~40% win rate'}</span>
+            <span style={{ fontSize: 12, color: '#ccc' }}>{form.grade==='aplus'?'~80% win rate':form.grade==='a'?'~55% win rate':'~40% win rate'}</span>
           </div>
         </div>
       </div>
@@ -147,7 +147,7 @@ function TradeForm({ form, setForm, onSubmit, onCancel, uploading, isEdit, strat
 
       {/* AL block */}
       <div style={{ background: '#111', border: '1px solid #222', borderRadius: 8, padding: '12px 14px', marginBottom: 12 }}>
-        <div style={{ fontSize: 12, color: '#888', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Action Line</div>
+        <div style={{ fontSize: 12, color: '#ccc', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Action Line</div>
         <div className="form-grid-3">
           <div className="field"><label>Strength</label>
             <div className="toggle-row">
@@ -167,7 +167,7 @@ function TradeForm({ form, setForm, onSubmit, onCancel, uploading, isEdit, strat
 
       {/* SL block */}
       <div style={{ background: '#111', border: '1px solid #222', borderRadius: 8, padding: '12px 14px', marginBottom: 12 }}>
-        <div style={{ fontSize: 12, color: '#888', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Safety Line</div>
+        <div style={{ fontSize: 12, color: '#ccc', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Safety Line</div>
         <div className="form-grid-3">
           <div className="field"><label>Quality</label>
             <div className="toggle-row">
@@ -291,7 +291,7 @@ function ManageLevels() {
     <div style={{ marginBottom: 20 }}>
       <div onClick={() => setOpen(o => !o)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#111', border: '1px solid #222', borderRadius: open ? '8px 8px 0 0' : 8, padding: '10px 16px', cursor: 'pointer', userSelect: 'none' }}>
         <span style={{ fontWeight: 500, fontSize: 14, color: '#ccc' }}>📐 Key Levels & Pre-Trade Check</span>
-        <span style={{ color: '#666', fontSize: 13 }}>{open ? '▲ Hide' : '▼ Show'}</span>
+        <span style={{ color: '#bbb', fontSize: 13 }}>{open ? '▲ Hide' : '▼ Show'}</span>
       </div>
       {open && (
         <div style={{ border: '1px solid #222', borderTop: 'none', borderRadius: '0 0 8px 8px', padding: 16 }}>
@@ -321,16 +321,16 @@ function ManageLevels() {
                   {editId === l.id ? (<>
                     <input type="number" step="0.1" value={editPrice} onChange={e => setEditPrice(e.target.value)} style={{ width: 80, background: '#1a1a1a', border: '1px solid #185FA5', borderRadius: 4, padding: '3px 6px', color: '#ccc', fontSize: 12 }} />
                     <button onClick={() => saveEdit(l.id)} style={{ background: '#1D9E75', border: 'none', borderRadius: 4, padding: '3px 10px', color: '#fff', fontSize: 12, cursor: 'pointer' }}>Save</button>
-                    <button onClick={() => setEditId(null)} style={{ background: '#333', border: 'none', borderRadius: 4, padding: '3px 8px', color: '#888', fontSize: 12, cursor: 'pointer' }}>×</button>
+                    <button onClick={() => setEditId(null)} style={{ background: '#333', border: 'none', borderRadius: 4, padding: '3px 8px', color: '#ccc', fontSize: 12, cursor: 'pointer' }}>×</button>
                   </>) : (<>
                     <span style={{ fontSize: 13, color: '#1D9E75', fontWeight: 500, minWidth: 60, textAlign: 'right' }}>{l.price}</span>
-                    <button onClick={() => startEdit(l)} style={{ background: '#222', border: 'none', borderRadius: 4, padding: '3px 8px', color: '#888', fontSize: 11, cursor: 'pointer' }}>Edit</button>
+                    <button onClick={() => startEdit(l)} style={{ background: '#222', border: 'none', borderRadius: 4, padding: '3px 8px', color: '#ccc', fontSize: 11, cursor: 'pointer' }}>Edit</button>
                     <button onClick={() => deleteLevel(l.id)} style={{ background: 'none', border: 'none', color: '#E24B4A', fontSize: 14, cursor: 'pointer', padding: '0 4px' }}>×</button>
                   </>)}
                 </div>
               ))}
               {levels.filter(l => l.symbol === lvlSymbol).length === 0 && (
-                <div style={{ color: '#444', fontSize: 13 }}>No {lvlSymbol} levels saved yet.</div>
+                <div style={{ color: '#999', fontSize: 13 }}>No {lvlSymbol} levels saved yet.</div>
               )}
             </div>
 
@@ -355,15 +355,15 @@ function ManageLevels() {
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8, marginBottom: 14 }}>
                 <button onClick={checkTrade} style={{ background: '#185FA5', border: 'none', borderRadius: 8, padding: '10px', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>Check Setup</button>
-                <button onClick={() => { setPtEntry(''); setPtStop(''); setPtTarget(''); setPtResult(null); }} style={{ background: '#222', border: '1px solid #2a2a2a', borderRadius: 8, padding: '10px 14px', color: '#888', fontSize: 13, cursor: 'pointer' }}>Clear</button>
+                <button onClick={() => { setPtEntry(''); setPtStop(''); setPtTarget(''); setPtResult(null); }} style={{ background: '#222', border: '1px solid #2a2a2a', borderRadius: 8, padding: '10px 14px', color: '#ccc', fontSize: 13, cursor: 'pointer' }}>Clear</button>
               </div>
               {ptResult && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
                     {[{l:'R:R',v:ptResult.rr+':1',c:ptResult.rr>=1.5?'#1D9E75':'#E24B4A'},{l:'Max Gain',v:'+$'+ptResult.maxGain,c:'#1D9E75'},{l:'Max Loss',v:'-$'+ptResult.maxLoss,c:'#E24B4A'}].map((c,i) => (
                       <div key={i} style={{ background: '#111', borderRadius: 8, padding: '8px 12px', textAlign: 'center' }}>
-                        <div style={{ fontSize: 11, color: '#555', marginBottom: 3 }}>{c.l}</div>
-                        <div style={{ fontSize: 16, fontWeight: 600, color: c.c }}>{c.v}</div>
+                        <div style={{ fontSize: 11, color: '#aaa', marginBottom: 3 }}>{c.l}</div>
+                        <div style={{ fontSize: 18, fontWeight: 700, color: c.c }}>{c.v}</div>
                       </div>
                     ))}
                   </div>
@@ -383,20 +383,20 @@ function ManageLevels() {
                       <div style={{ fontSize: 12, color: '#185FA5', fontWeight: 600, marginBottom: 8 }}>💡 Recommended Targets</div>
                       {ptResult.suggestions.map((s, i) => (
                         <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: i<ptResult.suggestions.length-1?8:0, background: '#111', borderRadius: 6, padding: '7px 10px' }}>
-                          <div><div style={{ fontSize: 14, color: '#ccc', fontWeight: 600 }}>@ {s.price}</div><div style={{ fontSize: 11, color: '#666' }}>{s.label} · {s.note}</div></div>
+                          <div><div style={{ fontSize: 14, color: '#ccc', fontWeight: 600 }}>@ {s.price}</div><div style={{ fontSize: 12, color: '#ccc' }}>{s.label} · {s.note}</div></div>
                           <div style={{ textAlign: 'right' }}><div style={{ fontSize: 13, fontWeight: 600, color: s.rr>=1.5?'#1D9E75':'#BA7517' }}>{s.rr}:1 R:R</div><div style={{ fontSize: 11, color: '#1D9E75' }}>+${s.gain}</div></div>
                         </div>
                       ))}
                     </div>
                   )}
                   <div style={{ background: '#111', borderRadius: 8, padding: '10px 12px' }}>
-                    <div style={{ fontSize: 11, color: '#555', marginBottom: 4 }}>Nearest Level to Target</div>
+                    <div style={{ fontSize: 11, color: '#aaa', marginBottom: 4 }}>Nearest Level to Target</div>
                     {ptResult.nearestToTarget ? (
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <span style={{ color: '#ccc', fontWeight: 500 }}>{ptResult.nearestToTarget.name} @ {ptResult.nearestToTarget.price}</span>
                         <span style={{ fontSize: 12, color: ptResult.nearestDist<=10?'#1D9E75':ptResult.nearestDist<=20?'#BA7517':'#E24B4A' }}>{ptResult.nearestDist} pts {ptResult.targetAtLevel?'✅':ptResult.nearestDist<=20?'⚠️':'❌'}</span>
                       </div>
-                    ) : <span style={{ color: '#555' }}>No levels for {ptSymbol}</span>}
+                    ) : <span style={{ color: '#aaa' }}>No levels for {ptSymbol}</span>}
                   </div>
                   {ptResult.warnings.filter(w => !w.includes('blocking')).map((w, i) => (
                     <div key={i} style={{ background: '#E24B4A12', border: '1px solid #E24B4A44', borderRadius: 8, padding: '10px 12px', color: '#E24B4A', fontSize: 13 }}>⚠️ {w}</div>
@@ -585,7 +585,7 @@ export default function TradeView({ trades, filteredTrades, strategies, reloadTr
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
         <div>
           <div style={{ fontSize: 18, fontWeight: 500, color: '#ccc', marginBottom: 2 }}>Trade View</div>
-          <div style={{ fontSize: 12, color: '#555' }}>All trades ({allTrades.length} total)</div>
+          <div style={{ fontSize: 12, color: '#aaa' }}>All trades ({allTrades.length} total)</div>
         </div>
         <button onClick={() => showForm && !editingTrade ? cancelForm() : openNewForm()} style={{
           padding: '7px 16px', borderRadius: 8, border: 'none',
@@ -659,7 +659,7 @@ export default function TradeView({ trades, filteredTrades, strategies, reloadTr
         {/* Filter row 2 — by strategy */}
         {safeStrategies.length > 0 && (
           <div className="filter-row" style={{ marginTop: 0, borderTop: 'none' }}>
-            <span style={{ fontSize: 11, color: '#444', alignSelf: 'center', marginRight: 4 }}>Strategy:</span>
+            <span style={{ fontSize: 11, color: '#999', alignSelf: 'center', marginRight: 4 }}>Strategy:</span>
             {safeStrategies.map(s => (
               <button key={s.id}
                 className={`filter-btn ${activeFilter === s.id ? 'active' : ''}`}
@@ -674,7 +674,7 @@ export default function TradeView({ trades, filteredTrades, strategies, reloadTr
 
         {/* Filter row 3 — tiers */}
         <div className="filter-row" style={{ marginTop: 0, borderTop: 'none' }}>
-          <span style={{ fontSize: 11, color: '#444', alignSelf: 'center', marginRight: 4 }}>Tier:</span>
+          <span style={{ fontSize: 11, color: '#999', alignSelf: 'center', marginRight: 4 }}>Tier:</span>
           {tierGroups.map(({ key, label, color }) => (
             <button key={key}
               className={`filter-btn ${activeFilter === key ? 'active' : ''}`}
@@ -729,8 +729,8 @@ export default function TradeView({ trades, filteredTrades, strategies, reloadTr
                       <td style={{ fontFamily: 'var(--mono)', fontSize: 12 }}>{t.entry}</td>
                       <td style={{ fontFamily: 'var(--mono)', fontSize: 12 }}>{t.exit_price||'—'}</td>
                       <td style={{ color: pnlColor, fontWeight: 600, fontFamily: 'var(--mono)', fontSize: 13 }}>{t.pnl !== null ? (t.pnl >= 0 ? '+$' : '-$') + Math.abs(t.pnl) : '—'}</td>
-                      <td><span style={{ fontSize: 11, color: '#666' }}>{t.exit_reason||'—'}</span></td>
-                      <td><span style={{ fontSize: 11, color: '#555' }}>{t.session||'—'}</span></td>
+                      <td><span style={{ fontSize: 12, color: '#ccc' }}>{t.exit_reason||'—'}</span></td>
+                      <td><span style={{ fontSize: 11, color: '#aaa' }}>{t.session||'—'}</span></td>
                       <td>
                         {strat ? (
                           <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 20, background: (strat.color||'#185FA5')+'22', color: strat.color||'#185FA5', whiteSpace: 'nowrap' }}>
@@ -754,7 +754,7 @@ export default function TradeView({ trades, filteredTrades, strategies, reloadTr
         {totalPages > 1 && (
           <div style={{ display: 'flex', gap: 8, justifyContent: 'center', padding: '12px 0', alignItems: 'center' }}>
             <button className="filter-btn" onClick={() => setTablePage(p => Math.max(1, p-1))} disabled={tablePage===1}>‹ Prev</button>
-            <span style={{ fontSize: 13, color: '#888' }}>Page {tablePage} of {totalPages}</span>
+            <span style={{ fontSize: 13, color: '#ccc' }}>Page {tablePage} of {totalPages}</span>
             <button className="filter-btn" onClick={() => setTablePage(p => Math.min(totalPages, p+1))} disabled={tablePage===totalPages}>Next ›</button>
           </div>
         )}
