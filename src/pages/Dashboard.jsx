@@ -6,8 +6,8 @@ const MONTH_NAMES = ['January','February','March','April','May','June','July','A
 function StatCard({ label, value, color }) {
   return (
     <div style={{ background: '#111', border: '1px solid #222', borderRadius: 8, padding: '10px 14px' }}>
-      <div style={{ fontSize: 11, color: '#fff', marginBottom: 3 }}>{label}</div>
-      <div style={{ fontSize: 16, fontWeight: 500, color: color || '#ccc' }}>{value}</div>
+      <div style={{ fontSize: 11, color: '#bbb', marginBottom: 3 }}>{label}</div>
+      <div style={{ fontSize: 18, fontWeight: 700, color: color || '#fff' }}>{value}</div>
     </div>
   );
 }
@@ -15,10 +15,10 @@ function StatCard({ label, value, color }) {
 function InsightCard({ title, data }) {
   return (
     <div style={{ background: '#111', border: '1px solid #222', borderRadius: 8, padding: '12px 14px' }}>
-      <div style={{ fontSize: 11, color: '#fff', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{title}</div>
+      <div style={{ fontSize: 11, color: '#bbb', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>{title}</div>
       {data.map((row, i) => (
         <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: i < data.length - 1 ? 6 : 0 }}>
-          <span style={{ fontSize: 12, color: '#888' }}>{row.label}</span>
+          <span style={{ fontSize: 12, color: '#ccc' }}>{row.label}</span>
           <span style={{ fontSize: 12, color: row.wr >= 50 ? '#1D9E75' : '#E24B4A' }}>{row.wr}% · {row.net >= 0 ? '+' : ''}${row.net}</span>
         </div>
       ))}
@@ -39,20 +39,20 @@ function TierInsightCard({ trades }) {
   const slData = tierData('sl_tier');
   if (!alData.length && !slData.length) return (
     <div style={{ background: '#111', border: '1px solid #222', borderRadius: 8, padding: '12px 14px', gridColumn: 'span 2' }}>
-      <div style={{ fontSize: 11, color: '#fff', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>By Tier (AL / SL)</div>
+      <div style={{ fontSize: 11, color: '#bbb', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>By Tier (AL / SL)</div>
       <div style={{ fontSize: 12, color: '#444' }}>No tier data yet</div>
     </div>
   );
   return (
     <div style={{ background: '#111', border: '1px solid #222', borderRadius: 8, padding: '12px 14px', gridColumn: 'span 2' }}>
-      <div style={{ fontSize: 11, color: '#fff', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>By Tier (AL / SL)</div>
+      <div style={{ fontSize: 11, color: '#bbb', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>By Tier (AL / SL)</div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 20px' }}>
         {[['Action Line', alData], ['Safety Line', slData]].map(([title, data]) => (
           <div key={title}>
             <div style={{ fontSize: 10, color: '#fff', marginBottom: 4 }}>{title}</div>
             {data.map((row, i) => (
               <div key={i} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                <span style={{ fontSize: 12, color: '#888', display: 'flex', alignItems: 'center', gap: 5 }}>
+                <span style={{ fontSize: 12, color: '#ccc', display: 'flex', alignItems: 'center', gap: 5 }}>
                   <span style={{ width: 7, height: 7, borderRadius: '50%', background: row.color, display: 'inline-block' }} />
                   {row.label} <span style={{ color: '#444', fontSize: 10 }}>({row.count})</span>
                 </span>
@@ -124,16 +124,16 @@ function ProgressCalendar({ trades, dateRange }) {
               <button onClick={e => { e.stopPropagation(); setCalYear(now.getFullYear()); setCalMonth(now.getMonth()); }} style={{ background: 'transparent', border: '1px solid #2a2a2a', borderRadius: 6, padding: '3px 12px', cursor: 'pointer', color: '#888', fontSize: 13, fontWeight: 600 }}>This month</button>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ fontSize: 14, fontWeight: 600, color: '#666' }}>Monthly:</span>
+              <span style={{ fontSize: 14, fontWeight: 600, color: '#aaa' }}>Monthly:</span>
               <span style={{ background: monthNet >= 0 ? '#1D9E7522' : '#E24B4A22', color: monthNet >= 0 ? '#1D9E75' : '#E24B4A', borderRadius: 20, padding: '3px 12px', fontSize: 15, fontWeight: 700 }}>{fmt(monthNet)}</span>
-              <span style={{ background: '#1a1a1a', color: '#888', borderRadius: 20, padding: '3px 12px', fontSize: 14, fontWeight: 600 }}>{tradeDays} days</span>
+              <span style={{ background: '#1a1a1a', color: '#ccc', borderRadius: 20, padding: '3px 12px', fontSize: 14, fontWeight: 600 }}>{tradeDays} days</span>
             </div>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 0, alignItems: 'start' }}>
             <div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 3, marginBottom: 3 }}>
                 {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d => (
-                  <div key={d} style={{ textAlign: 'center', fontSize: 13, fontWeight: 700, color: '#444', padding: '3px 0' }}>{d}</div>
+                  <div key={d} style={{ textAlign: 'center', fontSize: 13, fontWeight: 700, color: '#aaa', padding: '3px 0' }}>{d}</div>
                 ))}
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
@@ -149,11 +149,11 @@ function ProgressCalendar({ trades, dateRange }) {
                       const wr = d && d.count ? Math.round(d.wins / d.count * 100) : 0;
                       return (
                         <div key={di} style={{ background: bg, border: `${isToday ? '1.5px' : '1px'} solid ${borderColor}`, borderRadius: 6, padding: '4px 6px', minHeight: 68, display: 'flex', flexDirection: 'column', gap: 2, position: 'relative' }}>
-                          <span style={{ fontSize: 13, fontWeight: 700, color: '#444', textAlign: 'right' }}>{day}</span>
+                          <span style={{ fontSize: 13, fontWeight: 700, color: '#aaa', textAlign: 'right' }}>{day}</span>
                           {d && (<>
                             <span style={{ fontSize: 14, fontWeight: 700, color: d.pnl >= 0 ? '#1D9E75' : '#E24B4A' }}>{d.pnl >= 0 ? '+$' : '-$'}{Math.abs(Math.round(d.pnl)).toLocaleString()}</span>
-                            <span style={{ fontSize: 12, fontWeight: 600, color: '#555' }}>{d.count} trade{d.count !== 1 ? 's' : ''}</span>
-                            <span style={{ fontSize: 12, fontWeight: 600, color: '#555' }}>{wr}%</span>
+                            <span style={{ fontSize: 12, fontWeight: 600, color: '#999' }}>{d.count} trade{d.count !== 1 ? 's' : ''}</span>
+                            <span style={{ fontSize: 12, fontWeight: 600, color: '#999' }}>{wr}%</span>
                             {d.pnl < 0 && <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#E24B4A', position: 'absolute', bottom: 4, left: 6 }} />}
                           </>)}
                         </div>
@@ -169,11 +169,11 @@ function ProgressCalendar({ trades, dateRange }) {
                 week.forEach(day => { if (day && dayMap[day]) { wNet += dayMap[day].pnl; wDays++; } });
                 return (
                   <div key={wi} style={{ background: '#111', border: '1px solid #222', borderRadius: 6, padding: '7px 10px', minWidth: 85, minHeight: 68, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 2 }}>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: '#444' }}>Week {wi + 1}</span>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: '#aaa' }}>Week {wi + 1}</span>
                     {wDays > 0 ? (<>
-                      <span style={{ fontSize: 16, fontWeight: 700, color: wNet >= 0 ? '#1D9E75' : '#E24B4A' }}>{fmt(wNet)}</span>
-                      <span style={{ fontSize: 12, fontWeight: 600, color: '#444' }}>{wDays} day{wDays !== 1 ? 's' : ''}</span>
-                    </>) : <span style={{ fontSize: 13, fontWeight: 700, color: '#2a2a2a' }}>—</span>}
+                      <span style={{ fontSize: 18, fontWeight: 700, color: wNet >= 0 ? '#1D9E75' : '#E24B4A' }}>{fmt(wNet)}</span>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: '#888' }}>{wDays} day{wDays !== 1 ? 's' : ''}</span>
+                    </>) : <span style={{ fontSize: 13, fontWeight: 700, color: '#444' }}>—</span>}
                   </div>
                 );
               })}
