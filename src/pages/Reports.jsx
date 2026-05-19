@@ -286,6 +286,27 @@ export default function Reports({ filteredTrades, dateLabel, acctLabel, strategi
     return { label: tw.label, trades: ts.length, wr: Math.round(w / ts.length * 100), net: Math.round(ts.reduce((s, t) => s + t.pnl, 0)) };
   });
 
+  // ── Trade duration calc ───────────────────────────────────────────────────
+  const tradesWithDuration = closed.filter(t => t.time && t.exit_time);
+  const durations = tradesWithDuration.map(t => {
+    const [eh, em] = t.time.split(':').map(Number);
+    const [xh, xm] = t.exit_time.split(':').map(Number);
+    return (xh * 60 + xm) - (eh * 60 + em);
+  }).filter(d => d > 0);
+  const avgDurMins = durations.length ? Math.round(durations.reduce((a, b) => a + b, 0) / durations.length) : null;
+  const fmtDur = (mins) => mins >= 60 ? `${Math.floor(mins/60)}h ${mins%60}m` : `${mins}m`;
+  const winDurs = closed.filter(t => t.time && t.exit_time && t.pnl > 0).map(t => {
+    const [eh,em]=t.time.split(':').map(Number),[xh,xm]=t.exit_time.split(':').map(Number);
+    return (xh*60+xm)-(eh*60+em);
+  }).filter(d => d > 0);
+  const lossDurs = closed.filter(t => t.time && t.exit_time && t.pnl < 0).map(t => {
+    const [eh,em]=t.time.split(':').map(Number),[xh,xm]=t.exit_time.split(':').map(Number);
+    return (xh*60+xm)-(eh*60+em);
+  }).filter(d => d > 0);
+  const avgWinDur = winDurs.length ? Math.round(winDurs.reduce((a,b)=>a+b,0)/winDurs.length) : null;
+  const avgLossDur = lossDurs.length ? Math.round(lossDurs.reduce((a,b)=>a+b,0)/lossDurs.length) : null;
+
+
   const toggleBtn = (v, label) => (
     <button key={v} onClick={() => setChartView(v)} style={{ padding: '3px 14px', borderRadius: 6, fontSize: 12, fontWeight: 500, cursor: 'pointer', border: '1px solid', borderColor: chartView === v ? '#185FA5' : '#2a2a2a', background: chartView === v ? '#185FA522' : 'transparent', color: chartView === v ? '#185FA5' : '#666' }}>{label}</button>
   );
@@ -402,7 +423,7 @@ export default function Reports({ filteredTrades, dateLabel, acctLabel, strategi
           {durations.length > 0 && (
             <div>
               <div style={{ fontSize: 11, color: '#444', marginBottom: 8 }}>Duration distribution</div>
-              <div style={{ display: 'flex', gap: 3, alignItems: 'flex-end', height: 40 }}>
+              <div style={{ display: 'flex', gap: 3, alignItems: 'flex-end', height: 56 }}>
                 {['0-30m','30-60m','1-2h','2-4h','4h+'].map((label, i) => {
                   const ranges = [[0,30],[30,60],[60,120],[120,240],[240,9999]];
                   const [lo,hi] = ranges[i];
@@ -410,8 +431,8 @@ export default function Reports({ filteredTrades, dateLabel, acctLabel, strategi
                   const pct = durations.length ? count / durations.length : 0;
                   return (
                     <div key={label} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
-                      <div style={{ fontSize: 10, color: '#555' }}>{count}</div>
-                      <div style={{ width: '100%', background: '#185FA5', borderRadius: '3px 3px 0 0', height: Math.max(pct * 36, count ? 3 : 0) }} />
+                      <div style={{ fontSize: 10, color: '#555' }}>{count || ''}</div>
+                      <div style={{ width: '100%', background: '#185FA5', borderRadius: '3px 3px 0 0', height: Math.max(pct * 40, count ? 3 : 0) }} />
                       <div style={{ fontSize: 10, color: '#444', whiteSpace: 'nowrap' }}>{label}</div>
                     </div>
                   );
