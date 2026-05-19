@@ -20,7 +20,7 @@ function TertiaryWarning({ alTier, slTier }) {
 
 // ─── Trade Form ───────────────────────────────────────────────────────────────
 function TradeForm({ form, setForm, onSubmit, onCancel, uploading, isEdit, strategies }) {
-  const safeStrats = Array.isArray(strategies) ? safeStrats : [];
+  const safeStrats = Array.isArray(strategies) ? strategies : [];
   const [stratError, setStratError] = useState(false);
 
   const confOptions = ['AL crossed', 'Yellow S/R cleared', 'SL identified', 'Open space'];
@@ -73,7 +73,7 @@ function TradeForm({ form, setForm, onSubmit, onCancel, uploading, isEdit, strat
           </div>
         ) : (
           <div style={{ padding: '10px 14px', background: '#E24B4A12', border: '1px solid #E24B4A33', borderRadius: 8, fontSize: 13, color: '#E24B4A' }}>
-            ⚠️ No safeStrats found. Go to the <strong>Strategies</strong> page and create one first.
+            ⚠️ No strategies found. Go to the <strong>Strategies</strong> page and create one first.
           </div>
         )}
         {stratError && (
@@ -430,7 +430,7 @@ export default function TradeView({ trades, filteredTrades, safeStrategies, relo
   // filteredTrades here is actually ALL trades (passed from App.js)
   const allTrades = Array.isArray(filteredTrades) ? filteredTrades : [];
   const safeTrades = Array.isArray(trades) ? trades : [];
-  const safeStrategies = Array.isArray(safeStrategies) ? safeStrategies : [];
+  const safeStrategies = Array.isArray(strategies) ? strategies : [];
 
   const nextTradeNumber = () => {
     if (!safeTrades.length) return 1;
