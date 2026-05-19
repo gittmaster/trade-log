@@ -235,7 +235,7 @@ function ManageLevels() {
   const [ptTarget, setPtTarget] = useState('');
   const [ptResult, setPtResult] = useState(null);
 
-  const allSymbols = [...new Set([...levels.map(l => l.symbol), 'MGC', 'MNQ'])];
+  const allSymbols = [...new Set([...levels.map(l => l.symbol), 'MGC', 'MNQ', 'MYM', 'MCL'])];
 
   const save = (updated) => {
     setLevels(updated);
