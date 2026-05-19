@@ -55,7 +55,7 @@ export const EMPTY_FORM = {
   trade_number: '', date: new Date().toISOString().split('T')[0], time: '',
   account: 'A1', symbol: 'MGC', custom_symbol: '', custom_multiplier: '', contracts: '1',
   direction: 'long', entry: '', exit_price: '', stop: '', target: '',
-  exit_reason: '', al_strength: 'standard', al_touches: '', al_age: '<1wk', al_tier: 'Primary',
+  exit_reason: '', exit_time: '', al_strength: 'standard', al_touches: '', al_age: '<1wk', al_tier: 'Primary',
   sl_quality: 'weak', sl_touches: '', sl_age: '<1wk', sl_tier: 'Primary',
   sl_price: '', grade: 'a', yellow_levels: '', confirmations: [], notes: '',
   chart_file: null, strategy_id: null,

@@ -380,6 +380,48 @@ export default function Reports({ filteredTrades, dateLabel, acctLabel, strategi
         </div>
       </>)}
 
+
+      {/* ── DURATION SECTION ── */}
+      {tab === 'overview' && avgDurMins !== null && (
+        <div style={{ background: '#111', border: '1px solid #222', borderRadius: 8, padding: '14px 16px', marginBottom: 20 }}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: '#aaa', marginBottom: 14 }}>Trade Duration ({tradesWithDuration.length} trades with exit time)</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 14 }}>
+            <div style={{ background: '#1a1a1a', borderRadius: 8, padding: '10px 14px', textAlign: 'center' }}>
+              <div style={{ fontSize: 11, color: '#555', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Avg Duration</div>
+              <div style={{ fontSize: 20, fontWeight: 600, color: '#ccc' }}>{fmtDur(avgDurMins)}</div>
+            </div>
+            <div style={{ background: '#1a1a1a', borderRadius: 8, padding: '10px 14px', textAlign: 'center' }}>
+              <div style={{ fontSize: 11, color: '#555', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Avg Winner</div>
+              <div style={{ fontSize: 20, fontWeight: 600, color: '#1D9E75' }}>{avgWinDur !== null ? fmtDur(avgWinDur) : '—'}</div>
+            </div>
+            <div style={{ background: '#1a1a1a', borderRadius: 8, padding: '10px 14px', textAlign: 'center' }}>
+              <div style={{ fontSize: 11, color: '#555', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Avg Loser</div>
+              <div style={{ fontSize: 20, fontWeight: 600, color: '#E24B4A' }}>{avgLossDur !== null ? fmtDur(avgLossDur) : '—'}</div>
+            </div>
+          </div>
+          {durations.length > 0 && (
+            <div>
+              <div style={{ fontSize: 11, color: '#444', marginBottom: 8 }}>Duration distribution</div>
+              <div style={{ display: 'flex', gap: 3, alignItems: 'flex-end', height: 40 }}>
+                {['0-30m','30-60m','1-2h','2-4h','4h+'].map((label, i) => {
+                  const ranges = [[0,30],[30,60],[60,120],[120,240],[240,9999]];
+                  const [lo,hi] = ranges[i];
+                  const count = durations.filter(d => d >= lo && d < hi).length;
+                  const pct = durations.length ? count / durations.length : 0;
+                  return (
+                    <div key={label} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
+                      <div style={{ fontSize: 10, color: '#555' }}>{count}</div>
+                      <div style={{ width: '100%', background: '#185FA5', borderRadius: '3px 3px 0 0', height: Math.max(pct * 36, count ? 3 : 0) }} />
+                      <div style={{ fontSize: 10, color: '#444', whiteSpace: 'nowrap' }}>{label}</div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* ── BY STRATEGY TAB ── */}
       {tab === 'strategy' && (<>
 
