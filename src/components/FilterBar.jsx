@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef } from 'react';
-import { supabase } from '../supabase';
 
 export function defaultFilters() {
   return {
@@ -51,10 +50,10 @@ function activeChipLabels(f, strategies) {
     ...f.sessions.map(s => s.split(' ')[0]),
     ...f.days.map(d => d.slice(0, 3)),
     ...f.hours,
-    ...f.strategies.map(id => {
-      const s = strategies.find(x => x.id === id);
-      return s ? s.name : null;
-    }).filter(Boolean),
+    ...f.strategies.map(slug => {
+      const s = strategies.find(x => x.id === slug);
+      return s ? s.name : slug;
+    }),
     ...(f.grade      ? [`Grade: ${f.grade}`]     : []),
     ...(f.direction  ? [f.direction]              : []),
     ...(f.exitReason ? [`Exit: ${f.exitReason}`]  : []),
@@ -158,11 +157,15 @@ export default function FilterBar({ filters, onChange }) {
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
+  // Hardcoded to match strategy_id slugs stored in trades table
   useEffect(() => {
-    supabase.from('strategies').select('id, name').then(({ data, error }) => {
-      if (!error && data) setStrats(data);
-      // silently ignore 404 / missing table — strategies panel shows "No strategies found"
-    }).catch(() => {});
+    setStrats([
+      { id: 'strat-aplus-prime',       name: 'A+ Prime',             desc: 'AL 3+ touches 1wk+ · SL 3+ touches 1wk+' },
+      { id: 'strat-strong-al-weak-sl', name: 'Strong AL / Weak SL',  desc: 'AL 3+ touches 1wk+ · SL <3 touches or <1wk' },
+      { id: 'strat-weak-al-strong-sl', name: 'Weak AL / Strong SL',  desc: 'AL <3 touches or <1wk · SL 3+ touches 1wk+' },
+      { id: 'strat-both-weak',         name: 'Both Weak',            desc: 'AL <3 touches or <1wk · SL <3 touches or <1wk' },
+      { id: 'strat-unassigned',        name: 'Unassigned',           desc: 'Trades not tagged to a strategy' },
+    ]);
   }, []);
 
   function toggle(key, val) {
@@ -402,10 +405,36 @@ export default function FilterBar({ filters, onChange }) {
                     </div>
                   )}
                   {strategies.map(s => (
-                    <CheckRow key={s.id} label={s.name}
-                      checked={filters.strategies.includes(s.id)}
-                      onChange={() => toggle('strategies', s.id)}
-                    />
+                    <div key={s.id}
+                      onClick={() => toggle('strategies', s.id)}
+                      style={{
+                        display: 'flex', alignItems: 'flex-start', gap: 12,
+                        padding: '9px 12px', cursor: 'pointer', borderRadius: 6, marginBottom: 3,
+                        background: filters.strategies.includes(s.id) ? '#1a1040' : 'transparent',
+                        border: `0.5px solid ${filters.strategies.includes(s.id) ? '#4c1d95' : 'transparent'}`,
+                        userSelect: 'none',
+                      }}
+                      onMouseEnter={e => { if (!filters.strategies.includes(s.id)) e.currentTarget.style.background = '#13111e'; }}
+                      onMouseLeave={e => { if (!filters.strategies.includes(s.id)) e.currentTarget.style.background = 'transparent'; }}
+                    >
+                      <span style={{
+                        width: 18, height: 18, borderRadius: 4, flexShrink: 0, marginTop: 1,
+                        border: `1.5px solid ${filters.strategies.includes(s.id) ? '#7c3aed' : '#2a3040'}`,
+                        background: filters.strategies.includes(s.id) ? '#7c3aed' : 'transparent',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        transition: 'all 0.15s', pointerEvents: 'none',
+                      }}>
+                        {filters.strategies.includes(s.id) && (
+                          <svg width="11" height="11" viewBox="0 0 11 11" fill="none" style={{ pointerEvents: 'none' }}>
+                            <path d="M1.5 5.5l3 3 5-5" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                          </svg>
+                        )}
+                      </span>
+                      <div style={{ pointerEvents: 'none' }}>
+                        <div style={{ fontSize: 13, fontWeight: 500, color: filters.strategies.includes(s.id) ? '#e2e8f0' : '#94a3b8' }}>{s.name}</div>
+                        <div style={{ fontSize: 11, color: '#4a5568', marginTop: 2 }}>{s.desc}</div>
+                      </div>
+                    </div>
                   ))}
                 </div>
               )}
