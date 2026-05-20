@@ -2,6 +2,15 @@ import React, { useState } from 'react';
 import { supabase } from '../supabase';
 import { GRADES, GRADE_COLORS, TIERS, TIER_COLORS, getMultiplier, calcPnL, getSession, autoGrade, EMPTY_FORM } from '../App';
 
+// ─── Hardcoded strategies (match strategy_id slugs in trades table) ───────────
+const STRATEGIES = [
+  { id: 'strat-aplus-prime',       name: 'A+ Prime',             icon: '⭐', color: '#1D9E75' },
+  { id: 'strat-strong-al-weak-sl', name: 'Strong AL / Weak SL',  icon: '📈', color: '#185FA5' },
+  { id: 'strat-weak-al-strong-sl', name: 'Weak AL / Strong SL',  icon: '🛡️', color: '#BA7517' },
+  { id: 'strat-both-weak',         name: 'Both Weak',            icon: '⚠️', color: '#E24B4A' },
+  { id: 'strat-unassigned',        name: 'Unassigned',           icon: '📋', color: '#666' },
+];
+
 // ─── Tertiary Warning ─────────────────────────────────────────────────────────
 function TertiaryWarning({ alTier, slTier }) {
   const al = alTier === 'Tertiary', sl = slTier === 'Tertiary';
@@ -12,15 +21,14 @@ function TertiaryWarning({ alTier, slTier }) {
       <span style={{ fontSize: 18 }}>⚠️</span>
       <div>
         <div style={{ color: '#E24B4A', fontWeight: 600, fontSize: 13 }}>Tertiary {parts.join(' & ')} — Low Reliability</div>
-        <div style={{ color: '#aaa', fontSize: 12, marginTop: 2 }}>Tertiary SL trades cost –$460 in April. Consider skipping or requiring stronger confluence.</div>
+        <div style={{ color: '#aaa', fontSize: 12, marginTop: 2 }}>Tertiary SL trades cost −$460 in April. Consider skipping or requiring stronger confluence.</div>
       </div>
     </div>
   );
 }
 
 // ─── Trade Form ───────────────────────────────────────────────────────────────
-function TradeForm({ form, setForm, onSubmit, onCancel, uploading, isEdit, strategies }) {
-  const safeStrats = Array.isArray(strategies) ? strategies : [];
+function TradeForm({ form, setForm, onSubmit, onCancel, uploading, isEdit }) {
   const [stratError, setStratError] = useState(false);
 
   const confOptions = ['AL crossed', 'Yellow S/R cleared', 'SL identified', 'Open space'];
@@ -57,25 +65,19 @@ function TradeForm({ form, setForm, onSubmit, onCancel, uploading, isEdit, strat
           Strategy
           <span style={{ fontSize: 11, color: '#E24B4A', fontWeight: 500 }}>* required</span>
         </label>
-        {safeStrats && safeStrats.length > 0 ? (
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 4 }}>
-            {safeStrats.map(s => (
-              <button key={s.id} onClick={() => pickStrategy(s.id)} style={{
-                padding: '6px 14px', borderRadius: 8, fontSize: 13, cursor: 'pointer',
-                border: `1.5px solid ${form.strategy_id === s.id ? (s.color || '#185FA5') : stratError ? '#E24B4A55' : '#2a2a2a'}`,
-                background: form.strategy_id === s.id ? (s.color || '#185FA5') + '22' : stratError ? '#E24B4A08' : 'transparent',
-                color: form.strategy_id === s.id ? (s.color || '#185FA5') : stratError ? '#E24B4A88' : '#888',
-                fontWeight: form.strategy_id === s.id ? 500 : 400,
-              }}>
-                {s.icon} {s.name}
-              </button>
-            ))}
-          </div>
-        ) : (
-          <div style={{ padding: '10px 14px', background: '#E24B4A12', border: '1px solid #E24B4A33', borderRadius: 8, fontSize: 13, color: '#E24B4A' }}>
-            ⚠️ No strategies found. Go to the <strong>Strategies</strong> page and create one first.
-          </div>
-        )}
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 4 }}>
+          {STRATEGIES.map(s => (
+            <button key={s.id} onClick={() => pickStrategy(s.id)} style={{
+              padding: '6px 14px', borderRadius: 8, fontSize: 13, cursor: 'pointer',
+              border: `1.5px solid ${form.strategy_id === s.id ? (s.color || '#185FA5') : stratError ? '#E24B4A55' : '#2a2a2a'}`,
+              background: form.strategy_id === s.id ? (s.color || '#185FA5') + '22' : stratError ? '#E24B4A08' : 'transparent',
+              color: form.strategy_id === s.id ? (s.color || '#185FA5') : stratError ? '#E24B4A88' : '#888',
+              fontWeight: form.strategy_id === s.id ? 600 : 400,
+            }}>
+              {s.icon} {s.name}
+            </button>
+          ))}
+        </div>
         {stratError && (
           <div style={{ marginTop: 6, fontSize: 12, color: '#E24B4A', display: 'flex', alignItems: 'center', gap: 4 }}>
             ⚠️ Please select a strategy before logging this trade.
@@ -245,7 +247,7 @@ function ManageLevels() {
   };
   const addLevel = () => { if (!newName || !newPrice) return; save([...levels, { id: Date.now(), name: newName, price: parseFloat(newPrice), symbol: newSymbol }]); setNewName(''); setNewPrice(''); };
   const deleteLevel = (id) => save(levels.filter(l => l.id !== id));
-  const startEdit = (l) => { setEditId(l.id); setEditPrice(String(l.price)); };
+  const startEditLevel = (l) => { setEditId(l.id); setEditPrice(String(l.price)); };
   const saveEdit = (id) => { save(levels.map(l => l.id === id ? { ...l, price: parseFloat(editPrice) } : l)); setEditId(null); setEditPrice(''); };
 
   const checkTrade = () => {
@@ -290,13 +292,12 @@ function ManageLevels() {
   return (
     <div style={{ marginBottom: 20 }}>
       <div onClick={() => setOpen(o => !o)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#111', border: '1px solid #222', borderRadius: open ? '8px 8px 0 0' : 8, padding: '10px 16px', cursor: 'pointer', userSelect: 'none' }}>
-        <span style={{ fontWeight: 500, fontSize: 14, color: '#ccc' }}>📐 Key Levels & Pre-Trade Check</span>
+        <span style={{ fontWeight: 500, fontSize: 14, color: '#ccc' }}>📍 Key Levels & Pre-Trade Check</span>
         <span style={{ color: '#bbb', fontSize: 13 }}>{open ? '▲ Hide' : '▼ Show'}</span>
       </div>
       {open && (
         <div style={{ border: '1px solid #222', borderTop: 'none', borderRadius: '0 0 8px 8px', padding: 16 }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
-
             {/* Key Levels */}
             <div className="table-card" style={{ marginBottom: 0 }}>
               <div className="table-header" style={{ marginBottom: 12 }}>
@@ -324,7 +325,7 @@ function ManageLevels() {
                     <button onClick={() => setEditId(null)} style={{ background: '#333', border: 'none', borderRadius: 4, padding: '3px 8px', color: '#ccc', fontSize: 12, cursor: 'pointer' }}>×</button>
                   </>) : (<>
                     <span style={{ fontSize: 13, color: '#1D9E75', fontWeight: 500, minWidth: 60, textAlign: 'right' }}>{l.price}</span>
-                    <button onClick={() => startEdit(l)} style={{ background: '#222', border: 'none', borderRadius: 4, padding: '3px 8px', color: '#ccc', fontSize: 11, cursor: 'pointer' }}>Edit</button>
+                    <button onClick={() => startEditLevel(l)} style={{ background: '#222', border: 'none', borderRadius: 4, padding: '3px 8px', color: '#ccc', fontSize: 11, cursor: 'pointer' }}>Edit</button>
                     <button onClick={() => deleteLevel(l.id)} style={{ background: 'none', border: 'none', color: '#E24B4A', fontSize: 14, cursor: 'pointer', padding: '0 4px' }}>×</button>
                   </>)}
                 </div>
@@ -380,7 +381,7 @@ function ManageLevels() {
                   )}
                   {ptResult.suggestions.length > 0 && (
                     <div style={{ background: '#185FA512', border: '1px solid #185FA544', borderRadius: 8, padding: '10px 12px' }}>
-                      <div style={{ fontSize: 12, color: '#185FA5', fontWeight: 600, marginBottom: 8 }}>💡 Recommended Targets</div>
+                      <div style={{ fontSize: 12, color: '#185FA5', fontWeight: 600, marginBottom: 8 }}>🎯 Recommended Targets</div>
                       {ptResult.suggestions.map((s, i) => (
                         <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: i<ptResult.suggestions.length-1?8:0, background: '#111', borderRadius: 6, padding: '7px 10px' }}>
                           <div><div style={{ fontSize: 14, color: '#ccc', fontWeight: 600 }}>@ {s.price}</div><div style={{ fontSize: 12, color: '#ccc' }}>{s.label} · {s.note}</div></div>
@@ -428,10 +429,8 @@ export default function TradeView({ trades, filteredTrades, strategies, reloadTr
   const [uploading, setUploading] = useState(false);
   const [chartModal, setChartModal] = useState(null);
 
-  // filteredTrades here is actually ALL trades (passed from App.js)
   const allTrades = Array.isArray(filteredTrades) ? filteredTrades : [];
   const safeTrades = Array.isArray(trades) ? trades : [];
-  const safeStrategies = Array.isArray(strategies) ? strategies : [];
 
   const nextTradeNumber = () => {
     if (!safeTrades.length) return 1;
@@ -461,11 +460,7 @@ export default function TradeView({ trades, filteredTrades, strategies, reloadTr
     if (activeFilter === 'no-strategy') return base.filter(t => !t.strategy_id);
     if (activeFilter === 'week') {
       const { monday, sunday } = getWeekRange();
-      return base.filter(t => {
-        if (!t.date) return false;
-        const d = new Date(t.date + 'T12:00:00');
-        return d >= monday && d <= sunday;
-      });
+      return base.filter(t => { if (!t.date) return false; const d = new Date(t.date + 'T12:00:00'); return d >= monday && d <= sunday; });
     }
     if (['aplus','a','aminus'].includes(activeFilter)) return base.filter(t => t.grade === activeFilter);
     if (symbols.includes(activeFilter)) return base.filter(t => (t.symbol === 'OTHER' ? t.custom_symbol : t.symbol) === activeFilter);
@@ -475,8 +470,7 @@ export default function TradeView({ trades, filteredTrades, strategies, reloadTr
     if (activeFilter === 'sl-primary') return base.filter(t => t.sl_tier === 'Primary');
     if (activeFilter === 'sl-secondary') return base.filter(t => t.sl_tier === 'Secondary');
     if (activeFilter === 'sl-tertiary') return base.filter(t => t.sl_tier === 'Tertiary');
-    // filter by strategy id
-    if (safeStrategies.find(s => s.id === activeFilter)) return base.filter(t => t.strategy_id === activeFilter);
+    if (STRATEGIES.find(s => s.id === activeFilter)) return base.filter(t => t.strategy_id === activeFilter);
     return base;
   };
 
@@ -570,18 +564,16 @@ export default function TradeView({ trades, filteredTrades, strategies, reloadTr
   };
 
   const tierGroups = [
-    { key: 'al-primary', label: 'AL: Primary', color: TIER_COLORS['Primary'] },
-    { key: 'al-secondary', label: 'AL: Secondary', color: TIER_COLORS['Secondary'] },
-    { key: 'al-tertiary', label: 'AL: Tertiary', color: TIER_COLORS['Tertiary'] },
-    { key: 'sl-primary', label: 'SL: Primary', color: TIER_COLORS['Primary'] },
-    { key: 'sl-secondary', label: 'SL: Secondary', color: TIER_COLORS['Secondary'] },
-    { key: 'sl-tertiary', label: 'SL: Tertiary', color: TIER_COLORS['Tertiary'] },
+    { key: 'al-primary',   label: 'AL: Primary',   color: TIER_COLORS['Primary']   },
+    { key: 'al-secondary', label: 'AL: Secondary',  color: TIER_COLORS['Secondary'] },
+    { key: 'al-tertiary',  label: 'AL: Tertiary',   color: TIER_COLORS['Tertiary']  },
+    { key: 'sl-primary',   label: 'SL: Primary',    color: TIER_COLORS['Primary']   },
+    { key: 'sl-secondary', label: 'SL: Secondary',  color: TIER_COLORS['Secondary'] },
+    { key: 'sl-tertiary',  label: 'SL: Tertiary',   color: TIER_COLORS['Tertiary']  },
   ];
 
   return (
     <div style={{ padding: '16px 20px' }}>
-
-      {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
         <div>
           <div style={{ fontSize: 18, fontWeight: 500, color: '#ccc', marginBottom: 2 }}>Trade View</div>
@@ -597,7 +589,6 @@ export default function TradeView({ trades, filteredTrades, strategies, reloadTr
         </button>
       </div>
 
-      {/* No-strategy warning banner */}
       {noStratCount > 0 && (
         <div style={{ background: '#BA751715', border: '1px solid #BA751744', borderRadius: 8, padding: '10px 16px', marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -610,76 +601,56 @@ export default function TradeView({ trades, filteredTrades, strategies, reloadTr
         </div>
       )}
 
-      {/* Key Levels */}
       <ManageLevels />
 
-      {/* Trade Form */}
+      {/* ── Trade Form — no longer needs strategies prop ── */}
       {showForm && (
         <TradeForm
-          form={form} setForm={setForm}
+          form={form}
+          setForm={setForm}
           onSubmit={editingTrade ? updateTrade : submitTrade}
           onCancel={cancelForm}
           uploading={uploading}
           isEdit={!!editingTrade}
-          safeStrategies={safeStrategies}
         />
       )}
 
-      {/* Trade Table */}
       <div className="table-card">
         <div className="table-header">
-          <h2>Trade History ({sorted.length}{activeFilter !== 'all' ? ` filtered` : ''})</h2>
+          <h2>Trade History ({sorted.length}{activeFilter !== 'all' ? ' filtered' : ''})</h2>
         </div>
 
-        {/* Filter row 1 — general */}
         <div className="filter-row">
-          {[
-            ['all', 'All'],
-            ['win', 'Win'],
-            ['loss', 'Loss'],
-            ['week', 'This Week'],
-            ['aplus', 'A+'],
-            ['a', 'A'],
-            ['aminus', 'A-'],
-            ...symbols.map(s => [s, s]),
-          ].map(([f, label]) => (
-            <button key={f} className={`filter-btn ${activeFilter === f ? 'active' : ''}`} onClick={() => { setActiveFilter(f); setTablePage(1); }}>{label}</button>
+          {[['all','All'],['win','Win'],['loss','Loss'],['week','This Week'],['aplus','A+'],['a','A'],['aminus','A-'],...symbols.map(s=>[s,s])].map(([f,label]) => (
+            <button key={f} className={`filter-btn ${activeFilter===f?'active':''}`} onClick={() => { setActiveFilter(f); setTablePage(1); }}>{label}</button>
           ))}
           {noStratCount > 0 && (
-            <button
-              className={`filter-btn ${activeFilter === 'no-strategy' ? 'active' : ''}`}
-              style={activeFilter !== 'no-strategy' ? { borderColor: '#BA751744', color: '#BA7517' } : {}}
-              onClick={() => { setActiveFilter(activeFilter === 'no-strategy' ? 'all' : 'no-strategy'); setTablePage(1); }}
-            >
+            <button className={`filter-btn ${activeFilter==='no-strategy'?'active':''}`} style={activeFilter!=='no-strategy'?{borderColor:'#BA751744',color:'#BA7517'}:{}} onClick={() => { setActiveFilter(activeFilter==='no-strategy'?'all':'no-strategy'); setTablePage(1); }}>
               ⚠️ No Strategy ({noStratCount})
             </button>
           )}
         </div>
 
-        {/* Filter row 2 — by strategy */}
-        {safeStrategies.length > 0 && (
-          <div className="filter-row" style={{ marginTop: 0, borderTop: 'none' }}>
-            <span style={{ fontSize: 11, color: '#999', alignSelf: 'center', marginRight: 4 }}>Strategy:</span>
-            {safeStrategies.map(s => (
-              <button key={s.id}
-                className={`filter-btn ${activeFilter === s.id ? 'active' : ''}`}
-                style={activeFilter === s.id ? { borderColor: s.color || '#185FA5', color: s.color || '#185FA5', background: (s.color || '#185FA5') + '22' } : { borderColor: '#2a2a2a' }}
-                onClick={() => { setActiveFilter(activeFilter === s.id ? 'all' : s.id); setTablePage(1); }}
-              >
-                {s.icon} {s.name}
-              </button>
-            ))}
-          </div>
-        )}
+        <div className="filter-row" style={{ marginTop: 0, borderTop: 'none' }}>
+          <span style={{ fontSize: 11, color: '#999', alignSelf: 'center', marginRight: 4 }}>Strategy:</span>
+          {STRATEGIES.map(s => (
+            <button key={s.id}
+              className={`filter-btn ${activeFilter===s.id?'active':''}`}
+              style={activeFilter===s.id?{borderColor:s.color,color:s.color,background:s.color+'22'}:{borderColor:'#2a2a2a'}}
+              onClick={() => { setActiveFilter(activeFilter===s.id?'all':s.id); setTablePage(1); }}
+            >
+              {s.icon} {s.name}
+            </button>
+          ))}
+        </div>
 
-        {/* Filter row 3 — tiers */}
         <div className="filter-row" style={{ marginTop: 0, borderTop: 'none' }}>
           <span style={{ fontSize: 11, color: '#999', alignSelf: 'center', marginRight: 4 }}>Tier:</span>
           {tierGroups.map(({ key, label, color }) => (
             <button key={key}
-              className={`filter-btn ${activeFilter === key ? 'active' : ''}`}
-              style={activeFilter === key ? { borderColor: color, color, background: color + '22' } : { borderColor: '#2a2a2a' }}
-              onClick={() => { setActiveFilter(activeFilter === key ? 'all' : key); setTablePage(1); }}
+              className={`filter-btn ${activeFilter===key?'active':''}`}
+              style={activeFilter===key?{borderColor:color,color,background:color+'22'}:{borderColor:'#2a2a2a'}}
+              onClick={() => { setActiveFilter(activeFilter===key?'all':key); setTablePage(1); }}
             >
               {label}
             </button>
@@ -693,16 +664,9 @@ export default function TradeView({ trades, filteredTrades, strategies, reloadTr
             <table>
               <thead>
                 <tr>
-                  {[
-                    ['trade_number','#'],['date','Date'],['time','Time'],['account','Acct'],
-                    ['symbol','Symbol'],['direction','Dir'],['grade','Grade'],
-                    ['al_strength','AL'],['al_tier','AL Tier'],
-                    ['sl_quality','SL'],['sl_tier','SL Tier'],
-                    ['entry','Entry'],['exit_price','Exit'],['pnl','P&L'],
-                    ['exit_reason','Result'],['session','Session'],
-                  ].map(([col, label]) => (
+                  {[['trade_number','#'],['date','Date'],['time','Time'],['account','Acct'],['symbol','Symbol'],['direction','Dir'],['grade','Grade'],['al_strength','AL'],['al_tier','AL Tier'],['sl_quality','SL'],['sl_tier','SL Tier'],['entry','Entry'],['exit_price','Exit'],['pnl','P&L'],['exit_reason','Result'],['session','Session']].map(([col,label]) => (
                     <th key={col} onClick={() => handleSort(col)} style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}>
-                      {label} {sortCol === col ? (sortDir === 'asc' ? '↑' : '↓') : ''}
+                      {label} {sortCol===col?(sortDir==='asc'?'↑':'↓'):''}
                     </th>
                   ))}
                   <th>Strategy</th><th>Chart</th><th>Edit</th><th>Del</th>
@@ -712,7 +676,7 @@ export default function TradeView({ trades, filteredTrades, strategies, reloadTr
                 {paginated.map(t => {
                   const pnlColor = t.pnl > 0 ? '#1D9E75' : t.pnl < 0 ? '#E24B4A' : '#888';
                   const sym = t.symbol === 'OTHER' ? (t.custom_symbol || 'OTHER') : t.symbol;
-                  const strat = safeStrategies.find(s => s.id === t.strategy_id);
+                  const strat = STRATEGIES.find(s => s.id === t.strategy_id);
                   return (
                     <tr key={t.id}>
                       <td>{t.trade_number || '—'}</td>
@@ -720,27 +684,27 @@ export default function TradeView({ trades, filteredTrades, strategies, reloadTr
                       <td>{t.time || '—'}</td>
                       <td>{t.account}</td>
                       <td>{sym}</td>
-                      <td><span style={{ color: t.direction === 'long' ? '#1D9E75' : '#E24B4A', fontWeight: 600, fontSize: 11 }}>{t.direction?.toUpperCase()}</span></td>
+                      <td><span style={{ color: t.direction==='long'?'#1D9E75':'#E24B4A', fontWeight: 600, fontSize: 11 }}>{t.direction?.toUpperCase()}</span></td>
                       <td><span style={{ background: GRADE_COLORS[t.grade]+'33', color: GRADE_COLORS[t.grade], padding: '2px 8px', borderRadius: 4, fontSize: 12, fontWeight: 600 }}>{GRADES[t.grade]||t.grade}</span></td>
-                      <td><span style={{ fontSize: 11, color: t.al_strength==='strong'?'#1D9E75':'#888' }}>{t.al_strength==='strong'?'★':'○'} {t.al_touches||'?'}t {t.al_age||''}</span></td>
+                      <td><span style={{ fontSize: 11, color: t.al_strength==='strong'?'#1D9E75':'#888' }}>{t.al_strength==='strong'?'★':'–'} {t.al_touches||'?'}t {t.al_age||''}</span></td>
                       <td><span style={{ fontSize: 11, color: TIER_COLORS[t.al_tier]||'#888', background: (TIER_COLORS[t.al_tier]||'#888')+'22', padding: '2px 7px', borderRadius: 4 }}>{t.al_tier||'—'}</span></td>
                       <td><span style={{ fontSize: 11, color: t.sl_quality==='strong'?'#1D9E75':'#E24B4A' }}>{t.sl_quality==='strong'?'★':'✗'} {t.sl_touches||'?'}t {t.sl_age||''}</span></td>
                       <td><span style={{ fontSize: 11, color: TIER_COLORS[t.sl_tier]||'#888', background: (TIER_COLORS[t.sl_tier]||'#888')+'22', padding: '2px 7px', borderRadius: 4 }}>{t.sl_tier||'—'}</span></td>
                       <td style={{ fontFamily: 'var(--mono)', fontSize: 12 }}>{t.entry}</td>
                       <td style={{ fontFamily: 'var(--mono)', fontSize: 12 }}>{t.exit_price||'—'}</td>
-                      <td style={{ color: pnlColor, fontWeight: 600, fontFamily: 'var(--mono)', fontSize: 13 }}>{t.pnl !== null ? (t.pnl >= 0 ? '+$' : '-$') + Math.abs(t.pnl) : '—'}</td>
+                      <td style={{ color: pnlColor, fontWeight: 600, fontFamily: 'var(--mono)', fontSize: 13 }}>{t.pnl!==null?(t.pnl>=0?'+$':'-$')+Math.abs(t.pnl):'—'}</td>
                       <td><span style={{ fontSize: 12, color: '#ccc' }}>{t.exit_reason||'—'}</span></td>
                       <td><span style={{ fontSize: 11, color: '#aaa' }}>{t.session||'—'}</span></td>
                       <td>
                         {strat ? (
-                          <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 20, background: (strat.color||'#185FA5')+'22', color: strat.color||'#185FA5', whiteSpace: 'nowrap' }}>
+                          <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 20, background: strat.color+'22', color: strat.color, whiteSpace: 'nowrap' }}>
                             {strat.icon} {strat.name.slice(0,14)}
                           </span>
                         ) : (
                           <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 20, background: '#BA751722', color: '#BA7517' }}>⚠️ None</span>
                         )}
                       </td>
-                      <td>{t.chart_url ? <button className="btn-link" onClick={() => setChartModal(t.chart_url)}>View</button> : '—'}</td>
+                      <td>{t.chart_url?<button className="btn-link" onClick={() => setChartModal(t.chart_url)}>View</button>:'—'}</td>
                       <td><button className="btn-link" onClick={() => startEdit(t)}>Edit</button></td>
                       <td><button className="btn-link" style={{ color: '#E24B4A' }} onClick={() => deleteTrade(t.id)}>Del</button></td>
                     </tr>
@@ -753,14 +717,13 @@ export default function TradeView({ trades, filteredTrades, strategies, reloadTr
 
         {totalPages > 1 && (
           <div style={{ display: 'flex', gap: 8, justifyContent: 'center', padding: '12px 0', alignItems: 'center' }}>
-            <button className="filter-btn" onClick={() => setTablePage(p => Math.max(1, p-1))} disabled={tablePage===1}>‹ Prev</button>
+            <button className="filter-btn" onClick={() => setTablePage(p => Math.max(1,p-1))} disabled={tablePage===1}>← Prev</button>
             <span style={{ fontSize: 13, color: '#ccc' }}>Page {tablePage} of {totalPages}</span>
-            <button className="filter-btn" onClick={() => setTablePage(p => Math.min(totalPages, p+1))} disabled={tablePage===totalPages}>Next ›</button>
+            <button className="filter-btn" onClick={() => setTablePage(p => Math.min(totalPages,p+1))} disabled={tablePage===totalPages}>Next →</button>
           </div>
         )}
       </div>
 
-      {/* Chart modal */}
       {chartModal && (
         <div className="modal-overlay" onClick={() => setChartModal(null)}>
           <div className="modal-content" onClick={e => e.stopPropagation()}>
