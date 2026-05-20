@@ -92,23 +92,24 @@ const S = {
 };
 
 function CheckRow({ label, checked, onChange }) {
-  const [hov, setHov] = useState(false);
   return (
-    <label
+    <div
+      onClick={onChange}
       style={{
         ...S.checkRowBase,
-        background: checked ? '#1a1040' : hov ? '#13111e' : 'transparent',
+        background: checked ? '#1a1040' : 'transparent',
         border: `0.5px solid ${checked ? '#4c1d95' : 'transparent'}`,
+        userSelect: 'none',
       }}
-      onMouseEnter={() => setHov(true)}
-      onMouseLeave={() => setHov(false)}
+      onMouseEnter={e => { if (!checked) e.currentTarget.style.background = '#13111e'; }}
+      onMouseLeave={e => { if (!checked) e.currentTarget.style.background = 'transparent'; }}
     >
       <span style={{
         width: 18, height: 18, borderRadius: 4, flexShrink: 0,
         border: `1.5px solid ${checked ? '#7c3aed' : '#2a3040'}`,
         background: checked ? '#7c3aed' : 'transparent',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        transition: 'all 0.15s',
+        transition: 'all 0.15s', pointerEvents: 'none',
       }}>
         {checked && (
           <svg width="11" height="11" viewBox="0 0 11 11" fill="none">
@@ -116,10 +117,10 @@ function CheckRow({ label, checked, onChange }) {
           </svg>
         )}
       </span>
-      <span style={{ fontSize: 13, fontWeight: 500, color: checked ? '#e2e8f0' : '#94a3b8' }}>
+      <span style={{ fontSize: 13, fontWeight: 500, color: checked ? '#e2e8f0' : '#94a3b8', pointerEvents: 'none' }}>
         {label}
       </span>
-    </label>
+    </div>
   );
 }
 
@@ -158,9 +159,10 @@ export default function FilterBar({ filters, onChange }) {
   }, []);
 
   useEffect(() => {
-    supabase.from('strategies').select('id, name').then(({ data }) => {
-      if (data) setStrats(data);
-    });
+    supabase.from('strategies').select('id, name').then(({ data, error }) => {
+      if (!error && data) setStrats(data);
+      // silently ignore 404 / missing table — strategies panel shows "No strategies found"
+    }).catch(() => {});
   }, []);
 
   function toggle(key, val) {
