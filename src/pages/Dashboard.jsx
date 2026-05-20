@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { GRADE_COLORS, GRADES, SESSIONS, TIERS, TIER_COLORS } from '../App';
+import FilterBar, { defaultFilters } from '../components/FilterBar';
 
 const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
@@ -77,7 +78,7 @@ function ProgressCalendar({ trades, dateRange }) {
     setCalMonth(m => {
       let nm = m + dir;
       if (nm > 11) { setCalYear(y => y + 1); return 0; }
-      if (nm < 0) { setCalYear(y => y - 1); return 11; }
+      if (nm < 0)  { setCalYear(y => y - 1); return 11; }
       return nm;
     });
   };
@@ -87,17 +88,17 @@ function ProgressCalendar({ trades, dateRange }) {
     const [ty, tm, td] = t.date.split('-').map(Number);
     if (ty === calYear && tm - 1 === calMonth) {
       if (!dayMap[td]) dayMap[td] = { pnl: 0, count: 0, wins: 0 };
-      dayMap[td].pnl += t.pnl;
+      dayMap[td].pnl   += t.pnl;
       dayMap[td].count += 1;
       if (t.pnl > 0) dayMap[td].wins += 1;
     }
   });
 
-  const monthNet = Object.values(dayMap).reduce((s, d) => s + d.pnl, 0);
+  const monthNet  = Object.values(dayMap).reduce((s, d) => s + d.pnl, 0);
   const tradeDays = Object.keys(dayMap).length;
   const fmt = (v) => (v >= 0 ? '+$' : '-$') + Math.abs(Math.round(v)).toLocaleString();
 
-  const firstDay = new Date(calYear, calMonth, 1).getDay();
+  const firstDay    = new Date(calYear, calMonth, 1).getDay();
   const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
   const cells = [];
   for (let i = 0; i < firstDay; i++) cells.push(null);
@@ -118,9 +119,9 @@ function ProgressCalendar({ trades, dateRange }) {
         <div style={{ border: '1px solid #222', borderTop: 'none', borderRadius: '0 0 8px 8px', padding: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, flexWrap: 'wrap', gap: 8 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <button onClick={e => { e.stopPropagation(); changeMonth(-1); }} style={{ background: 'transparent', border: '1px solid #2a2a2a', borderRadius: 6, padding: '3px 10px', cursor: 'pointer', color: '#ccc' }}>‹</button>
+              <button onClick={e => { e.stopPropagation(); changeMonth(-1); }} style={{ background: 'transparent', border: '1px solid #2a2a2a', borderRadius: 6, padding: '3px 10px', cursor: 'pointer', color: '#ccc' }}>◀</button>
               <span style={{ fontSize: 17, fontWeight: 700, color: '#ccc', minWidth: 130, textAlign: 'center' }}>{MONTH_NAMES[calMonth]} {calYear}</span>
-              <button onClick={e => { e.stopPropagation(); changeMonth(1); }} style={{ background: 'transparent', border: '1px solid #2a2a2a', borderRadius: 6, padding: '3px 10px', cursor: 'pointer', color: '#ccc' }}>›</button>
+              <button onClick={e => { e.stopPropagation(); changeMonth(1); }} style={{ background: 'transparent', border: '1px solid #2a2a2a', borderRadius: 6, padding: '3px 10px', cursor: 'pointer', color: '#ccc' }}>▶</button>
               <button onClick={e => { e.stopPropagation(); setCalYear(now.getFullYear()); setCalMonth(now.getMonth()); }} style={{ background: 'transparent', border: '1px solid #2a2a2a', borderRadius: 6, padding: '3px 12px', cursor: 'pointer', color: '#888', fontSize: 13, fontWeight: 600 }}>This month</button>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -185,14 +186,106 @@ function ProgressCalendar({ trades, dateRange }) {
   );
 }
 
+// ─── filter helpers ───────────────────────────────────────────────────────────
+function applyFilters(trades, f) {
+  let t = [...trades];
+
+  if (f.instruments?.length)
+    t = t.filter(x => f.instruments.includes(x.symbol));
+
+  if (f.tradeType === 'Intraday')
+    t = t.filter(x => !x.multiday);
+  else if (f.tradeType === 'Multiday')
+    t = t.filter(x => x.multiday);
+
+  if (f.openClosed === 'Open')
+    t = t.filter(x => x.exit_price == null);
+  else if (f.openClosed === 'Closed')
+    t = t.filter(x => x.exit_price != null);
+
+  if (f.reviewed === 'Reviewed')
+    t = t.filter(x => x.reviewed);
+  else if (f.reviewed === 'Unreviewed')
+    t = t.filter(x => !x.reviewed);
+
+  if (f.side)
+    t = t.filter(x => x.direction?.toLowerCase() === f.side.toLowerCase());
+
+  if (f.status === 'Winner')
+    t = t.filter(x => x.pnl > 0);
+  else if (f.status === 'Loser')
+    t = t.filter(x => x.pnl < 0);
+  else if (f.status === 'Breakeven')
+    t = t.filter(x => x.pnl === 0);
+
+  if (f.tradeRating) {
+    const map = { 'A+': 'aplus', 'A': 'a', 'A-': 'aminus' };
+    t = t.filter(x => x.grade === map[f.tradeRating]);
+  }
+
+  if (f.sessions?.length) {
+    const sessionMap = {
+      'Morning 07–15 ✅':   'Morning',
+      'Late zone 15–19 ❌': 'Late Zone',
+      'Overnight 19–23 ✅': 'Overnight',
+      'Dead zone 23–07 ❌': 'Dead Zone',
+    };
+    const mapped = f.sessions.map(s => sessionMap[s]).filter(Boolean);
+    if (mapped.length) t = t.filter(x => mapped.includes(x.session));
+  }
+
+  if (f.days?.length) {
+    const DOW = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+    t = t.filter(x => {
+      if (!x.date) return false;
+      const day = DOW[new Date(x.date + 'T12:00:00').getDay()];
+      return f.days.includes(day);
+    });
+  }
+
+  if (f.hours?.length) {
+    t = t.filter(x => {
+      if (!x.time) return false;
+      const h = parseInt(x.time.split(':')[0], 10);
+      return f.hours.some(block => {
+        const [start] = block.split('–').map(s => parseInt(s, 10));
+        const end = start + 2;
+        return h >= start && h < end;
+      });
+    });
+  }
+
+  if (f.strategies?.length)
+    t = t.filter(x => f.strategies.includes(x.strategy_id));
+
+  if (f.grade) {
+    const map = { 'A+': 'aplus', 'A': 'a', 'A-': 'aminus' };
+    t = t.filter(x => x.grade === map[f.grade]);
+  }
+
+  if (f.direction)
+    t = t.filter(x => x.direction?.toLowerCase() === f.direction.toLowerCase());
+
+  if (f.exitReason)
+    t = t.filter(x => x.exit_reason?.toLowerCase() === f.exitReason.toLowerCase());
+
+  return t;
+}
+
+// ─── main Dashboard export ────────────────────────────────────────────────────
 export default function Dashboard({ filteredTrades, dateLabel, acctLabel, dateRange }) {
-  const closed = filteredTrades.filter(t => t.pnl !== null);
-  const wins = closed.filter(t => t.pnl > 0);
+  const [filters, setFilters] = useState(defaultFilters());
+
+  // Apply the FilterBar selections on top of the already date/account-filtered trades
+  const trades = applyFilters(filteredTrades, filters);
+
+  const closed = trades.filter(t => t.pnl !== null);
+  const wins   = closed.filter(t => t.pnl > 0);
   const losses = closed.filter(t => t.pnl < 0);
-  const net = closed.reduce((s, t) => s + (t.pnl || 0), 0);
-  const avgW = wins.length ? Math.round(wins.reduce((s, t) => s + t.pnl, 0) / wins.length) : null;
-  const avgL = losses.length ? Math.round(losses.reduce((s, t) => s + t.pnl, 0) / losses.length) : null;
-  const wr = closed.length ? Math.round(wins.length / closed.length * 100) : null;
+  const net    = closed.reduce((s, t) => s + (t.pnl || 0), 0);
+  const avgW   = wins.length   ? Math.round(wins.reduce((s, t)   => s + t.pnl, 0) / wins.length)   : null;
+  const avgL   = losses.length ? Math.round(losses.reduce((s, t) => s + t.pnl, 0) / losses.length) : null;
+  const wr     = closed.length ? Math.round(wins.length / closed.length * 100) : null;
 
   const insightData = (key, labels) => labels.map(({ k, l }) => {
     const ts = closed.filter(t => t[key] === k);
@@ -201,36 +294,42 @@ export default function Dashboard({ filteredTrades, dateLabel, acctLabel, dateRa
     return { label: l, wr: Math.round(w / ts.length * 100), net: Math.round(ts.reduce((s, t) => s + t.pnl, 0)) };
   }).filter(Boolean);
 
-  const symbols = [...new Set(filteredTrades.map(t => t.symbol === 'OTHER' ? (t.custom_symbol || 'OTHER') : t.symbol))];
+  const symbols = [...new Set(trades.map(t => t.symbol === 'OTHER' ? (t.custom_symbol || 'OTHER') : t.symbol))];
 
   return (
     <div style={{ padding: '16px 20px' }}>
-      {/* Page header */}
+
+      {/* ── Page header + FilterBar ── */}
       <div style={{ marginBottom: 16 }}>
-        <div style={{ fontSize: 18, fontWeight: 500, color: '#ccc', marginBottom: 2 }}>Dashboard</div>
-        <div style={{ fontSize: 12, color: '#555' }}>{dateLabel} · {acctLabel}</div>
+        <div style={{ fontSize: 18, fontWeight: 500, color: '#ccc', marginBottom: 6 }}>Dashboard</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 12, color: '#555' }}>{dateLabel} · {acctLabel}</span>
+          <div style={{ marginLeft: 'auto' }}>
+            <FilterBar filters={filters} onChange={setFilters} />
+          </div>
+        </div>
       </div>
 
-      {/* Stat cards */}
+      {/* ── Stat cards ── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 8, marginBottom: 16 }}>
-        <StatCard label="Total Trades" value={filteredTrades.length} />
-        <StatCard label="Win Rate" value={wr !== null ? wr + '%' : '—'} color={wr >= 50 ? '#1D9E75' : wr !== null ? '#E24B4A' : undefined} />
-        <StatCard label="Net P&L" value={closed.length ? (net >= 0 ? '+$' : '-$') + Math.abs(Math.round(net)).toLocaleString() : '$0'} color={net > 0 ? '#1D9E75' : net < 0 ? '#E24B4A' : undefined} />
-        <StatCard label="Avg Winner" value={avgW !== null ? '+$' + avgW : '—'} color="#1D9E75" />
-        <StatCard label="Avg Loser" value={avgL !== null ? '-$' + Math.abs(avgL) : '—'} color="#E24B4A" />
+        <StatCard label="Total Trades" value={trades.length} />
+        <StatCard label="Win Rate"     value={wr !== null ? wr + '%' : '—'} color={wr >= 50 ? '#1D9E75' : wr !== null ? '#E24B4A' : undefined} />
+        <StatCard label="Net P&L"      value={closed.length ? (net >= 0 ? '+$' : '-$') + Math.abs(Math.round(net)).toLocaleString() : '$0'} color={net > 0 ? '#1D9E75' : net < 0 ? '#E24B4A' : undefined} />
+        <StatCard label="Avg Winner"   value={avgW !== null ? '+$' + avgW : '—'} color="#1D9E75" />
+        <StatCard label="Avg Loser"    value={avgL !== null ? '-$' + Math.abs(avgL) : '—'} color="#E24B4A" />
       </div>
 
-      {/* Insight cards */}
+      {/* ── Insight cards ── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, marginBottom: 16 }}>
         <InsightCard title="By Instrument" data={insightData('symbol', symbols.map(s => ({ k: s, l: s })))} />
-        <InsightCard title="By Grade" data={insightData('grade', [{ k: 'aplus', l: 'A+' }, { k: 'a', l: 'A' }, { k: 'aminus', l: 'A-' }])} />
+        <InsightCard title="By Grade"      data={insightData('grade', [{ k: 'aplus', l: 'A+' }, { k: 'a', l: 'A' }, { k: 'aminus', l: 'A-' }])} />
         <InsightCard title="By Safety Line" data={insightData('sl_quality', [{ k: 'strong', l: '★ Strong' }, { k: 'weak', l: 'Weak' }])} />
-        <InsightCard title="By Session" data={insightData('session', SESSIONS.map(s => ({ k: s, l: s })))} />
-        <TierInsightCard trades={filteredTrades} />
+        <InsightCard title="By Session"    data={insightData('session', SESSIONS.map(s => ({ k: s, l: s })))} />
+        <TierInsightCard trades={trades} />
       </div>
 
-      {/* Progress calendar */}
-      <ProgressCalendar trades={filteredTrades} dateRange={dateRange} />
+      {/* ── Progress calendar ── */}
+      <ProgressCalendar trades={trades} dateRange={dateRange} />
     </div>
   );
 }
