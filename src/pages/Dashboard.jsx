@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { GRADE_COLORS, GRADES, SESSIONS, TIERS, TIER_COLORS } from '../App';
-import FilterBar, { defaultFilters } from '../components/FilterBar';
 
 const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
@@ -70,9 +69,9 @@ function TierInsightCard({ trades }) {
 function ProgressCalendar({ trades, dateRange }) {
   const closed = trades.filter(t => t.pnl !== null && t.date);
   const now = new Date();
-  const [calYear, setCalYear] = useState(dateRange.start.getFullYear());
+  const [calYear,  setCalYear]  = useState(dateRange.start.getFullYear());
   const [calMonth, setCalMonth] = useState(dateRange.start.getMonth());
-  const [open, setOpen] = useState(true);
+  const [open,     setOpen]     = useState(true);
 
   const changeMonth = (dir) => {
     setCalMonth(m => {
@@ -186,98 +185,9 @@ function ProgressCalendar({ trades, dateRange }) {
   );
 }
 
-// ─── filter helpers ───────────────────────────────────────────────────────────
-function applyFilters(trades, f) {
-  let t = [...trades];
-
-  if (f.instruments?.length)
-    t = t.filter(x => f.instruments.includes(x.symbol));
-
-  if (f.tradeType === 'Intraday')
-    t = t.filter(x => !x.multiday);
-  else if (f.tradeType === 'Multiday')
-    t = t.filter(x => x.multiday);
-
-  if (f.openClosed === 'Open')
-    t = t.filter(x => x.exit_price == null);
-  else if (f.openClosed === 'Closed')
-    t = t.filter(x => x.exit_price != null);
-
-  if (f.reviewed === 'Reviewed')
-    t = t.filter(x => x.reviewed);
-  else if (f.reviewed === 'Unreviewed')
-    t = t.filter(x => !x.reviewed);
-
-  if (f.side)
-    t = t.filter(x => x.direction?.toLowerCase() === f.side.toLowerCase());
-
-  if (f.status === 'Winner')
-    t = t.filter(x => x.pnl > 0);
-  else if (f.status === 'Loser')
-    t = t.filter(x => x.pnl < 0);
-  else if (f.status === 'Breakeven')
-    t = t.filter(x => x.pnl === 0);
-
-  if (f.tradeRating) {
-    const map = { 'A+': 'aplus', 'A': 'a', 'A-': 'aminus' };
-    t = t.filter(x => x.grade === map[f.tradeRating]);
-  }
-
-  if (f.sessions?.length) {
-    const sessionMap = {
-      'Morning 07–15 ✅':   'Morning',
-      'Late zone 15–19 ❌': 'Late Zone',
-      'Overnight 19–23 ✅': 'Overnight',
-      'Dead zone 23–07 ❌': 'Dead Zone',
-    };
-    const mapped = f.sessions.map(s => sessionMap[s]).filter(Boolean);
-    if (mapped.length) t = t.filter(x => mapped.includes(x.session));
-  }
-
-  if (f.days?.length) {
-    const DOW = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-    t = t.filter(x => {
-      if (!x.date) return false;
-      const day = DOW[new Date(x.date + 'T12:00:00').getDay()];
-      return f.days.includes(day);
-    });
-  }
-
-  if (f.hours?.length) {
-    t = t.filter(x => {
-      if (!x.time) return false;
-      const h = parseInt(x.time.split(':')[0], 10);
-      return f.hours.some(block => {
-        const [start] = block.split('–').map(s => parseInt(s, 10));
-        const end = start + 2;
-        return h >= start && h < end;
-      });
-    });
-  }
-
-  if (f.strategies?.length)
-    t = t.filter(x => f.strategies.includes(x.strategy_id));
-
-  if (f.grade) {
-    const map = { 'A+': 'aplus', 'A': 'a', 'A-': 'aminus' };
-    t = t.filter(x => x.grade === map[f.grade]);
-  }
-
-  if (f.direction)
-    t = t.filter(x => x.direction?.toLowerCase() === f.direction.toLowerCase());
-
-  if (f.exitReason)
-    t = t.filter(x => x.exit_reason?.toLowerCase() === f.exitReason.toLowerCase());
-
-  return t;
-}
-
-// ─── main Dashboard export ────────────────────────────────────────────────────
+// ─── Dashboard — receives pre-filtered trades from App.js ─────────────────────
 export default function Dashboard({ filteredTrades, dateLabel, acctLabel, dateRange }) {
-  const [filters, setFilters] = useState(defaultFilters());
-
-  // Apply the FilterBar selections on top of the already date/account-filtered trades
-  const trades = applyFilters(filteredTrades, filters);
+  const trades = filteredTrades; // already filter-bar-applied by App.js
 
   const closed = trades.filter(t => t.pnl !== null);
   const wins   = closed.filter(t => t.pnl > 0);
@@ -299,18 +209,13 @@ export default function Dashboard({ filteredTrades, dateLabel, acctLabel, dateRa
   return (
     <div style={{ padding: '16px 20px' }}>
 
-      {/* ── Page header + FilterBar ── */}
+      {/* Page header */}
       <div style={{ marginBottom: 16 }}>
-        <div style={{ fontSize: 18, fontWeight: 500, color: '#ccc', marginBottom: 6 }}>Dashboard</div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-          <span style={{ fontSize: 12, color: '#555' }}>{dateLabel} · {acctLabel}</span>
-          <div style={{ marginLeft: 'auto' }}>
-            <FilterBar filters={filters} onChange={setFilters} />
-          </div>
-        </div>
+        <div style={{ fontSize: 18, fontWeight: 500, color: '#ccc', marginBottom: 2 }}>Dashboard</div>
+        <div style={{ fontSize: 12, color: '#555' }}>{dateLabel} · {acctLabel}</div>
       </div>
 
-      {/* ── Stat cards ── */}
+      {/* Stat cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 8, marginBottom: 16 }}>
         <StatCard label="Total Trades" value={trades.length} />
         <StatCard label="Win Rate"     value={wr !== null ? wr + '%' : '—'} color={wr >= 50 ? '#1D9E75' : wr !== null ? '#E24B4A' : undefined} />
@@ -319,7 +224,7 @@ export default function Dashboard({ filteredTrades, dateLabel, acctLabel, dateRa
         <StatCard label="Avg Loser"    value={avgL !== null ? '-$' + Math.abs(avgL) : '—'} color="#E24B4A" />
       </div>
 
-      {/* ── Insight cards ── */}
+      {/* Insight cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, marginBottom: 16 }}>
         <InsightCard title="By Instrument" data={insightData('symbol', symbols.map(s => ({ k: s, l: s })))} />
         <InsightCard title="By Grade"      data={insightData('grade', [{ k: 'aplus', l: 'A+' }, { k: 'a', l: 'A' }, { k: 'aminus', l: 'A-' }])} />
@@ -328,7 +233,7 @@ export default function Dashboard({ filteredTrades, dateLabel, acctLabel, dateRa
         <TierInsightCard trades={trades} />
       </div>
 
-      {/* ── Progress calendar ── */}
+      {/* Progress calendar */}
       <ProgressCalendar trades={trades} dateRange={dateRange} />
     </div>
   );
