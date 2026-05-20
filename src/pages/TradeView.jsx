@@ -87,8 +87,11 @@ function TradeForm({ form, setForm, onSubmit, onCancel, uploading, isEdit }) {
 
       <div className="form-grid-4">
         <div className="field"><label>Trade #</label><input type="number" value={form.trade_number || ''} onChange={e => setForm(f => ({ ...f, trade_number: e.target.value }))} /></div>
-        <div className="field"><label>Date</label><input type="date" value={form.date || ''} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} /></div>
+        <div className="field"><label>Entry Date</label><input type="date" value={form.date || ''} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} /></div>
         <div className="field"><label>Entry Time (EST)</label><input type="time" value={form.time || ''} onChange={e => setForm(f => ({ ...f, time: e.target.value }))} /></div>
+      </div>
+      <div className="form-grid-3">
+        <div className="field"><label>Exit Date</label><input type="date" value={form.exit_date || ''} onChange={e => setForm(f => ({ ...f, exit_date: e.target.value }))} /></div>
         <div className="field"><label>Exit Time (EST)</label><input type="time" value={form.exit_time || ''} onChange={e => setForm(f => ({ ...f, exit_time: e.target.value }))} /></div>
       </div>
 
@@ -515,6 +518,7 @@ export default function TradeView({ trades, filteredTrades, strategies, reloadTr
       custom_multiplier: f.custom_multiplier ? parseFloat(f.custom_multiplier) : null,
       confirmations: confs, session, chart_url, pnl,
       exit_time: f.exit_time || null,
+      exit_date: f.exit_date || null,
       strategy_id: f.strategy_id || null,
     };
     delete trade.chart_file;
@@ -545,6 +549,7 @@ export default function TradeView({ trades, filteredTrades, strategies, reloadTr
     setForm({
       ...trade, confirmations: confs, chart_file: null,
       exit_time: trade.exit_time || '',
+      exit_date: trade.exit_date || '',
       al_tier: trade.al_tier || 'Primary', sl_tier: trade.sl_tier || 'Primary',
       contracts: trade.contracts ? String(trade.contracts) : '1',
       custom_symbol: trade.custom_symbol || '',
