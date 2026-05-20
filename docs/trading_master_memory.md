@@ -1,274 +1,157 @@
-# Trading Master Memory File
-*Last updated: May 10, 2026*
+# Trading Master Memory
+**Last updated: May 20, 2026**
 
 ---
 
-## INSTRUMENTS
-- MGC (Micro Gold Futures)
-- MNQ (Micro Nasdaq Futures)
-- Multiple accounts: A1, A2
-- **Trading 1 contract, sometimes 2 — partial profit NOT possible**
-- App supports any instrument via custom symbol + multiplier field
+## TRADER PROFILE
+- Trader: lax46
+- Instruments: MGC (micro gold), MNQ (micro NQ), MCL (micro crude), MYM (micro Dow)
+- Accounts: A1 and A2 (Schwab)
+- Strategy: AL/SL Trendline Break on 60-min charts
+- Web App: https://trendline-trades.vercel.app
+- GitHub: https://github.com/gittmaster/trade-log
+- Supabase URL: https://tsfmzgndcsgntortbnku.supabase.co
 
 ---
 
-## COMPLETE STRATEGY (Documented May 1, 2026)
+## STRATEGY QUICK REFERENCE
 
-### Entry
-- Wait for AL trendline to fully break/cross — never anticipate
-- At least ONE side (AL or SL) must have 3+ touches minimum
-- Same-day touch does NOT count toward touch total
-
-### Stop Loss
-- Initial stop placed AT the SL trendline level
-- Trail the stop along the SL as price moves in your favor
-- 1-hour timeframe = fake-outs are common, stop needs wiggle room
-- **Never move stop to breakeven** — 1-hour fake-outs will shake you out of good trades
-- **Never remove stop completely** — Trade 84 lesson, never again
-
-### Target
-- Target is ALWAYS the next major S/R level (W/M/4 levels) or HTF trendline confluence
-- Must be able to name the specific level before entering — no arbitrary numbers
-- Key MGC levels: W($4900), 4($4642.1), W($4600), M($4600), M($4400)
-
-### Intraday SL Management (Discretionary)
-- Watch price behavior AT the SL line in real time
-- Read: candle pattern + time spent at level + rejection signal
-- If price crosses SL but shows rejection candle → can hold, may be fake-out
-- If price crosses SL and keeps moving aggressively → real break, exit immediately
-
-### Overnight Hold Rules
-- Hard stop at SL — no changes, no discretion
-- R:R must be 2:1+ from current price to justify hold
-- Know combined max loss before holding — must be acceptable
-- If target is at a major W/M level → adds confluence for hold
-
----
-
-## CORE STRATEGY CONCEPTS
-
-### Action Line (AL)
-- The trendline that price must CROSS/BREAK to trigger entry
-- AL break = entry signal
-
-### Safety Line (SL)
-- The trendline used to place the STOP LOSS
-- Stop is placed AT the SL level
-- Trail stop along SL as price moves in your favor
-- **Tiers matter: Primary > Secondary > Tertiary**
-
-### Trendline Tiers
-| Tier | Reliability | Notes |
-|---|---|---|
-| **Primary** | Highest | Main trendline, most touches, oldest |
-| **Secondary** | Medium | Supporting trendline |
-| **Tertiary** | Lowest | –$460 in April, weakest signal |
-
-### ⚠️ TERTIARY SL CROSS = EXIT SIGNAL
-**When price closes a 1-hour candle through the Tertiary SL while in a trade → EXIT IMMEDIATELY**
-
-### Grading System
-| Grade | AL | SL |
-|---|---|---|
-| **A+** | ★ Strong | ★ Strong |
-| **A** | Standard | ★ Strong |
-| **A-** | Standard | Weak |
-
-### Line Strength Classification
+### Line Strength
 | Strength | Touches | Age |
 |---|---|---|
-| **★ Strong** | 3+ touches | 1 week+ |
-| **Standard** | 2 touches | Less than 1 day |
-| **Weak** | 2 touches | Less than 1 week |
+| ★ Strong | 3+ | 1 week+ |
+| Standard | 2 | < 1 day |
+| Weak | 2 | < 1 week |
 
----
-
-## STRATEGY DEFINITIONS (AL/SL Combination Based)
-
-Four strategies defined by AL/SL touch count and age. Auto-assigned by the app.
-
-**Assignment logic:**
-- AL strong = `al_touches >= 3` AND `al_age === '1wk+'`
-- SL strong = `sl_touches >= 3` AND `sl_age === '1wk+'`
-
-| Strategy ID | Icon | Name | AL | SL | Color |
-|---|---|---|---|---|---|
-| `strat-aplus-prime` | ⭐ | A+ Prime | Strong | Strong | Green |
-| `strat-strong-al-weak-sl` | 📈 | Strong AL / Weak SL | Strong | Weak | Blue |
-| `strat-weak-al-strong-sl` | 🛡️ | Weak AL / Strong SL | Weak | Strong | Amber |
-| `strat-both-weak` | ⚠️ | Both Weak | Weak | Weak | Red |
-
-**Historical performance:**
-| Strategy | Result |
-|---|---|
-| A+ Prime (3+t 1wk+ both sides) | +$3,311 · 88% WR ✅ |
-| Strong AL / Weak SL | +$1,090–$1,173 ✅ |
-| Weak AL / Strong SL | +$959 ✅ |
-| Both Weak | –$228 to –$1,136 ❌ |
-
----
-
-## CRITICAL RULES
-
-### Entry Rules
-1. Wait for AL to fully break/cross before entering — never anticipate
-2. At least ONE side (AL or SL) must have 3+ touches minimum
-3. Same-day touch does NOT count toward touch count
-4. If the confirming touch happened today → downgrade that line's strength
-5. **LONG trades require A+ grade minimum — longs are net –$1,736 all-time**
-6. **No trades on Thursday unless A+ grade — Thursday is only losing day (–$1,210)**
-7. **After any loss → mandatory 30-minute break before next entry**
-8. **Best trading window is 09:00–13:00 EST (+$2,886)**
-
-### Exit Rules
-1. **Tertiary SL cross on 1-hour close → EXIT. No exceptions.**
-2. **Aggressive move through Primary/Secondary SL → EXIT. Don't wait for candle close.**
-3. **Slow/rejected move through SL → can hold, watch next candle**
-4. Target must be a named level — W/M/4 or HTF trendline confluence
-5. Cannot do partial profit (1 contract) — stop management is the ONLY tool
-
-### Session Rules
-| Session | Window | Rule |
+### Grading Matrix
+| Grade | AL | SL |
 |---|---|---|
-| Pre-open / Morning | 07:00–15:00 EST | ✅ Best entries |
-| Late session dead zone | 15:00–19:00 EST | ❌ No new entries |
-| Overnight carry | 19:00–23:00 EST | ✅ Valid hold window |
-| Dead zone | 23:00–07:00 EST | ❌ No entries |
+| A+ | ★ Strong | ★ Strong |
+| A  | Standard | ★ Strong (or reverse) |
+| A- | Standard | Weak |
+| SKIP | Neither has 4 touches | — |
+
+### Session Windows (EST)
+- 07:00–15:00 Morning ✅
+- 15:00–19:00 Late Zone ❌ No new entries
+- 19:00–23:00 Overnight ✅
+- 23:00–07:00 Dead Zone ❌
+
+### Multipliers
+- MGC: $10/point
+- MNQ: $2/point
+- MYM: $0.50/point
+- MCL: $100/point
 
 ---
 
-## BIGGEST BEHAVIORAL MISTAKES
-
-1. **Ignoring Tertiary SL Cross** — Trades 91 & 92: +$1,000 → –$560 swing
-2. **Closing Winners Too Early** — Let target work unless SL cross or session rule
-3. **Taking A- with Weak SL** — –$1,001 across 35 trades
-4. **Same-Day SL Touch** — Last touch must be at least 1 day old
-5. **Removing Stop Completely** — Trade 84, never again
-6. **Trading Longs** — Net –$1,736 all-time; only at A+ grade
-7. **Revenge Trading** — 44 trades: 39% WR, –$1,052; mandatory 30-min break after loss
-8. **Trading Thursday** — 18 trades, 44% WR, –$1,210; A+ only
-9. **Outside 09:00–15:00** — Late session + dead zone combined: –$1,434
+## STRATEGIES (strategy_id slugs in trades table)
+| Slug | Name | Description |
+|---|---|---|
+| strat-aplus-prime | A+ Prime | AL 3+ touches 1wk+ · SL 3+ touches 1wk+ |
+| strat-strong-al-weak-sl | Strong AL / Weak SL | AL 3+ touches 1wk+ · SL <3 touches or <1wk |
+| strat-weak-al-strong-sl | Weak AL / Strong SL | AL <3 touches or <1wk · SL 3+ touches 1wk+ |
+| strat-both-weak | Both Weak | AL <3 touches or <1wk · SL <3 touches or <1wk |
+| strat-unassigned | Unassigned | Trades not tagged to a strategy |
 
 ---
 
-## TRADE STATISTICS
-
-### All-time (93 trades, Mar 1 – Apr 30, 2026)
-| Metric | Value |
-|---|---|
-| Total trades | 93 |
-| Overall P&L | +$4,217 (est.) |
-| Win rate | 50% |
-| Avg win | +$312 |
-| Avg loss | –$272 |
-
-### Direction Bias (All-time)
-| Direction | Trades | WR | P&L |
-|---|---|---|---|
-| Short | 49 | 51% | **+$4,820** ✅ |
-| Long | 40 | 45% | **–$1,736** ❌ |
-
-### Day of Week (All-time)
-| Day | Trades | WR | P&L |
-|---|---|---|---|
-| Mon | 12 | 42% | +$734 |
-| Tue | 18 | 50% | +$745 |
-| Wed | 25 | 48% | +$1,696 |
-| **Thu** | **18** | **44%** | **–$1,210** ❌ |
-| Fri | 12 | 58% | +$1,007 |
-
-### Time of Day (All-time)
-| Window | Trades | WR | P&L |
-|---|---|---|---|
-| 07–09 Pre-open | 9 | 56% | +$407 |
-| **09–11 Open** | **17** | **53%** | **+$1,768** ✅ |
-| **11–13 Mid-AM** | **17** | **59%** | **+$1,118** ✅ |
-| 13–15 Mid-PM | 9 | 44% | +$722 |
-| 15–19 Late | 11 | 27% | –$944 ❌ |
-| 19–23 Overnight | 23 | 52% | +$625 |
-| 23–07 Dead | 2 | 0% | –$490 ❌ |
+## KEY BEHAVIORAL RULES (from 99-trade history)
+1. **No early exits** — avg target hit = +$412 when held
+2. **Never remove stop** — Trade 84 cost –$596 from manual management
+3. **Same-day touch = doesn't count** — caused failures in trades 73 and 84
+4. **A- with Weak SL** — 35 trades, –$1,001 total. Flag every time.
+5. **Neither side has 4 touches** — hard skip, no exceptions
 
 ---
 
-## ACTIVE TRADES LOG
-*No active trades as of May 10, 2026.*
-
----
-
-## KEY LEVELS — MGC
+## KEY PRICE LEVELS — MGC
 - W($4900) — Weekly resistance ceiling
 - 4($4642.1) — Key intermediate level
 - W($4600) — Weekly support floor
-- M($4600) — Monthly support (converges with HTF green ascending line)
+- M($4600) — Monthly support
 - M($4400) — Deep monthly support
 
 ---
 
-## NOTES FOR NEXT SESSION
-- All 93 trades auto-assigned to strategies via ⚡ Auto-assign on Strategies page
-- `strategy_id` column added to Supabase `trades` table (SQL: `ALTER TABLE trades ADD COLUMN IF NOT EXISTS strategy_id text;`)
-- New trades require strategy selection before logging
-- Continue logging all trades at trendline-trades.vercel.app
+## WEB APP — trendline-trades.vercel.app
 
----
+### Tech Stack
+- Frontend: React (Create React App)
+- Backend: Supabase (PostgreSQL)
+- Hosting: Vercel
+- Repo: github.com/gittmaster/trade-log
 
-## WEB APP CHANGELOG
+### File Structure
+```
+src/
+  App.js                        — main app, global state, toolbar
+  App.css                       — global styles
+  AIChat.js                     — floating AI chat panel
+  supabase.js                   — Supabase client
+  seedData.js                   — seed trades
+  Login.jsx                     — login page
+  components/
+    DateRangePicker.jsx          — date range picker
+    FilterBar.jsx                — two-column filter panel (NEW May 20)
+  pages/
+    Dashboard.jsx                — stats, insight cards, progress calendar
+    Reports.jsx                  — P&L charts, by-strategy breakdown
+    TradeView.jsx                — full trade table, key levels
+    Strategies.jsx               — strategy management
+```
+
+### Supabase Tables
+- `trades` — all trade records
+- `strategies` — strategy definitions (id bigint, name text, description text)
+
+### WEB APP CHANGELOG
 | Date | Feature |
 |---|---|
 | Apr 2026 | Initial app built — trade log, Supabase backend, login |
-| May 1, 2026 | Added AL/SL tier tracking (Primary/Secondary/Tertiary) |
-| May 1, 2026 | Added weekly/monthly progress chart with Chart.js |
-| May 2, 2026 | Made Progress + Key Levels sections collapsible |
-| May 2, 2026 | Added pagination to trade table — 25 trades per page |
-| May 4, 2026 | Key Levels panel — symbol tabs, clear button |
-| May 9, 2026 | **Major rewrite — multi-page app v2** |
-| May 9, 2026 | Sidebar navigation: Dashboard, Reports, Trade View, Strategies |
-| May 9, 2026 | Global date range picker (dual-month calendar + presets) + Account filter |
-| May 9, 2026 | Dashboard — stats, insight cards, progress calendar (default expanded) |
-| May 9, 2026 | Reports — Overview tab: cumulative + daily P&L charts, daily/weekly/monthly toggle |
-| May 9, 2026 | Reports — By Strategy tab: comparison table, win rate chart, P&L chart, donut, long/short breakdown |
-| May 9, 2026 | Trade View — full trade table showing ALL trades (not date filtered), strategy filter pills |
-| May 9, 2026 | Trade View — Key Levels & Pre-Trade Check moved here |
-| May 9, 2026 | Strategies page — 4 AL/SL strategies pre-built, ⚡ Auto-assign all trades button |
-| May 9, 2026 | Strategies page — bulk trade assignment panel with manual assign/unassign |
-| May 9, 2026 | Strategy field mandatory on trade form — cannot log without selecting strategy |
-| May 9, 2026 | ⚠️ No Strategy badge + warning banner on trades without strategy |
-| May 9, 2026 | Added `strategy_id` column to Supabase trades table |
-| May 9, 2026 | AI Chat floating button — 🤖 green with shadow, embedded mode inside panel |
-| May 9, 2026 | Progress calendar — default expanded, shows on Dashboard |
-| May 9, 2026 | P&L values shown as inline labels on daily bar chart |
-| May 9, 2026 | Weekly/Monthly toggle on P&L charts |
-| May 10, 2026 | Sidebar nav — font-size 14px, font-weight 500, brighter color |
-| May 10, 2026 | Dashboard stat cards — values font-size 22px, font-weight 600 |
-| May 10, 2026 | Reports metric cards — values font-size 17px, font-weight 600, uppercase labels |
-| May 10, 2026 | Reports section titles — font-weight 600 |
+| May 1 | AL/SL tier tracking (Primary/Secondary/Tertiary) |
+| May 1 | Weekly/monthly progress chart with Chart.js |
+| May 2 | Progress + Key Levels sections collapsible |
+| May 2 | Pagination — 25 trades per page |
+| May 4 | Key Levels panel — symbol tabs, clear button |
+| May 9 | **Major rewrite — multi-page app v2** |
+| May 9 | Sidebar nav: Dashboard, Reports, Trade View, Strategies |
+| May 9 | Global date range picker + Account filter |
+| May 9 | Dashboard — stats, insight cards, progress calendar |
+| May 9 | Reports — cumulative + daily P&L charts, by-strategy tab |
+| May 9 | Trade View — full table, strategy filter pills, Key Levels |
+| May 9 | Strategies page — 4 AL/SL strategies, auto-assign, bulk assign |
+| May 9 | strategy_id column added to trades table |
+| May 19 | exit_time field added to trade form |
+| May 19 | Reports — Trade Duration section added |
+| May 19 | Global UI brightness pass — all dull text brightened |
+| May 19 | Aggregate/stat values bolded across all pages |
+| May 20 | **FilterBar — two-column purple panel added to toolbar** |
+| May 20 | FilterBar lives in App.js toolbar (shows only on Dashboard) |
+| May 20 | Filter categories: General, Day & Time, Strategy, Insights |
+| May 20 | General: Instrument, Intraday/Multiday, Open/Closed, Reviewed, Side, Status, Trade Rating |
+| May 20 | Day & Time: Session window, Day of week, Hour block |
+| May 20 | Strategy: filters by strat-* slug matching trades.strategy_id |
+| May 20 | Insights: Grade, Direction, Exit Reason |
+| May 20 | applyFilters() in App.js — all filter logic centralized |
+| May 20 | strategies hardcoded in FilterBar (no Supabase dependency) |
+
+### IMPORTANT: strategy_id is stored as TEXT SLUG in trades table
+- `strat-aplus-prime`
+- `strat-strong-al-weak-sl`
+- `strat-weak-al-strong-sl`
+- `strat-both-weak`
+- `strat-unassigned`
+FilterBar matches on slug directly — NOT on numeric Supabase id.
 
 ---
 
-## MAY 11, 2026 UI HANDOFF NOTES
+## ACTIVE TRADES
+None logged at end of last session.
 
-Upload-ready GitHub files were prepared under:
-`C:\Users\lax46\Documents\Codex\2026-05-10\files-mentioned-by-the-user-trading-2\github-upload`
+---
 
-Current upload-ready files prepared:
-- `src/App.css`
-- `src/App.js`
-- `src/AIChat.js`
-- `src/components/DateRangePicker.jsx`
-- `src/pages/Dashboard.jsx`
-- `src/pages/Strategies.jsx`
-- `src/pages/Reports.jsx`
-
-Changes requested/prepared:
-- Table body rows enlarged/bolded via `src/App.css` upload-ready copy.
-- Strategies summary cards enlarged/bolded via `src/pages/Strategies.jsx` upload-ready copy.
-- Dashboard Progress widget dates/numbers enlarged/bolded via `src/pages/Dashboard.jsx` upload-ready copy.
-- AI Trading Coach panel made maximizable via `src/App.js` upload-ready copy, using a `Max` / `Min` control.
-- AI Chat file attachment support added via `src/AIChat.js`: images are sent as image blocks; text files are read into the prompt; other file types attach filename/type/size context.
-- Dashboard labels changed to white: stat card labels, insight section labels, `By Tier`, `Action Line`, and `Safety Line`.
-- Sidebar labels changed to white: `Main`, `Dashboard`, `Reports`, `Trade View`, `Strategies`, `Tools`, and `AI Chat`.
-
-Important UX decisions:
-- User prefers targeted label color changes, not a broad global white override.
-- User specifically said: do NOT globally bold everything; use white color only where requested.
-- For GitHub, user wants copy/commit commands for changed files only, not direct repo edits unless explicitly asked.
+## RESUME INSTRUCTIONS
+1. Upload this file at the start of a new conversation
+2. Say "resume trading master memory"
+3. I will confirm memory loaded and ask about any open trades
