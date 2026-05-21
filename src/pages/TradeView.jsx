@@ -520,8 +520,10 @@ export default function TradeView({ trades, filteredTrades, strategies, reloadTr
       custom_symbol: f.custom_symbol || null,
       custom_multiplier: f.custom_multiplier ? parseFloat(f.custom_multiplier) : null,
       confirmations: confs, session, chart_url, pnl,
-      exit_time: f.exit_time || null,
-      exit_date: f.exit_date || null,
+      exit_time:  f.exit_time  || null,
+      exit_date:  f.exit_date  || null,
+      mfe_price:  f.mfe_price  ? parseFloat(f.mfe_price)  : null,
+      mae_price:  f.mae_price  ? parseFloat(f.mae_price)  : null,
       strategy_id: f.strategy_id || null,
     };
     delete trade.chart_file;
@@ -551,8 +553,10 @@ export default function TradeView({ trades, filteredTrades, strategies, reloadTr
     const confs = typeof trade.confirmations === 'string' ? trade.confirmations.split(',').filter(Boolean) : (trade.confirmations || []);
     setForm({
       ...trade, confirmations: confs, chart_file: null,
-      exit_time: trade.exit_time || '',
-      exit_date: trade.exit_date || '',
+      exit_time:  trade.exit_time  || '',
+      exit_date:  trade.exit_date  || '',
+      mfe_price:  trade.mfe_price  ? String(trade.mfe_price)  : '',
+      mae_price:  trade.mae_price  ? String(trade.mae_price)  : '',
       al_tier: trade.al_tier || 'Primary', sl_tier: trade.sl_tier || 'Primary',
       contracts: trade.contracts ? String(trade.contracts) : '1',
       custom_symbol: trade.custom_symbol || '',
