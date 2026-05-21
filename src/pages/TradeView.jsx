@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { supabase } from '../supabase';
 import { GRADES, GRADE_COLORS, TIERS, TIER_COLORS, getMultiplier, calcPnL, getSession, autoGrade, EMPTY_FORM } from '../App';
+import TradeReviewChart from '../components/TradeReviewChart';
+import TOSUploader from '../components/TOSUploader';
 
 // ─── Hardcoded strategies (match strategy_id slugs in trades table) ───────────
 const STRATEGIES = [
@@ -431,6 +433,7 @@ export default function TradeView({ trades, filteredTrades, strategies, reloadTr
   const [form, setForm] = useState({ ...EMPTY_FORM });
   const [uploading, setUploading] = useState(false);
   const [chartModal, setChartModal] = useState(null);
+  const [reviewingTrade, setReviewingTrade] = useState(null);
 
   const allTrades = Array.isArray(filteredTrades) ? filteredTrades : [];
   const safeTrades = Array.isArray(trades) ? trades : [];
@@ -620,6 +623,14 @@ export default function TradeView({ trades, filteredTrades, strategies, reloadTr
         />
       )}
 
+      {/* TOS Uploader */}
+      <div style={{ marginBottom: 16 }}>
+        <div style={{ fontSize: 12, color: '#5a6a7a', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span>📊</span> Import TOS Account Statement to enrich trade reviews with real P&L data
+        </div>
+        <TOSUploader trades={allTrades} />
+      </div>
+
       <div className="table-card">
         <div className="table-header">
           <h2>Trade History ({sorted.length}{activeFilter !== 'all' ? ' filtered' : ''})</h2>
@@ -674,7 +685,7 @@ export default function TradeView({ trades, filteredTrades, strategies, reloadTr
                       {label} {sortCol===col?(sortDir==='asc'?'↑':'↓'):''}
                     </th>
                   ))}
-                  <th>Strategy</th><th>Chart</th><th>Edit</th><th>Del</th>
+                  <th>Strategy</th><th>Chart</th><th>Review</th><th>Edit</th><th>Del</th>
                 </tr>
               </thead>
               <tbody>
@@ -710,9 +721,23 @@ export default function TradeView({ trades, filteredTrades, strategies, reloadTr
                         )}
                       </td>
                       <td>{t.chart_url?<button className="btn-link" onClick={() => setChartModal(t.chart_url)}>View</button>:'—'}</td>
+                      <td>
+                        <button className="btn-link"
+                          style={{ color: reviewingTrade?.id === t.id ? '#7c3aed' : '#60a5fa' }}
+                          onClick={() => setReviewingTrade(reviewingTrade?.id === t.id ? null : t)}>
+                          {reviewingTrade?.id === t.id ? 'Close' : 'Review'}
+                        </button>
+                      </td>
                       <td><button className="btn-link" onClick={() => startEdit(t)}>Edit</button></td>
                       <td><button className="btn-link" style={{ color: '#E24B4A' }} onClick={() => deleteTrade(t.id)}>Del</button></td>
                     </tr>
+                    {reviewingTrade?.id === t.id && (
+                      <tr>
+                        <td colSpan={21} style={{ padding: '16px 12px', background: '#080a0e' }}>
+                          <TradeReviewChart trade={t} />
+                        </td>
+                      </tr>
+                    )}
                   );
                 })}
               </tbody>
