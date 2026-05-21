@@ -203,7 +203,7 @@ function PnLCurve({ path, mult, contracts, stopDist, targetDist, exitPnl, direct
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
-export default function TradeReviewChart({ trade }) {
+export default function TradeReviewChart({ trade, onClose }) {
   const tosData = useTOSTradeData(trade?.id);
   const {
     symbol, direction, entry, exit_price, stop, target,
@@ -254,10 +254,11 @@ export default function TradeReviewChart({ trade }) {
   return (
     <div style={{
       background: '#0d0f14',
-      border: `1px solid ${isWin ? '#22c55e22' : '#ef444422'}`,
+      border: `2px solid ${isWin ? '#22c55e' : '#ef4444'}`,
       borderRadius: 10,
       overflow: 'hidden',
       marginBottom: 0,
+      boxShadow: `0 0 24px ${isWin ? '#22c55e33' : '#ef444433'}, 0 4px 16px rgba(0,0,0,0.6)`,
     }}>
 
       {/* header */}
@@ -286,12 +287,32 @@ export default function TradeReviewChart({ trade }) {
             {exit_reason?.toUpperCase() || '—'}
           </span>
         </div>
-        <span style={{
-          fontSize: 17, fontWeight: 700, fontFamily: 'monospace',
-          color: isWin ? '#22c55e' : '#ef4444',
-        }}>
-          {fmt(exitPnl)}
-        </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <span style={{
+            fontSize: 17, fontWeight: 700, fontFamily: 'monospace',
+            color: isWin ? '#22c55e' : '#ef4444',
+          }}>
+            {fmt(exitPnl)}
+          </span>
+          {onClose && (
+            <button onClick={onClose} style={{
+              background: 'transparent',
+              border: '1px solid #2a3545',
+              borderRadius: 6,
+              padding: '4px 12px',
+              color: '#5a6a7a',
+              cursor: 'pointer',
+              fontSize: 12,
+              fontFamily: 'inherit',
+              display: 'flex', alignItems: 'center', gap: 5,
+            }}>
+              <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                <path d="M1 1l8 8M9 1L1 9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+              </svg>
+              Close
+            </button>
+          )}
+        </div>
       </div>
 
       {/* chart */}

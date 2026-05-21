@@ -734,8 +734,8 @@ export default function TradeView({ trades, filteredTrades, strategies, reloadTr
                     </tr>
                     {reviewingTrade?.id === t.id && (
                       <tr>
-                        <td colSpan={21} style={{ padding: '16px 12px', background: '#080a0e' }}>
-                          <TradeReviewChart trade={t} />
+                        <td colSpan={21} style={{ padding: '20px 16px', background: '#050709', borderTop: 'none', borderBottom: '2px solid #1e2530' }}>
+                          <TradeReviewChart trade={t} onClose={() => setReviewingTrade(null)} />
                         </td>
                       </tr>
                     )}
