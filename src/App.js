@@ -240,7 +240,7 @@ export default function App() {
 
   const tradeViewProps = {
     ...filteredProps,
-    filteredTrades: trades,
+    // filteredTrades comes from filteredProps — respects date range + account filter
   };
 
   // Dashboard gets the extra-filtered trades

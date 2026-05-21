@@ -32,18 +32,10 @@ function InsightCard({ title, data }) {
 function ProgressCalendar({ trades, dateRange }) {
   const closed = trades.filter(t => t.pnl !== null && t.date);
   const now = new Date();
-  const [calYear,  setCalYear]  = useState(dateRange.start.getFullYear());
-  const [calMonth, setCalMonth] = useState(dateRange.start.getMonth());
-  const [open,     setOpen]     = useState(true);
-
-  const changeMonth = (dir) => {
-    setCalMonth(m => {
-      let nm = m + dir;
-      if (nm > 11) { setCalYear(y => y + 1); return 0; }
-      if (nm < 0)  { setCalYear(y => y - 1); return 11; }
-      return nm;
-    });
-  };
+  const [open, setOpen] = useState(true);
+  // calendar always follows the global date range
+  const calYear  = dateRange.end.getFullYear();
+  const calMonth = dateRange.end.getMonth();
 
   const dayMap = {};
   closed.forEach(t => {
@@ -79,18 +71,10 @@ function ProgressCalendar({ trades, dateRange }) {
       </div>
       {open && (
         <div style={{ border: '1px solid #222', borderTop: 'none', borderRadius: '0 0 8px 8px', padding: 16 }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, flexWrap: 'wrap', gap: 8 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <button onClick={e => { e.stopPropagation(); changeMonth(-1); }} style={{ background: 'transparent', border: '1px solid #2a2a2a', borderRadius: 6, padding: '3px 10px', cursor: 'pointer', color: '#ccc' }}>◀</button>
-              <span style={{ fontSize: 17, fontWeight: 700, color: '#ccc', minWidth: 130, textAlign: 'center' }}>{MONTH_NAMES[calMonth]} {calYear}</span>
-              <button onClick={e => { e.stopPropagation(); changeMonth(1); }} style={{ background: 'transparent', border: '1px solid #2a2a2a', borderRadius: 6, padding: '3px 10px', cursor: 'pointer', color: '#ccc' }}>▶</button>
-              <button onClick={e => { e.stopPropagation(); setCalYear(now.getFullYear()); setCalMonth(now.getMonth()); }} style={{ background: 'transparent', border: '1px solid #2a2a2a', borderRadius: 6, padding: '3px 12px', cursor: 'pointer', color: '#888', fontSize: 13, fontWeight: 600 }}>This month</button>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ fontSize: 14, fontWeight: 600, color: '#aaa' }}>Monthly:</span>
-              <span style={{ background: monthNet >= 0 ? '#1D9E7522' : '#E24B4A22', color: monthNet >= 0 ? '#1D9E75' : '#E24B4A', borderRadius: 20, padding: '3px 12px', fontSize: 15, fontWeight: 700 }}>{fmt(monthNet)}</span>
-              <span style={{ background: '#1a1a1a', color: '#ccc', borderRadius: 20, padding: '3px 12px', fontSize: 14, fontWeight: 600 }}>{tradeDays} days</span>
-            </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+            <span style={{ fontSize: 15, fontWeight: 700, color: '#ccc' }}>{MONTH_NAMES[calMonth]} {calYear}</span>
+            <span style={{ background: monthNet >= 0 ? '#1D9E7522' : '#E24B4A22', color: monthNet >= 0 ? '#1D9E75' : '#E24B4A', borderRadius: 20, padding: '3px 12px', fontSize: 14, fontWeight: 700 }}>{fmt(monthNet)}</span>
+            <span style={{ background: '#1a1a1a', color: '#ccc', borderRadius: 20, padding: '3px 12px', fontSize: 13, fontWeight: 600 }}>{tradeDays} days</span>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 0, alignItems: 'start' }}>
             <div>

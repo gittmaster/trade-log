@@ -634,7 +634,7 @@ export default function TradeView({ trades, filteredTrades, strategies, reloadTr
         </div>
 
         <div className="filter-row">
-          {[['all','All'],['win','Win'],['loss','Loss'],['week','This Week'],['aplus','A+'],['a','A'],['aminus','A-'],...symbols.map(s=>[s,s])].map(([f,label]) => (
+          {[['all','All'],['win','Win'],['loss','Loss'],['week','This Week'],...symbols.map(s=>[s,s])].map(([f,label]) => (
             <button key={f} className={`filter-btn ${activeFilter===f?'active':''}`} onClick={() => { setActiveFilter(f); setTablePage(1); }}>{label}</button>
           ))}
           {noStratCount > 0 && (
