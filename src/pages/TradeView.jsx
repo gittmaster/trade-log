@@ -694,7 +694,8 @@ export default function TradeView({ trades, filteredTrades, strategies, reloadTr
                   const sym = t.symbol === 'OTHER' ? (t.custom_symbol || 'OTHER') : t.symbol;
                   const strat = STRATEGIES.find(s => s.id === t.strategy_id);
                   return (
-                    <tr key={t.id}>
+                    <React.Fragment key={t.id}>
+                    <tr>
                       <td>{t.trade_number || '—'}</td>
                       <td style={{ whiteSpace: 'nowrap' }}>{t.date}</td>
                       <td>{t.time || '—'}</td>
@@ -738,6 +739,7 @@ export default function TradeView({ trades, filteredTrades, strategies, reloadTr
                         </td>
                       </tr>
                     )}
+                    </React.Fragment>
                   );
                 })}
               </tbody>
