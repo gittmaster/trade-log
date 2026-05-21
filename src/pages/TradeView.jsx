@@ -609,6 +609,14 @@ export default function TradeView({ trades, filteredTrades, strategies, reloadTr
         </div>
       )}
 
+      {/* TOS Uploader — always visible at top */}
+      <div style={{ background: '#111', border: '1px solid #222', borderRadius: 8, padding: '12px 14px', marginBottom: 16 }}>
+        <div style={{ fontSize: 12, fontWeight: 600, color: '#ccc', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+          📊 TOS Account Statement — Import to unlock real P&L charts on trade review
+        </div>
+        <TOSUploader trades={allTrades} />
+      </div>
+
       <ManageLevels />
 
       {/* ── Trade Form — no longer needs strategies prop ── */}
@@ -622,14 +630,6 @@ export default function TradeView({ trades, filteredTrades, strategies, reloadTr
           isEdit={!!editingTrade}
         />
       )}
-
-      {/* TOS Uploader */}
-      <div style={{ marginBottom: 16 }}>
-        <div style={{ fontSize: 12, color: '#5a6a7a', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span>📊</span> Import TOS Account Statement to enrich trade reviews with real P&L data
-        </div>
-        <TOSUploader trades={allTrades} />
-      </div>
 
       <div className="table-card">
         <div className="table-header">
