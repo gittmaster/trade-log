@@ -1,9 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { supabase } from '../supabase';
 
-import { useState, useCallback, useEffect } from 'react';
-import { supabase } from '../supabase';
-
 // ── TOS Account Statement Parser ─────────────────────────────────────────────
 // Parses TOS CSV exports and returns structured trade data with
 // entry, exit, actual stop prices from OCO orders, and daily P&L checkpoints
