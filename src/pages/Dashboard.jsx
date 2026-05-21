@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { GRADE_COLORS, GRADES, SESSIONS, TIERS, TIER_COLORS } from '../App';
+import { GRADE_COLORS, GRADES, SESSIONS } from '../App';
 
 const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
@@ -27,44 +27,7 @@ function InsightCard({ title, data }) {
   );
 }
 
-function TierInsightCard({ trades }) {
-  const closed = trades.filter(t => t.pnl !== null);
-  const tierData = (field) => TIERS.map(tier => {
-    const ts = closed.filter(t => t[field] === tier);
-    if (!ts.length) return null;
-    const w = ts.filter(t => t.pnl > 0).length;
-    return { label: tier, count: ts.length, wr: Math.round(w / ts.length * 100), net: Math.round(ts.reduce((s, t) => s + t.pnl, 0)), color: TIER_COLORS[tier] };
-  }).filter(Boolean);
-  const alData = tierData('al_tier');
-  const slData = tierData('sl_tier');
-  if (!alData.length && !slData.length) return (
-    <div style={{ background: '#111', border: '1px solid #222', borderRadius: 8, padding: '12px 14px', gridColumn: 'span 2' }}>
-      <div style={{ fontSize: 11, color: '#bbb', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>By Tier (AL / SL)</div>
-      <div style={{ fontSize: 12, color: '#444' }}>No tier data yet</div>
-    </div>
-  );
-  return (
-    <div style={{ background: '#111', border: '1px solid #222', borderRadius: 8, padding: '12px 14px', gridColumn: 'span 2' }}>
-      <div style={{ fontSize: 11, color: '#bbb', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>By Tier (AL / SL)</div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 20px' }}>
-        {[['Action Line', alData], ['Safety Line', slData]].map(([title, data]) => (
-          <div key={title}>
-            <div style={{ fontSize: 10, color: '#fff', marginBottom: 4 }}>{title}</div>
-            {data.map((row, i) => (
-              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                <span style={{ fontSize: 12, color: '#ccc', display: 'flex', alignItems: 'center', gap: 5 }}>
-                  <span style={{ width: 7, height: 7, borderRadius: '50%', background: row.color, display: 'inline-block' }} />
-                  {row.label} <span style={{ color: '#444', fontSize: 10 }}>({row.count})</span>
-                </span>
-                <span style={{ fontSize: 12, color: row.wr >= 50 ? '#1D9E75' : '#E24B4A' }}>{row.wr}% · {row.net >= 0 ? '+' : ''}${row.net}</span>
-              </div>
-            ))}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
+
 
 function ProgressCalendar({ trades, dateRange }) {
   const closed = trades.filter(t => t.pnl !== null && t.date);
@@ -230,7 +193,6 @@ export default function Dashboard({ filteredTrades, dateLabel, acctLabel, dateRa
         <InsightCard title="By Grade"      data={insightData('grade', [{ k: 'aplus', l: 'A+' }, { k: 'a', l: 'A' }, { k: 'aminus', l: 'A-' }])} />
         <InsightCard title="By Safety Line" data={insightData('sl_quality', [{ k: 'strong', l: '★ Strong' }, { k: 'weak', l: 'Weak' }])} />
         <InsightCard title="By Session"    data={insightData('session', SESSIONS.map(s => ({ k: s, l: s })))} />
-        <TierInsightCard trades={trades} />
       </div>
 
       {/* Progress calendar */}

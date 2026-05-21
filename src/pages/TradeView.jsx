@@ -575,14 +575,7 @@ export default function TradeView({ trades, filteredTrades, strategies, reloadTr
     await reloadTrades();
   };
 
-  const tierGroups = [
-    { key: 'al-primary',   label: 'AL: Primary',   color: TIER_COLORS['Primary']   },
-    { key: 'al-secondary', label: 'AL: Secondary',  color: TIER_COLORS['Secondary'] },
-    { key: 'al-tertiary',  label: 'AL: Tertiary',   color: TIER_COLORS['Tertiary']  },
-    { key: 'sl-primary',   label: 'SL: Primary',    color: TIER_COLORS['Primary']   },
-    { key: 'sl-secondary', label: 'SL: Secondary',  color: TIER_COLORS['Secondary'] },
-    { key: 'sl-tertiary',  label: 'SL: Tertiary',   color: TIER_COLORS['Tertiary']  },
-  ];
+
 
   return (
     <div style={{ padding: '16px 20px' }}>
@@ -664,18 +657,7 @@ export default function TradeView({ trades, filteredTrades, strategies, reloadTr
           ))}
         </div>
 
-        <div className="filter-row" style={{ marginTop: 0, borderTop: 'none' }}>
-          <span style={{ fontSize: 11, color: '#999', alignSelf: 'center', marginRight: 4 }}>Tier:</span>
-          {tierGroups.map(({ key, label, color }) => (
-            <button key={key}
-              className={`filter-btn ${activeFilter===key?'active':''}`}
-              style={activeFilter===key?{borderColor:color,color,background:color+'22'}:{borderColor:'#2a2a2a'}}
-              onClick={() => { setActiveFilter(activeFilter===key?'all':key); setTablePage(1); }}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
+
 
         {sorted.length === 0 ? (
           <div className="empty">No trades found.</div>
@@ -684,7 +666,7 @@ export default function TradeView({ trades, filteredTrades, strategies, reloadTr
             <table>
               <thead>
                 <tr>
-                  {[['trade_number','#'],['date','Date'],['time','Time'],['account','Acct'],['symbol','Symbol'],['direction','Dir'],['grade','Grade'],['al_strength','AL'],['al_tier','AL Tier'],['sl_quality','SL'],['sl_tier','SL Tier'],['entry','Entry'],['exit_price','Exit'],['pnl','P&L'],['exit_reason','Result'],['session','Session']].map(([col,label]) => (
+                  {[['trade_number','#'],['date','Date'],['time','Time'],['account','Acct'],['symbol','Symbol'],['direction','Dir'],['entry','Entry'],['exit_price','Exit'],['pnl','P&L'],['exit_reason','Result'],['session','Session']].map(([col,label]) => (
                     <th key={col} onClick={() => handleSort(col)} style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}>
                       {label} {sortCol===col?(sortDir==='asc'?'↑':'↓'):''}
                     </th>
@@ -706,11 +688,8 @@ export default function TradeView({ trades, filteredTrades, strategies, reloadTr
                       <td>{t.account}</td>
                       <td>{sym}</td>
                       <td><span style={{ color: t.direction==='long'?'#1D9E75':'#E24B4A', fontWeight: 600, fontSize: 11 }}>{t.direction?.toUpperCase()}</span></td>
-                      <td><span style={{ background: GRADE_COLORS[t.grade]+'33', color: GRADE_COLORS[t.grade], padding: '2px 8px', borderRadius: 4, fontSize: 12, fontWeight: 600 }}>{GRADES[t.grade]||t.grade}</span></td>
-                      <td><span style={{ fontSize: 11, color: t.al_strength==='strong'?'#1D9E75':'#888' }}>{t.al_strength==='strong'?'★':'–'} {t.al_touches||'?'}t {t.al_age||''}</span></td>
-                      <td><span style={{ fontSize: 11, color: TIER_COLORS[t.al_tier]||'#888', background: (TIER_COLORS[t.al_tier]||'#888')+'22', padding: '2px 7px', borderRadius: 4 }}>{t.al_tier||'—'}</span></td>
-                      <td><span style={{ fontSize: 11, color: t.sl_quality==='strong'?'#1D9E75':'#E24B4A' }}>{t.sl_quality==='strong'?'★':'✗'} {t.sl_touches||'?'}t {t.sl_age||''}</span></td>
-                      <td><span style={{ fontSize: 11, color: TIER_COLORS[t.sl_tier]||'#888', background: (TIER_COLORS[t.sl_tier]||'#888')+'22', padding: '2px 7px', borderRadius: 4 }}>{t.sl_tier||'—'}</span></td>
+
+
                       <td style={{ fontFamily: 'var(--mono)', fontSize: 12 }}>{t.entry}</td>
                       <td style={{ fontFamily: 'var(--mono)', fontSize: 12 }}>{t.exit_price||'—'}</td>
                       <td style={{ color: pnlColor, fontWeight: 600, fontFamily: 'var(--mono)', fontSize: 13 }}>{t.pnl!==null?(t.pnl>=0?'+$':'-$')+Math.abs(t.pnl):'—'}</td>
