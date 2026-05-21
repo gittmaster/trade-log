@@ -58,6 +58,7 @@ export const EMPTY_FORM = {
   account: 'A1', symbol: 'MGC', custom_symbol: '', custom_multiplier: '', contracts: '1',
   direction: 'long', entry: '', exit_price: '', stop: '', target: '',
   exit_reason: '', exit_time: '', exit_date: '',
+  mfe_price: '', mae_price: '',
   al_strength: 'standard', al_touches: '', al_age: '<1wk', al_tier: 'Primary',
   sl_quality: 'weak',       sl_touches: '', sl_age: '<1wk', sl_tier: 'Primary',
   sl_price: '', grade: 'a', yellow_levels: '', confirmations: [], notes: '',
