@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import TOSUploader from '../components/TOSUploader';
 
 function StatCard({ label, value, color }) {
@@ -49,8 +49,7 @@ function baseOpts(extraPlugins) {
 }
 
 // ── Analysis page ─────────────────────────────────────────────────────────────
-export default function Analysis({ filteredTrades, dateLabel, acctLabel }) {
-  const [tosData,    setTosData]    = useState(null);
+export default function Analysis({ filteredTrades, dateLabel, acctLabel, dateRange, tosData, setTosData }) {
   const [chartReady, setChartReady] = useState(!!window.Chart);
 
   useEffect(() => {
@@ -91,10 +90,35 @@ export default function Analysis({ filteredTrades, dateLabel, acctLabel }) {
   }, []);
 
   // ── chart builders (memoised on tosData) ─────────────────────────────────
+  // Filter TOS trips to match global date range — memoised to avoid infinite re-renders
+  const filteredTrips = useMemo(() => {
+    if (!tosData?.trips) return [];
+    if (!dateRange) return tosData.trips;
+    return tosData.trips.filter(t => {
+      if (!t.entry_dt) return true;
+      const d = new Date(t.entry_dt);
+      return d >= dateRange.start && d <= dateRange.end;
+    });
+  }, [tosData, dateRange?.start, dateRange?.end]);
+
+  const filteredEquity = useMemo(() => {
+    if (!tosData?.equityCurve) return [];
+    if (!dateRange) return tosData.equityCurve;
+    return tosData.equityCurve.filter(e => {
+      if (!e.date) return true;
+      try {
+        const parts = e.date.split('/');
+        const yr = parts[2].length === 2 ? '20' + parts[2] : parts[2];
+        const d = new Date(`${yr}-${parts[0].padStart(2,'0')}-${parts[1].padStart(2,'0')}`);
+        return d >= dateRange.start && d <= dateRange.end;
+      } catch { return true; }
+    });
+  }, [tosData, dateRange?.start, dateRange?.end]);
+
   const buildEquity = useCallback((canvas) => {
-    if (!tosData?.equityCurve?.length) return null;
-    const labels = tosData.equityCurve.map(d => d.date);
-    const data   = tosData.equityCurve.map(d => d.balance);
+    if (!filteredEquity?.length) return null;
+    const labels = filteredEquity.map(d => d.date);
+    const data   = filteredEquity.map(d => d.balance);
     return new window.Chart(canvas, {
       type: 'line',
       data: { labels, datasets: [{ data, borderColor: '#185FA5', borderWidth: 2, pointRadius: 0, fill: true, backgroundColor: 'rgba(24,95,165,0.08)' }] },
@@ -107,23 +131,25 @@ export default function Analysis({ filteredTrades, dateLabel, acctLabel }) {
         },
       },
     });
-  }, [tosData]);
+  }, [filteredEquity]);
 
   const buildSymbol = useCallback((canvas) => {
-    if (!tosData?.symMap) return null;
-    const labels = Object.keys(tosData.symMap);
-    const data   = Object.values(tosData.symMap);
+    if (!filteredTrips.length) return null;
+    const symMap = {};
+    filteredTrips.forEach(t => { symMap[t.symbol] = (symMap[t.symbol] || 0) + t.pnl; });
+    const labels = Object.keys(symMap);
+    const data   = Object.values(symMap);
     return new window.Chart(canvas, {
       type: 'bar',
       data: { labels, datasets: [{ data, backgroundColor: data.map(v => v >= 0 ? '#1D9E75' : '#E24B4A'), borderRadius: 4 }] },
       options: { ...baseOpts(), plugins: { ...baseOpts().plugins, tooltip: { ...baseOpts().plugins.tooltip, callbacks: { label: c => (c.parsed.y >= 0 ? ' +$' : ' -$') + Math.abs(Math.round(c.parsed.y)).toLocaleString() } } } },
     });
-  }, [tosData]);
+  }, [filteredTrips]);
 
   const buildStop = useCallback((canvas) => {
-    if (!tosData?.trips) return null;
-    const wins   = tosData.trips.filter(t => t.pnl > 0 && t.stop_dist > 0);
-    const losses = tosData.trips.filter(t => t.pnl <= 0 && t.stop_dist > 0);
+    if (!filteredTrips.length) return null;
+    const wins   = filteredTrips.filter(t => t.pnl > 0 && t.stop_dist > 0);
+    const losses = filteredTrips.filter(t => t.pnl <= 0 && t.stop_dist > 0);
     return new window.Chart(canvas, {
       type: 'scatter',
       data: { datasets: [
@@ -139,13 +165,12 @@ export default function Analysis({ filteredTrades, dateLabel, acctLabel }) {
         },
       },
     });
-  }, [tosData]);
+  }, [filteredTrips]);
 
   const buildHold = useCallback((canvas) => {
-    if (!tosData?.trips) return null;
-    // Use log2(hrs+1) on x to spread intraday trades, show real hours in tooltip
-    const wins   = tosData.trips.filter(t => t.pnl > 0);
-    const losses = tosData.trips.filter(t => t.pnl <= 0);
+    if (!filteredTrips.length) return null;
+    const wins   = filteredTrips.filter(t => t.pnl > 0);
+    const losses = filteredTrips.filter(t => t.pnl <= 0);
     const toLogX = h => Math.round(Math.log2((h || 0) + 1) * 100) / 100;
     // x-axis tick labels: convert log back to hours
     const tickMap = { 0: '0h', 1: '1h', 2: '3h', 3: '7h', 4: '15h', 5: '31h', 6: '63h', 7: '127h' };
@@ -164,11 +189,11 @@ export default function Analysis({ filteredTrades, dateLabel, acctLabel }) {
         },
       },
     });
-  }, [tosData]);
+  }, [filteredTrips]);
 
   const buildMultiday = useCallback((canvas) => {
-    if (!tosData?.trips) return null;
-    const multiday = tosData.trips.filter(t => t.duration_hrs >= 20 && t.checkpoints?.length > 0).slice(0, 5);
+    if (!filteredTrips.length) return null;
+    const multiday = filteredTrips.filter(t => t.duration_hrs >= 20 && t.checkpoints?.length > 0).slice(0, 5);
     if (!multiday.length) return null;
     const colors = ['#185FA5', '#1D9E75', '#BA7517', '#E24B4A', '#7c3aed'];
     const maxPts = Math.max(...multiday.map(t => t.checkpoints.length + 2));
@@ -213,13 +238,21 @@ export default function Analysis({ filteredTrades, dateLabel, acctLabel }) {
 
       {tosData && (
         <>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 8, marginBottom: 16 }}>
-            <StatCard label="Account"   value={tosData.account} />
-            <StatCard label="Trades"    value={tosData.total} />
-            <StatCard label="Win Rate"  value={tosData.total ? Math.round(tosData.wins / tosData.total * 100) + '%' : '—'} color={tosData.wins / tosData.total >= 0.5 ? '#1D9E75' : '#E24B4A'} />
-            <StatCard label="Net P&L"   value={fmtPnl(tosData.netPnl)} color={tosData.netPnl >= 0 ? '#1D9E75' : '#E24B4A'} />
-            <StatCard label="Comm paid" value={`-$${Math.round(tosData.totalComm)}`} color="#E24B4A" />
-          </div>
+          {(() => {
+            const tw = filteredTrips.filter(t => t.pnl > 0).length;
+            const tt = filteredTrips.length;
+            const tn = filteredTrips.reduce((s,t) => s+t.pnl, 0);
+            const tc = filteredTrips.reduce((s,t) => s+(t.comm||0), 0);
+            return (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 8, marginBottom: 16 }}>
+                <StatCard label="Account"   value={tosData.account} />
+                <StatCard label="Trades"    value={tt} />
+                <StatCard label="Win Rate"  value={tt ? Math.round(tw/tt*100)+'%' : '—'} color={tt && tw/tt>=0.5?'#1D9E75':'#E24B4A'} />
+                <StatCard label="Net P&L"   value={fmtPnl(tn)} color={tn>=0?'#1D9E75':'#E24B4A'} />
+                <StatCard label="Comm paid" value={'-$'+Math.round(tc)} color="#E24B4A" />
+              </div>
+            );
+          })()}
 
           <div style={{ background: '#111', border: '1px solid #222', borderRadius: 8, padding: '12px 14px', marginBottom: 12 }}>
             <div style={{ fontSize: 11, color: '#bbb', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>Account Equity Curve</div>

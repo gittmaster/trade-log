@@ -175,6 +175,7 @@ export default function App() {
   const [filters,        setFilters]        = useState(defaultFilters());
   const [chatOpen,       setChatOpen]       = useState(false);
   const [chatMaximized,  setChatMaximized]  = useState(false);
+  const [tosData,        setTosData]        = useState(null);
 
   const loadTrades = useCallback(async () => {
     const { data, error } = await supabase
@@ -380,7 +381,7 @@ export default function App() {
         <div style={{ flex: 1, overflow: 'auto' }}>
           {page === 'dashboard'  && <Dashboard  {...dashboardProps} />}
           {page === 'reports'    && <Reports     {...filteredProps} />}
-          {page === 'analysis'   && <Analysis    {...filteredProps} />}
+          {page === 'analysis'   && <Analysis    {...filteredProps} tosData={tosData} setTosData={setTosData} />}
           {page === 'tradeview'  && <TradeView   {...tradeViewProps} />}
           {page === 'strategies' && <Strategies  {...filteredProps} />}
         </div>
