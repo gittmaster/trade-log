@@ -28,6 +28,77 @@ function TertiaryWarning({ alTier, slTier }) {
   );
 }
 
+// ─── Chart Image Input (upload OR paste) ─────────────────────────────────────
+function ChartImageInput({ form, setForm }) {
+  const [dragOver, setDragOver] = React.useState(false);
+  const fileRef = React.useRef();
+
+  const applyFile = (file) => {
+    if (!file || !file.type.startsWith('image/')) return;
+    setForm(f => ({ ...f, chart_file: file }));
+  };
+
+  // Clipboard paste anywhere in the component
+  const handlePaste = React.useCallback((e) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    for (const item of items) {
+      if (item.type.startsWith('image/')) {
+        e.preventDefault();
+        applyFile(item.getAsFile());
+        return;
+      }
+    }
+  }, []);
+
+  React.useEffect(() => {
+    window.addEventListener('paste', handlePaste);
+    return () => window.removeEventListener('paste', handlePaste);
+  }, [handlePaste]);
+
+  const preview = form.chart_file
+    ? URL.createObjectURL(form.chart_file)
+    : null;
+
+  return (
+    <div>
+      <div
+        onDragOver={e => { e.preventDefault(); setDragOver(true); }}
+        onDragLeave={() => setDragOver(false)}
+        onDrop={e => { e.preventDefault(); setDragOver(false); applyFile(e.dataTransfer.files[0]); }}
+        onClick={() => fileRef.current.click()}
+        style={{
+          border: `1.5px dashed ${dragOver ? '#185FA5' : '#2a2a2a'}`,
+          borderRadius: 8,
+          padding: '14px 16px',
+          cursor: 'pointer',
+          background: dragOver ? '#185FA508' : '#0d0d0d',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 12,
+          transition: 'border-color 0.15s, background 0.15s',
+        }}
+      >
+        <span style={{ fontSize: 22 }}>📸</span>
+        <div>
+          <div style={{ fontSize: 13, color: '#ccc' }}>Click to browse, drag & drop, or <strong style={{ color: '#60a5fa' }}>Ctrl+V / ⌘V</strong> to paste screenshot</div>
+          <div style={{ fontSize: 11, color: '#555', marginTop: 2 }}>PNG, JPG, GIF — any image format</div>
+        </div>
+        <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={e => applyFile(e.target.files[0])} />
+      </div>
+      {preview && (
+        <div style={{ marginTop: 8, position: 'relative', display: 'inline-block' }}>
+          <img src={preview} alt="Chart preview" style={{ maxWidth: '100%', maxHeight: 220, borderRadius: 6, border: '1px solid #2a2a2a', display: 'block' }} />
+          <button
+            onClick={e => { e.stopPropagation(); setForm(f => ({ ...f, chart_file: null })); }}
+            style={{ position: 'absolute', top: 4, right: 4, background: '#E24B4A', border: 'none', borderRadius: 4, color: '#fff', fontSize: 11, padding: '2px 7px', cursor: 'pointer' }}
+          >✕ Remove</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Trade Form ───────────────────────────────────────────────────────────────
 function TradeForm({ form, setForm, onSubmit, onCancel, uploading, isEdit }) {
   const [stratError, setStratError] = useState(false);
@@ -203,7 +274,7 @@ function TradeForm({ form, setForm, onSubmit, onCancel, uploading, isEdit }) {
       <div className="field"><label>Notes</label><textarea value={form.notes||''} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} rows={2} /></div>
       <div className="field">
         <label>Chart Image&nbsp;{isEdit && form.chart_url && <a href={form.chart_url} target="_blank" rel="noreferrer" className="chart-link">(view current)</a>}</label>
-        <input type="file" accept="image/*" onChange={e => setForm(f => ({ ...f, chart_file: e.target.files[0] }))} />
+        <ChartImageInput form={form} setForm={setForm} />
       </div>
       <div className="form-actions">
         <button className="btn-cancel" onClick={onCancel}>Cancel</button>
