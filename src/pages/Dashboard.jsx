@@ -441,14 +441,15 @@ function ProgressCalendar({ trades, dateRange }) {
   const closed = trades.filter(t => t.pnl !== null && t.date);
   const [open, setOpen] = useState(true);
   const [selectedDay, setSelectedDay] = useState(null);
-  const [calYear,  setCalYear]  = useState(dateRange.end.getFullYear());
-  const [calMonth, setCalMonth] = useState(dateRange.end.getMonth());
+  const [calYear,  setCalYear]  = useState(dateRange.start.getFullYear());
+  const [calMonth, setCalMonth] = useState(dateRange.start.getMonth());
 
-  // Sync to global filter whenever dateRange changes
+  // Sync to global filter whenever dateRange changes — use start date so
+  // "last month" (start=Apr 1, end=Apr 30) shows April, not May
   React.useEffect(() => {
-    setCalYear(dateRange.end.getFullYear());
-    setCalMonth(dateRange.end.getMonth());
-  }, [dateRange.end]);
+    setCalYear(dateRange.start.getFullYear());
+    setCalMonth(dateRange.start.getMonth());
+  }, [dateRange.start, dateRange.end]);
 
   const dayMap = {};
   closed.forEach(t => {

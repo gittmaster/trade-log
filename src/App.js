@@ -74,10 +74,12 @@ export function getDefaultDateRange() {
 }
 
 export function filterTradesByRange(trades, dateRange, account) {
+  const endOfDay = new Date(dateRange.end);
+  endOfDay.setHours(23, 59, 59, 999);
   return trades.filter(t => {
     if (!t.date) return false;
     const d         = new Date(t.date + 'T12:00:00');
-    const inRange   = d >= dateRange.start && d <= dateRange.end;
+    const inRange   = d >= dateRange.start && d <= endOfDay;
     const inAccount = account === 'both' || t.account === account.toUpperCase();
     return inRange && inAccount;
   });
