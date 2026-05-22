@@ -185,10 +185,15 @@ function TradeDetail({ trade, onClose }) {
 
   return (
     <div style={{
-      position: 'absolute', top: 0, right: 0, width: '100%', height: '100%',
-      background: '#0e0e0e', display: 'flex', flexDirection: 'column',
-      animation: 'slideIn 0.15s ease', zIndex: 10,
-    }}>
+      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)',
+      zIndex: 9000, display: 'flex', alignItems: 'center', justifyContent: 'center',
+    }} onClick={onClose}>
+    <div style={{
+      width: 520, maxHeight: '90vh', background: '#0e0e0e', borderRadius: 12,
+      border: '1px solid #2a2a2a', display: 'flex', flexDirection: 'column',
+      animation: 'fadeScaleIn 0.15s ease', overflow: 'hidden',
+    }} onClick={e => e.stopPropagation()}>
+    <style>{`@keyframes fadeScaleIn { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: scale(1); } }`}</style>
       {/* Header */}
       <div style={{ padding: '14px 20px', borderBottom: '1px solid #1e1e1e', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -245,6 +250,7 @@ function TradeDetail({ trade, onClose }) {
           )}
         </div>
       </div>
+    </div>
     </div>
   );
 }
@@ -494,10 +500,7 @@ function ProgressCalendar({ trades, dateRange }) {
         {open && (
           <div style={{ border: '1px solid #222', borderTop: 'none', borderRadius: '0 0 8px 8px', padding: 16 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
-              <button onClick={() => goMonth(-1)} style={{ background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 6, color: '#888', fontSize: 16, cursor: 'pointer', width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>‹</button>
-              <span style={{ fontSize: 15, fontWeight: 700, color: '#ccc', minWidth: 110, textAlign: 'center' }}>{MONTH_NAMES[calMonth]} {calYear}</span>
-              <button onClick={() => goMonth(1)} style={{ background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 6, color: '#888', fontSize: 16, cursor: 'pointer', width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>›</button>
-              <button onClick={goToday} style={{ background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 6, color: '#888', fontSize: 12, cursor: 'pointer', padding: '4px 12px', fontWeight: 600 }}>This month</button>
+              <span style={{ fontSize: 15, fontWeight: 700, color: '#ccc', minWidth: 110 }}>{MONTH_NAMES[calMonth]} {calYear}</span>
               <span style={{ background: monthNet >= 0 ? '#1D9E7522' : '#E24B4A22', color: monthNet >= 0 ? '#1D9E75' : '#E24B4A', borderRadius: 20, padding: '3px 12px', fontSize: 14, fontWeight: 700 }}>{fmt(monthNet)}</span>
               <span style={{ background: '#1a1a1a', color: '#ccc', borderRadius: 20, padding: '3px 12px', fontSize: 13, fontWeight: 600 }}>{tradeDays} days</span>
             </div>
