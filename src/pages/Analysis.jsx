@@ -12,14 +12,20 @@ function StatCard({ label, value, color }) {
 
 // ── Chart wrapper — destroys and recreates Chart.js instance safely ────────────
 function ChartCanvas({ id, build }) {
-  const ref = useRef(null);
+  const ref  = useRef(null);
   const inst = useRef(null);
 
   useEffect(() => {
-    if (!ref.current || !window.Chart) return;
-    if (inst.current) { inst.current.destroy(); inst.current = null; }
-    inst.current = build(ref.current);
-    return () => { if (inst.current) { inst.current.destroy(); inst.current = null; } };
+    if (!ref.current) return;
+    // wait for Chart.js to be available
+    const attempt = () => {
+      if (!window.Chart) { setTimeout(attempt, 100); return; }
+      if (!ref.current) return;
+      if (inst.current) { try { inst.current.destroy(); } catch {} inst.current = null; }
+      try { inst.current = build(ref.current); } catch(e) { console.error('Chart build failed:', e); }
+    };
+    attempt();
+    return () => { if (inst.current) { try { inst.current.destroy(); } catch {} inst.current = null; } };
   }, [build]);
 
   return (
@@ -50,13 +56,14 @@ function baseOpts(extraPlugins) {
 
 // ── Analysis page ─────────────────────────────────────────────────────────────
 export default function Analysis({ filteredTrades, dateLabel, acctLabel, dateRange, tosData, setTosData }) {
-  const [chartReady, setChartReady] = useState(!!window.Chart);
-
+  // Load Chart.js once globally — persists across tab switches
   useEffect(() => {
-    if (window.Chart) { setChartReady(true); return; }
+    if (window.Chart) return;
+    const existing = document.getElementById('chartjs-cdn');
+    if (existing) return;
     const s = document.createElement('script');
+    s.id  = 'chartjs-cdn';
     s.src = 'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js';
-    s.onload = () => setChartReady(true);
     document.head.appendChild(s);
   }, []);
 
@@ -99,7 +106,7 @@ export default function Analysis({ filteredTrades, dateLabel, acctLabel, dateRan
       const d = new Date(t.entry_dt);
       return d >= dateRange.start && d <= dateRange.end;
     });
-  }, [tosData, dateRange?.start, dateRange?.end]);
+  }, [tosData, dateRange?.start?.getTime(), dateRange?.end?.getTime()]);
 
   const filteredEquity = useMemo(() => {
     if (!tosData?.equityCurve) return [];
@@ -113,7 +120,7 @@ export default function Analysis({ filteredTrades, dateLabel, acctLabel, dateRan
         return d >= dateRange.start && d <= dateRange.end;
       } catch { return true; }
     });
-  }, [tosData, dateRange?.start, dateRange?.end]);
+  }, [tosData, dateRange?.start?.getTime(), dateRange?.end?.getTime()]);
 
   const buildEquity = useCallback((canvas) => {
     if (!filteredEquity?.length) return null;
