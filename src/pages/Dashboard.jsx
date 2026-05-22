@@ -502,46 +502,54 @@ function ProgressCalendar({ trades, dateRange }) {
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 0, alignItems: 'start' }}>
               <div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 3, marginBottom: 3 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4, marginBottom: 4 }}>
                   {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d => (
-                    <div key={d} style={{ textAlign: 'center', fontSize: 13, fontWeight: 700, color: '#aaa', padding: '3px 0' }}>{d}</div>
+                    <div key={d} style={{ textAlign: 'center', fontSize: 12, fontWeight: 700, color: '#666', padding: '4px 0', background: '#0d0d0d', borderRadius: 6 }}>{d}</div>
                   ))}
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                   {weeks.map((week, wi) => (
-                    <div key={wi} style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 3 }}>
+                    <div key={wi} style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4 }}>
                       {week.map((day, di) => {
-                        if (!day) return <div key={di} style={{ minHeight: 68 }} />;
+                        if (!day) return <div key={di} style={{ minHeight: 100, borderRadius: 8, background: '#0a0a0a' }} />;
                         const d = dayMap[day];
                         const isToday = now.getFullYear() === calYear && now.getMonth() === calMonth && now.getDate() === day;
                         const hasData = !!d;
-                        let bg = '#111', borderColor = '#1e1e1e';
-                        if (d) { bg = d.pnl >= 0 ? '#1D9E7512' : '#E24B4A10'; borderColor = d.pnl >= 0 ? '#1D9E7535' : '#E24B4A35'; }
-                        if (isToday) borderColor = '#185FA5';
+                        const isWin = d && d.pnl > 0;
+                        const isLoss = d && d.pnl < 0;
+                        const isFlat = d && d.pnl === 0;
+                        let bg = '#111';
+                        if (isWin)  bg = '#0d2e1f';
+                        if (isLoss) bg = '#2a0e0e';
+                        if (isFlat) bg = '#0f1a2a';
+                        const borderCol = isToday ? '#7c3aed' : isWin ? '#1D9E7540' : isLoss ? '#E24B4A40' : isFlat ? '#185FA540' : '#1a1a1a';
                         const wr = d && d.count ? Math.round(d.wins / d.count * 100) : 0;
+                        const pnlColor = isWin ? '#fff' : isLoss ? '#fff' : '#888';
                         return (
                           <div
                             key={di}
                             onClick={() => hasData && setSelectedDay(day)}
                             style={{
                               background: bg,
-                              border: `${isToday ? '1.5px' : '1px'} solid ${borderColor}`,
-                              borderRadius: 6, padding: '4px 6px', minHeight: 68,
-                              display: 'flex', flexDirection: 'column', gap: 2,
+                              border: `1.5px solid ${borderCol}`,
+                              borderRadius: 8, padding: '8px 10px', minHeight: 100,
+                              display: 'flex', flexDirection: 'column',
                               position: 'relative',
                               cursor: hasData ? 'pointer' : 'default',
-                              transition: 'border-color 0.12s, background 0.12s',
+                              transition: 'filter 0.12s',
                             }}
-                            onMouseEnter={e => { if (hasData) { e.currentTarget.style.borderColor = '#555'; e.currentTarget.style.background = d.pnl >= 0 ? '#1D9E7520' : '#E24B4A18'; }}}
-                            onMouseLeave={e => { if (hasData) { e.currentTarget.style.borderColor = borderColor; e.currentTarget.style.background = bg; }}}
+                            onMouseEnter={e => { if (hasData) e.currentTarget.style.filter = 'brightness(1.25)'; }}
+                            onMouseLeave={e => { if (hasData) e.currentTarget.style.filter = 'brightness(1)'; }}
                           >
-                            <span style={{ fontSize: 13, fontWeight: 700, color: '#aaa', textAlign: 'right' }}>{day}</span>
-                            {d && (<>
-                              <span style={{ fontSize: 14, fontWeight: 700, color: d.pnl >= 0 ? '#1D9E75' : '#E24B4A' }}>{d.pnl >= 0 ? '+$' : '-$'}{Math.abs(Math.round(d.pnl)).toLocaleString()}</span>
-                              <span style={{ fontSize: 12, fontWeight: 600, color: '#999' }}>{d.count} trade{d.count !== 1 ? 's' : ''}</span>
-                              <span style={{ fontSize: 12, fontWeight: 600, color: '#999' }}>{wr}%</span>
-                              {d.pnl < 0 && <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#E24B4A', position: 'absolute', bottom: 4, left: 6 }} />}
-                            </>)}
+                            <span style={{ fontSize: 13, fontWeight: 700, color: isToday ? '#a78bfa' : '#aaa', textAlign: 'right', marginBottom: 'auto' }}>{day}</span>
+                            {d ? (<>
+                              <span style={{ fontSize: 16, fontWeight: 800, color: pnlColor, marginTop: 6, lineHeight: 1 }}>
+                                {isFlat ? '$0' : (isWin ? '' : '-') + '$' + Math.abs(Math.round(d.pnl)).toLocaleString()}
+                              </span>
+                              <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', marginTop: 3 }}>{d.count} trade{d.count !== 1 ? 's' : ''}</span>
+                              <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)' }}>{wr.toFixed(2)}%</span>
+                              {hasData && <span style={{ width: 6, height: 6, borderRadius: '50%', background: isWin ? '#1D9E75' : isLoss ? '#E24B4A' : '#185FA5', position: 'absolute', bottom: 6, right: 8 }} />}
+                            </>) : null}
                           </div>
                         );
                       })}
