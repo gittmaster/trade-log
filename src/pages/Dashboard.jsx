@@ -617,7 +617,12 @@ export default function Dashboard({ filteredTrades, dateLabel, acctLabel, dateRa
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, marginBottom: 16 }}>
         <InsightCard title="By Instrument" data={insightData('symbol', symbols.map(s => ({ k: s, l: s })))} />
-        <InsightCard title="By Grade"      data={insightData('grade', [{ k: 'aplus', l: 'A+' }, { k: 'a', l: 'A' }, { k: 'aminus', l: 'A-' }])} />
+        <InsightCard title="By Strategy"   data={insightData('strategy_id', [
+          { k: 'strat-aplus-prime',       l: 'A+ Prime' },
+          { k: 'strat-strong-al-weak-sl', l: 'Strong AL' },
+          { k: 'strat-weak-al-strong-sl', l: 'Weak AL' },
+          { k: 'strat-both-weak',         l: 'Both Weak' },
+        ])} />
         <InsightCard title="By Safety Line" data={insightData('sl_quality', [{ k: 'strong', l: '★ Strong' }, { k: 'weak', l: 'Weak' }])} />
         <InsightCard title="By Session"    data={insightData('session', SESSIONS.map(s => ({ k: s, l: s })))} />
       </div>
