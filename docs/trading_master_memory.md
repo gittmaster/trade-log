@@ -1,5 +1,5 @@
 # Trading Master Memory
-**Last updated: May 21, 2026**
+**Last updated: May 21, 2026 (Session 2)**
 
 ---
 
@@ -54,45 +54,29 @@
 | strat-both-weak | Both Weak | AL <3 touches or <1wk · SL <3 touches or <1wk |
 | strat-unassigned | Unassigned | Trades not tagged to a strategy |
 
-**IMPORTANT:** strategy_id is stored as TEXT SLUG in trades table — NOT numeric id.
-FilterBar and TradeView both match on slug directly.
+**IMPORTANT:** strategy_id is stored as TEXT SLUG — NOT numeric id.
 
 ---
 
-## KEY BEHAVIORAL RULES (from 112-trade data analysis May 21, 2026)
+## KEY BEHAVIORAL RULES (from 112-trade data analysis)
 
-### Rules Already In Place
-1. **No early exits** — avg target hit = +$412 when held to target
-2. **Never remove stop** — manual management cost –$596 on one trade
-3. **Same-day touch = doesn't count** — hard rule
-4. **Neither side has 4 touches** — hard skip
-
-### NEW RULES DECIDED MAY 21, 2026
-5. **STOP ALL A- TRADES** — 63 A- trades = -$2,566 total (-$41/trade avg). Skipping them would have tripled P&L.
-6. **Minimum 1.5:1 R:R** — sub-1.5 trades cost -$834, mostly A- anyway
-7. **Sweet spot R:R = 2:1–2.9** — 62% WR in this bucket. 3:1+ only 25% WR (targets too far)
-8. **Log stop and target on EVERY trade** — 55/112 trades had no R:R data (flying blind)
+### Active Rules
+1. **STOP ALL A- TRADES** — 63 A- trades = -$2,566 total. Decided May 21.
+2. **Minimum 1.5:1 R:R** — sub-1.5 cost -$834
+3. **Sweet spot R:R = 2:1–2.9** — 62% WR. 3:1+ only 25% WR (targets too far)
+4. **Log stop and target on EVERY trade** — 55/112 had no R:R data
+5. **No early exits** — avg target hit = +$412 when held
+6. **Never remove stop**
+7. **Same-day touch = doesn't count**
+8. **Only double up (both accounts) on A+ Prime setups**
 
 ### Data-Confirmed Insights
-- A+ trades: 89% WR, +$3,311 on just 8 trades — the real edge
+- A+ trades: 89% WR, +$3,311 — the real edge
 - A trades: 51% WR, +$200 — take these
-- A- trades: 37% WR, -$2,566 — STOP taking these
-- Both Weak strategy: 55% of all trades, -$2,186 — the biggest leak
-- SL age 1wk+: 57% WR vs 32% WR for <1wk — SL age matters massively
-- Target hit rate: only 23% overall (1 in 4 trades reaches target)
-- When target IS hit: 100% WR, +$11,300 — hold to target
-
-### Stop Placement Problem
-- May 2026: A1 got stopped at 4577 on May 3 MGC long (-$333)
-- A2 held through same dip, exited at 4727 (+$1,126)
-- Same entry, $1,459 difference — stops too tight, getting shaken at lows
-- Recommendation: breakeven rule once up 1R, partial exit at 1.5R
-
-### Doubling Up (Both Accounts)
-- Only double up on A+ Prime setups
-- A+/strong A doubled: +$1,964 combined
-- A-/weak doubled: -$1,917 combined
-- Rule: single account on A and below
+- A- trades: 37% WR, -$2,566 — STOPPED
+- SL age 1wk+: 57% WR vs 32% for <1wk
+- Target hit rate: only 23% overall
+- Hold time pattern: ALL wins were 14h+ hold. Losses mostly under 22h.
 
 ---
 
@@ -116,106 +100,141 @@ FilterBar and TradeView both match on slug directly.
 ### File Structure
 ```
 src/
-  App.js                         — main app, global state, toolbar, applyFilters()
-  App.css                        — global styles
-  AIChat.js                      — floating AI chat panel
-  supabase.js                    — Supabase client
-  seedData.js                    — seed trades
-  Login.jsx                      — login page
+  App.js                         — global state, toolbar, applyFilters(), tosData state
+  App.css
+  AIChat.js
+  supabase.js
+  seedData.js
+  Login.jsx
   components/
-    DateRangePicker.jsx           — date range picker
-    FilterBar.jsx                 — two-column purple filter panel (Dashboard only)
-    TOSUploader.jsx               — TOS account statement uploader (Trade View)
-    TradeReviewChart.jsx          — trade review card with real P&L chart
+    DateRangePicker.jsx
+    FilterBar.jsx                 — two-column purple panel, Dashboard only
+    TOSUploader.jsx               — parses TOS CSV, auto-detects A1/A2, Analysis page only
+    TradeReviewChart.jsx          — trade review card, MFE/MAE input, 4-point P&L chart
   pages/
     Dashboard.jsx                 — stats, insight cards, progress calendar
-    Reports.jsx                   — P&L charts, by-strategy breakdown
-    TradeView.jsx                 — full trade table, key levels, trade form
+    Reports.jsx                   — P&L charts, by-strategy
+    Analysis.jsx                  — NEW: TOS statement analysis with 5 charts
+    TradeView.jsx                 — trade table, key levels, trade form
     Strategies.jsx                — strategy management
 ```
+
+### Sidebar Navigation Order
+Dashboard → Reports → Analysis → Trade View → Strategies → AI Chat
 
 ### Supabase Tables
 | Table | Purpose |
 |---|---|
 | `trades` | All trade records |
-| `strategies` | Strategy definitions (id bigint, name text, description text) |
-| `tos_trade_data` | TOS fill data per trade — mfe, mae, pnl_points, checkpoints |
+| `strategies` | Strategy definitions |
+| `tos_trade_data` | TOS fill data — mfe, mae, pnl_points, checkpoints |
 
-### trades table columns (key ones)
-- strategy_id — text slug (strat-aplus-prime etc)
-- exit_time, exit_date — separate exit time and date fields
-- mfe_price — best price reached (numeric, nullable) — NEW May 21
-- mae_price — worst price reached (numeric, nullable) — NEW May 21
+### trades table — key columns
+- strategy_id — text slug
+- exit_time, exit_date — separate fields
+- mfe_price — best price reached (numeric, nullable)
+- mae_price — worst price reached (numeric, nullable)
 
-### FilterBar
-- Lives in App.js toolbar, only shows on Dashboard page
+---
+
+## COMPONENT DETAILS
+
+### FilterBar (Dashboard toolbar)
+- Two-column purple panel
 - Categories: General | Day & Time | Strategy | Insights
-- General: Instrument, Intraday/Multiday, Open/Closed, Reviewed, Side, Status, Trade Rating
-- Day & Time: Session window, Day of week, Hour block
-- Strategy: hardcoded slugs (no Supabase call)
-- Insights: Grade, Direction, Exit Reason
-- applyFilters() in App.js applies to dashboardTrades
+- Hardcoded strategy slugs (no Supabase call)
+- applyFilters() in App.js → dashboardTrades
 
-### TOSUploader (Trade View)
-- Single drop zone, accepts MULTIPLE files at once (Ctrl+click both)
-- Auto-detects A1 (account ending 7454) vs A2 (account ending 9962)
-- Parses fills → round trips → matches to journal by symbol+direction+entry price
-- Extracts OCO stop prices from order history
-- Saves to tos_trade_data table + localStorage backup
-- Shows combined results (A1 + A2 + COMBINED row)
+### TOSUploader (Analysis page)
+- Single drop zone, accepts multiple files at once
+- Auto-detects A1 (acct ending 7454) vs A2 (acct ending 9962)
+- Parses: fills → round trips, OCO stops → stop_dist, ADJ rows → checkpoints, BAL rows → equity curve
+- Round trip fields: symbol, direction, entry, exit, pnl, duration_hrs, stop_dist, tos_stop, checkpoints, comm
+- Saves to tos_trade_data Supabase table + localStorage backup
+- onComplete(parsed) callback fires with: roundTrips, cashBalances, period, account, adjRows, plRows
 
-### TradeReviewChart (click Review on any trade row)
-- No fake estimated curves — only real data
-- Shows: price outcome bar (stop/entry/exit/target on linear scale)
-- Stats: Entry, Exit, Stop, Target, R:R, % of target captured, Left on Table
-- MFE/MAE input fields: enter best/worst price manually → live SVG chart draws
-- Chart is 4-point: Entry(0) → MAE/MFE → MFE/MAE → Exit (real prices only)
-- Save button stores mfe_price + mae_price to Supabase trades table
-- Close Review button: full-width at bottom of card
-- Colored border: green for wins, red for losses
+### Analysis Page (NEW — May 21 Session 2)
+- Located at: src/pages/Analysis.jsx
+- tosData state lives in App.js (persists across tab switches)
+- Passed as props: tosData, setTosData, dateRange, filteredTrades
+- filteredTrips = useMemo filtering tosData.trips by dateRange.start/end
+- filteredEquity = useMemo filtering cashBalances by dateRange
+- useMemo deps use .getTime() not Date object (critical for reactivity)
+- ChartCanvas uses cancelled ref to prevent setTimeout race condition
+- Chart.js loaded once via script tag with id="chartjs-cdn"
+- 5 charts: equity curve, P&L by symbol, stop distance scatter, hold time scatter (log2 x-axis), multiday journeys
 
-### WEB APP CHANGELOG
+### TradeReviewChart (Trade View — click Review)
+- No fake curves — real data only
+- Price outcome bar: stop/entry/exit/target on linear scale
+- MFE/MAE manual input → live 4-point P&L chart
+- 4-point path: Entry(0) → MAE/MFE → MFE/MAE → Exit
+- Save stores to trades.mfe_price + trades.mae_price
+- Close button: full-width at bottom
+- Green border = win, red border = loss
+
+### TradeView Table Columns (after cleanup)
+`# · Date · Time · Acct · Symbol · Dir · Entry · Exit · P&L · Result · Session · Strategy · Chart · Review · Edit · Del`
+- Removed: Grade, AL, AL Tier, SL, SL Tier columns
+- Removed: A+/A/A- grade filter pills
+- Removed: Tier filter row
+
+### Dashboard (after cleanup)
+- Removed: By Tier (AL/SL) insight card
+- Calendar: no nav buttons — follows global date range automatically
+
+---
+
+## WEB APP CHANGELOG
 | Date | Feature |
 |---|---|
 | Apr 2026 | Initial app — trade log, Supabase, login |
 | May 1 | AL/SL tier tracking |
-| May 9 | **Major rewrite v2** — multi-page, sidebar nav |
-| May 9 | Dashboard, Reports, Trade View, Strategies pages |
-| May 9 | strategy_id text slug system |
-| May 19 | exit_time, Trade Duration in Reports, UI brightness |
-| May 20 | FilterBar two-column panel on Dashboard toolbar |
-| May 20 | strategies hardcoded in FilterBar + TradeView (no Supabase) |
-| May 21 | exit_date field added to trade form |
-| May 21 | TOSUploader — multi-file, auto-detects A1/A2 by account number |
-| May 21 | tos_trade_data Supabase table created |
-| May 21 | TradeReviewChart — real price outcome bar + MFE/MAE input |
-| May 21 | PnLChart — real 4-point SVG chart from entered MFE/MAE prices |
-| May 21 | mfe_price + mae_price columns added to trades table |
-| May 21 | Fixed: mfe_price/mae_price empty string → null in buildPayload |
-| May 21 | Fixed: FilterBar checkboxes clickable (div onClick vs label) |
-| May 21 | Fixed: strategy matching by slug text not numeric id |
+| May 9 | Major rewrite v2 — multi-page sidebar nav |
+| May 19 | exit_time, Trade Duration, UI brightness |
+| May 20 | FilterBar two-column panel on Dashboard |
+| May 21 AM | exit_date field, TOSUploader, tos_trade_data table |
+| May 21 AM | TradeReviewChart — MFE/MAE input + 4-point chart |
+| May 21 AM | mfe_price + mae_price columns in trades table |
+| May 21 PM | Remove Grade/AL/SL cols from TradeView table |
+| May 21 PM | Remove A+/A/A- grade filter pills from TradeView |
+| May 21 PM | Remove By Tier card from Dashboard |
+| May 21 PM | Remove calendar nav — follows global date range |
+| May 21 PM | Fix TradeView global filter (was bypassed with all trades) |
+| May 21 PM | Analysis page added to sidebar (between Reports and Trade View) |
+| May 21 PM | TOSUploader moved from TradeView to Analysis page |
+| May 21 PM | Analysis: 5 Chart.js charts from TOS data |
+| May 21 PM | Analysis: tosData in App.js — persists across tab switches |
+| May 21 PM | Analysis: useMemo with .getTime() deps for date filter reactivity |
+| May 21 PM | Analysis: ChartCanvas cancelled ref fixes setTimeout race condition |
+| May 21 PM | TOSUploader: duration_hrs + stop_dist added to round trips |
+| May 21 PM | TOSUploader: cashBalances parsed for equity curve |
+| May 21 PM | Hold time chart: log2 x-axis to prevent compression |
 
 ---
 
 ## TRADE ANALYSIS SUMMARY (112 trades, Mar–May 2026)
 - Net P&L: +$945 (barely positive)
-- Win Rate: 46%
-- Avg Winner: +$332 | Avg Loser: -$267
-- Target hit rate: 23% (1 in 4 trades)
-- Last 20 trades: 25% WR, -$2,882 (May has been brutal)
-- May 2026 both accounts: -$3,983 combined, 21% WR
+- Win Rate: 46% | Avg Winner: +$332 | Avg Loser: -$267
+- Target hit rate: 23%
+- May 2026 both accounts: -$3,983, 21% WR
+
+### TOS A1 Account Analysis (Apr 22 – May 21)
+- 19 trades | 37% WR | Net: -$1,054 | Commissions: -$88
+- Equity dropped from $9,483 to $3,661 in May 5–8
+- Hold time pattern confirmed: all wins 14h+, losses mostly <22h
+- Stop distance: tight stops (<5pts) = losses consistently
 
 ### If New Rules Applied Retroactively
 - Stop A- trades: +$2,566 recovered
 - Drop sub-1.5 R:R: +$834 recovered
-- New net would be: +$4,345 on same period
+- New net: +$4,345 on same period
 
 ---
 
 ## POLYGON.IO API KEY
 - Key: 2U0mWxCYpbT2flccgpWlvV_EYP4wnaxL
-- Status: Free tier — does NOT cover futures (MGC, MNQ)
-- Futures data requires $29/month Starter plan
+- Status: Free tier — does NOT cover futures
 - Not currently used in app
 
 ---
@@ -226,6 +245,6 @@ None logged at end of last session.
 ---
 
 ## RESUME INSTRUCTIONS
-1. Upload this file at the start of a new conversation
+1. Upload this file at start of new conversation
 2. Say "resume trading master memory"
-3. I will confirm memory loaded and ask about any open trades
+3. I will confirm memory loaded and ask about open trades
