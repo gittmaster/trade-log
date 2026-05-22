@@ -37,6 +37,8 @@ function detectAccount(csvText) {
   const num = m[1];
   if (num.includes('7454')) return 'A1';
   if (num.includes('9962')) return 'A2';
+  // fallback: try to make it readable
+  if (num.includes('SCHW')) return num.replace('SCHW','').slice(-6);
   return num;
 }
 
@@ -118,7 +120,8 @@ function parseTOS(csvText) {
     const isLong = rt.direction === 'long';
     const valid = stopList.filter(s => isLong ? s < rt.entry : s > rt.entry)
       .sort((a,b) => Math.abs(a - rt.entry) - Math.abs(b - rt.entry));
-    rt.tos_stop = valid[0] || null;
+    rt.tos_stop  = valid[0] || null;
+    rt.stop_dist = rt.tos_stop ? Math.abs(rt.entry - rt.tos_stop) : 0;
 
     rt.checkpoints = adjRows
       .filter(a => a.symbol === rt.symbol && a.dt >= rt.entry_dt && a.dt <= rt.exit_dt)
@@ -150,9 +153,28 @@ function parseTOS(csvText) {
     }
   }
 
+  // Parse cash balance section for equity curve
+  const cashBalances = [];
+  const cashIdx = lines.findIndex(l => l.trim() === 'Cash Balance');
+  if (cashIdx >= 0) {
+    for (const line of lines.slice(cashIdx + 2)) {
+      if (!line.trim()) break;
+      const p = parseCSVLine(line);
+      if (p.length < 9 || !p[0] || p[2] !== 'BAL') continue;
+      try {
+        const bal = parseFloat((p[8] || '').replace(/[$,"]/g, ''));
+        if (!isNaN(bal)) cashBalances.push({ date: p[0].trim(), balance: bal });
+      } catch {}
+    }
+  }
+
+  // Period from first line
+  const periodMatch = lines[0]?.match(/since (.+?) through (.+)/);
+  const period = periodMatch ? periodMatch[1] + ' – ' + periodMatch[2] : '';
+
   return {
     account: detectAccount(csvText),
-    roundTrips, adjRows, plRows,
+    roundTrips, adjRows, plRows, cashBalances, period,
     summary: {
       total:  roundTrips.length,
       wins:   roundTrips.filter(r => r.pnl > 0).length,
@@ -295,7 +317,7 @@ export default function TOSUploader({ trades, onComplete }) {
           <div style={{ fontSize: 10, color: '#4a5568', marginTop: 2 }}>
             {state === 'done'
               ? `✅ ${accts.map(a => a.account).join(' + ')} imported — drop again to refresh`
-              : 'Select both A1 and A2 files at once, or one at a time · auto-detects account'}
+              : 'Drop or select CSV files · A1 (acct …7454) and A2 (acct …9962) auto-detected'}
           </div>
           {state === 'error' && <div style={{ fontSize: 11, color: '#ef4444', marginTop: 3 }}>{errMsg}</div>}
         </div>

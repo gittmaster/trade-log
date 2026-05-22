@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { supabase } from '../supabase';
 import { GRADES, GRADE_COLORS, TIERS, TIER_COLORS, getMultiplier, calcPnL, getSession, autoGrade, EMPTY_FORM } from '../App';
 import TradeReviewChart from '../components/TradeReviewChart';
-import TOSUploader from '../components/TOSUploader';
 
 // ─── Hardcoded strategies (match strategy_id slugs in trades table) ───────────
 const STRATEGIES = [
@@ -605,14 +604,6 @@ export default function TradeView({ trades, filteredTrades, strategies, reloadTr
           </button>
         </div>
       )}
-
-      {/* TOS Uploader — always visible at top */}
-      <div style={{ background: '#111', border: '1px solid #222', borderRadius: 8, padding: '12px 14px', marginBottom: 16 }}>
-        <div style={{ fontSize: 12, fontWeight: 600, color: '#ccc', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
-          📊 TOS Account Statement — Import to unlock real P&L charts on trade review
-        </div>
-        <TOSUploader trades={allTrades} />
-      </div>
 
       <ManageLevels />
 

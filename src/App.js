@@ -6,6 +6,7 @@ import Dashboard from './pages/Dashboard';
 import Reports from './pages/Reports';
 import TradeView from './pages/TradeView';
 import Strategies from './pages/Strategies';
+import Analysis  from './pages/Analysis';
 import AIChat from './AIChat';
 import DateRangePicker from './components/DateRangePicker';
 import FilterBar, { defaultFilters } from './components/FilterBar';
@@ -252,6 +253,7 @@ export default function App() {
   const navItems = [
     { id: 'dashboard', icon: 'ti-layout-dashboard', label: 'Dashboard'  },
     { id: 'reports',   icon: 'ti-chart-bar',         label: 'Reports'    },
+    { id: 'analysis',  icon: 'ti-chart-dots',          label: 'Analysis'   },
     { id: 'tradeview', icon: 'ti-list',               label: 'Trade View' },
     { id: 'strategies',icon: 'ti-bulb',               label: 'Strategies' },
   ];
@@ -378,6 +380,7 @@ export default function App() {
         <div style={{ flex: 1, overflow: 'auto' }}>
           {page === 'dashboard'  && <Dashboard  {...dashboardProps} />}
           {page === 'reports'    && <Reports     {...filteredProps} />}
+          {page === 'analysis'   && <Analysis    {...filteredProps} />}
           {page === 'tradeview'  && <TradeView   {...tradeViewProps} />}
           {page === 'strategies' && <Strategies  {...filteredProps} />}
         </div>
