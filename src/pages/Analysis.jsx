@@ -10,7 +10,6 @@ function StatCard({ label, value, color }) {
   );
 }
 
-// ── Chart wrapper — destroys and recreates Chart.js instance safely ────────────
 function ChartCanvas({ id, build }) {
   const ref      = useRef(null);
   const inst     = useRef(null);
@@ -19,18 +18,16 @@ function ChartCanvas({ id, build }) {
   useEffect(() => {
     if (!ref.current) return;
     cancelled.current = false;
-
     const attempt = () => {
-      if (cancelled.current) return;          // cleanup ran — abort
+      if (cancelled.current) return;
       if (!window.Chart) { setTimeout(attempt, 100); return; }
       if (!ref.current || cancelled.current) return;
       if (inst.current) { try { inst.current.destroy(); } catch {} inst.current = null; }
       try { inst.current = build(ref.current); } catch(e) { console.error('Chart:', e); }
     };
     attempt();
-
     return () => {
-      cancelled.current = true;               // stop any pending setTimeout
+      cancelled.current = true;
       if (inst.current) { try { inst.current.destroy(); } catch {} inst.current = null; }
     };
   }, [build]);
@@ -42,7 +39,6 @@ function ChartCanvas({ id, build }) {
   );
 }
 
-// ── Shared Chart.js config ────────────────────────────────────────────────────
 function baseOpts(extraPlugins) {
   const gc = 'rgba(255,255,255,0.06)';
   const tc = 'rgba(255,255,255,0.45)';
@@ -61,9 +57,7 @@ function baseOpts(extraPlugins) {
   };
 }
 
-// ── Analysis page ─────────────────────────────────────────────────────────────
-export default function Analysis({ filteredTrades, dateLabel, acctLabel, dateRange, tosData, setTosData }) {
-  // Load Chart.js once globally — persists across tab switches
+export default function Analysis({ filteredTrades, dateLabel, acctLabel, dateRange, account, tosData, setTosData }) {
   useEffect(() => {
     if (window.Chart) return;
     const existing = document.getElementById('chartjs-cdn');
@@ -74,52 +68,70 @@ export default function Analysis({ filteredTrades, dateLabel, acctLabel, dateRan
     document.head.appendChild(s);
   }, []);
 
+  // Merge trips from multiple uploads — keep all accounts in tosData.trips
   const handleImport = useCallback((parsed) => {
     const trips = parsed.roundTrips || [];
     if (!trips.length) return;
 
-    // Equity curve — deduplicated daily cash balance
+    // Tag each trip with its account
+    const taggedTrips = trips.map(t => ({ ...t, account: parsed.account }));
+
     const eqMap = {};
     (parsed.cashBalances || []).forEach(b => { eqMap[b.date] = b.balance; });
     const equityCurve = Object.entries(eqMap)
       .sort((a, b) => new Date(a[0]) - new Date(b[0]))
-      .map(([date, balance]) => ({ date, balance }));
+      .map(([date, balance]) => ({ date, balance, account: parsed.account }));
 
-    // P&L by symbol
-    const symMap = {};
-    trips.forEach(t => { symMap[t.symbol] = (symMap[t.symbol] || 0) + t.pnl; });
+    setTosData(prev => {
+      const prevTrips = prev?.trips || [];
+      // Remove old trips for this account, add new ones
+      const otherTrips = prevTrips.filter(t => t.account !== parsed.account);
+      const allTrips = [...otherTrips, ...taggedTrips];
 
-    setTosData({
-      account:     parsed.account,
-      period:      parsed.period || '',
-      trips,
-      equityCurve,
-      symMap,
-      totalComm:   trips.reduce((s, t) => s + (t.comm || 0), 0),
-      netPnl:      trips.reduce((s, t) => s + t.pnl, 0),
-      wins:        trips.filter(t => t.pnl > 0).length,
-      total:       trips.length,
-      avgHold:     trips.reduce((s, t) => s + (t.duration_hrs || 0), 0) / trips.length,
+      const prevEquity = (prev?.equityCurve || []).filter(e => e.account !== parsed.account);
+      const allEquity  = [...prevEquity, ...equityCurve].sort((a,b) => new Date(a.date) - new Date(b.date));
+
+      const symMap = {};
+      allTrips.forEach(t => { symMap[t.symbol] = (symMap[t.symbol] || 0) + t.pnl; });
+
+      return {
+        account:   allTrips.map(t => t.account).filter((v,i,a) => a.indexOf(v)===i).join('+'),
+        trips:     allTrips,
+        equityCurve: allEquity,
+        symMap,
+        totalComm: allTrips.reduce((s, t) => s + (t.comm || 0), 0),
+        netPnl:    allTrips.reduce((s, t) => s + t.pnl, 0),
+        wins:      allTrips.filter(t => t.pnl > 0).length,
+        total:     allTrips.length,
+        avgHold:   allTrips.reduce((s, t) => s + (t.duration_hrs || 0), 0) / allTrips.length,
+      };
     });
-  }, []);
+  }, [setTosData]);
 
-  // ── chart builders (memoised on tosData) ─────────────────────────────────
-  // Filter TOS trips to match global date range — memoised to avoid infinite re-renders
+  // Filter by date range AND account
   const filteredTrips = useMemo(() => {
     if (!tosData?.trips) return [];
-    if (!dateRange) return tosData.trips;
     return tosData.trips.filter(t => {
-      if (!t.entry_dt) return true;
-      const d = new Date(t.entry_dt);
-      return d >= dateRange.start && d <= dateRange.end;
+      // Account filter
+      if (account && account !== 'both') {
+        if ((t.account || '').toUpperCase() !== account.toUpperCase()) return false;
+      }
+      // Date filter
+      if (dateRange && t.entry_dt) {
+        const d = new Date(t.entry_dt);
+        if (d < dateRange.start || d > dateRange.end) return false;
+      }
+      return true;
     });
-  }, [tosData, dateRange?.start?.getTime(), dateRange?.end?.getTime()]);
+  }, [tosData, account, dateRange?.start?.getTime(), dateRange?.end?.getTime()]);
 
   const filteredEquity = useMemo(() => {
     if (!tosData?.equityCurve) return [];
-    if (!dateRange) return tosData.equityCurve;
     return tosData.equityCurve.filter(e => {
-      if (!e.date) return true;
+      if (account && account !== 'both') {
+        if ((e.account || '').toUpperCase() !== account.toUpperCase()) return false;
+      }
+      if (!dateRange || !e.date) return true;
       try {
         const parts = e.date.split('/');
         const yr = parts[2].length === 2 ? '20' + parts[2] : parts[2];
@@ -127,7 +139,7 @@ export default function Analysis({ filteredTrades, dateLabel, acctLabel, dateRan
         return d >= dateRange.start && d <= dateRange.end;
       } catch { return true; }
     });
-  }, [tosData, dateRange?.start?.getTime(), dateRange?.end?.getTime()]);
+  }, [tosData, account, dateRange?.start?.getTime(), dateRange?.end?.getTime()]);
 
   const buildEquity = useCallback((canvas) => {
     if (!filteredEquity?.length) return null;
@@ -186,7 +198,6 @@ export default function Analysis({ filteredTrades, dateLabel, acctLabel, dateRan
     const wins   = filteredTrips.filter(t => t.pnl > 0);
     const losses = filteredTrips.filter(t => t.pnl <= 0);
     const toLogX = h => Math.round(Math.log2((h || 0) + 1) * 100) / 100;
-    // x-axis tick labels: convert log back to hours
     const tickMap = { 0: '0h', 1: '1h', 2: '3h', 3: '7h', 4: '15h', 5: '31h', 6: '63h', 7: '127h' };
     return new window.Chart(canvas, {
       type: 'scatter',
@@ -205,32 +216,62 @@ export default function Analysis({ filteredTrades, dateLabel, acctLabel, dateRan
     });
   }, [filteredTrips]);
 
+  // FIX: multiday — removed checkpoints requirement, build from pnl_points or entry/exit only
   const buildMultiday = useCallback((canvas) => {
     if (!filteredTrips.length) return null;
-    const multiday = filteredTrips.filter(t => t.duration_hrs >= 20 && t.checkpoints?.length > 0).slice(0, 5);
+    const multiday = filteredTrips
+      .filter(t => (t.duration_hrs || 0) >= 20)
+      .sort((a, b) => b.duration_hrs - a.duration_hrs)
+      .slice(0, 5);
     if (!multiday.length) return null;
+
     const colors = ['#185FA5', '#1D9E75', '#BA7517', '#E24B4A', '#7c3aed'];
-    const maxPts = Math.max(...multiday.map(t => t.checkpoints.length + 2));
-    const labels = ['Entry', ...Array.from({ length: maxPts - 2 }, (_, i) => `Day ${i + 1}`), 'Exit'];
+
+    // Build datasets — use pnl_points if available, else just entry+exit
+    const datasets = multiday.map((t, i) => {
+      let points;
+      if (t.pnl_points && t.pnl_points.length > 2) {
+        points = t.pnl_points.map(p => p.pnl);
+      } else {
+        points = [0, t.pnl];
+      }
+      const hrs = Math.round(t.duration_hrs);
+      return {
+        label: `${t.symbol} ${t.direction} ${t.pnl >= 0 ? '+' : ''}$${Math.round(t.pnl)} (${hrs}h)`,
+        data: points,
+        borderColor: colors[i], borderWidth: 2, pointRadius: 4, fill: false,
+        borderDash: i === 0 ? [] : i === 1 ? [5, 3] : [2, 2],
+      };
+    });
+
+    const maxLen = Math.max(...datasets.map(d => d.data.length));
+    const labels = ['Entry', ...Array.from({ length: maxLen - 2 }, (_, i) => `Day ${i + 1}`), 'Exit'].slice(0, maxLen);
+
     return new window.Chart(canvas, {
       type: 'line',
-      data: {
-        labels,
-        datasets: multiday.map((t, i) => ({
-          label: `${t.symbol} ${t.direction} ${t.pnl >= 0 ? '+' : ''}$${Math.round(t.pnl)}`,
-          data:  [0, ...t.checkpoints.map(c => c.running_pnl ?? 0), t.pnl],
-          borderColor: colors[i], borderWidth: 2, pointRadius: 5, fill: false,
-          borderDash: i === 0 ? [] : i === 1 ? [5, 3] : [2, 2],
-        })),
-      },
+      data: { labels, datasets },
       options: {
         ...baseOpts(),
-        plugins: { legend: { display: true, labels: { color: 'rgba(255,255,255,0.45)', font: { size: 10 }, boxWidth: 10 } }, tooltip: { ...baseOpts().plugins.tooltip, callbacks: { label: c => ` ${c.dataset.label}: ${c.parsed.y >= 0 ? '+' : ''}$${Math.round(c.parsed.y).toLocaleString()}` } } },
+        plugins: {
+          legend: { display: true, labels: { color: 'rgba(255,255,255,0.45)', font: { size: 10 }, boxWidth: 10 } },
+          tooltip: { ...baseOpts().plugins.tooltip, callbacks: { label: c => ` ${c.dataset.label}: ${c.parsed.y >= 0 ? '+' : ''}$${Math.round(c.parsed.y).toLocaleString()}` } },
+        },
       },
     });
   }, [filteredTrips]);
 
   const fmtPnl = v => (v >= 0 ? '+$' : '-$') + Math.abs(Math.round(v)).toLocaleString();
+
+  // Compute stats from filteredTrips (respects account + date filter)
+  const tw = filteredTrips.filter(t => t.pnl > 0).length;
+  const tt = filteredTrips.length;
+  const tn = filteredTrips.reduce((s, t) => s + t.pnl, 0);
+  const tc = filteredTrips.reduce((s, t) => s + (t.comm || 0), 0);
+
+  // Label for which accounts are loaded
+  const loadedAccounts = tosData
+    ? [...new Set((tosData.trips || []).map(t => t.account))].join(' + ')
+    : null;
 
   return (
     <div style={{ padding: '16px 20px' }}>
@@ -240,7 +281,10 @@ export default function Analysis({ filteredTrades, dateLabel, acctLabel, dateRan
       </div>
 
       <div style={{ background: '#111', border: '1px solid #222', borderRadius: 8, padding: '12px 14px', marginBottom: 20 }}>
-        <div style={{ fontSize: 12, fontWeight: 600, color: '#ccc', marginBottom: 8 }}>📊 Import TOS Account Statement</div>
+        <div style={{ fontSize: 12, fontWeight: 600, color: '#ccc', marginBottom: 8 }}>
+          📊 Import TOS Account Statement
+          {loadedAccounts && <span style={{ marginLeft: 8, fontSize: 11, color: '#1D9E75' }}>✅ Loaded: {loadedAccounts}</span>}
+        </div>
         <TOSUploader trades={filteredTrades} onComplete={handleImport} />
       </div>
 
@@ -252,21 +296,13 @@ export default function Analysis({ filteredTrades, dateLabel, acctLabel, dateRan
 
       {tosData && (
         <>
-          {(() => {
-            const tw = filteredTrips.filter(t => t.pnl > 0).length;
-            const tt = filteredTrips.length;
-            const tn = filteredTrips.reduce((s,t) => s+t.pnl, 0);
-            const tc = filteredTrips.reduce((s,t) => s+(t.comm||0), 0);
-            return (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 8, marginBottom: 16 }}>
-                <StatCard label="Account"   value={tosData.account} />
-                <StatCard label="Trades"    value={tt} />
-                <StatCard label="Win Rate"  value={tt ? Math.round(tw/tt*100)+'%' : '—'} color={tt && tw/tt>=0.5?'#1D9E75':'#E24B4A'} />
-                <StatCard label="Net P&L"   value={fmtPnl(tn)} color={tn>=0?'#1D9E75':'#E24B4A'} />
-                <StatCard label="Comm paid" value={'-$'+Math.round(tc)} color="#E24B4A" />
-              </div>
-            );
-          })()}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 8, marginBottom: 16 }}>
+            <StatCard label="Showing"   value={acctLabel} />
+            <StatCard label="Trades"    value={tt} />
+            <StatCard label="Win Rate"  value={tt ? Math.round(tw/tt*100)+'%' : '—'} color={tt && tw/tt>=0.5?'#1D9E75':'#E24B4A'} />
+            <StatCard label="Net P&L"   value={fmtPnl(tn)} color={tn>=0?'#1D9E75':'#E24B4A'} />
+            <StatCard label="Comm paid" value={'-$'+Math.round(tc)} color="#E24B4A" />
+          </div>
 
           <div style={{ background: '#111', border: '1px solid #222', borderRadius: 8, padding: '12px 14px', marginBottom: 12 }}>
             <div style={{ fontSize: 11, color: '#bbb', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>Account Equity Curve</div>
@@ -289,12 +325,18 @@ export default function Analysis({ filteredTrades, dateLabel, acctLabel, dateRan
           </div>
 
           <div style={{ background: '#111', border: '1px solid #222', borderRadius: 8, padding: '12px 14px' }}>
-            <div style={{ fontSize: 11, color: '#bbb', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>Multiday Trades — Real P&L from Daily Settlements</div>
+            <div style={{ fontSize: 11, color: '#bbb', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>
+              Multiday Trades — Real P&L from Daily Settlements
+            </div>
+            <div style={{ fontSize: 11, color: '#444', marginBottom: 8 }}>
+              Trades held 20h+ · showing up to 5 longest
+              {filteredTrips.filter(t => (t.duration_hrs||0) >= 20).length === 0 &&
+                <span style={{ color: '#666' }}> — none found in current filter</span>}
+            </div>
             <ChartCanvas id="md-chart" build={buildMultiday} />
           </div>
         </>
       )}
-
     </div>
   );
 }

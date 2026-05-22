@@ -381,7 +381,7 @@ export default function App() {
         <div style={{ flex: 1, overflow: 'auto' }}>
           {page === 'dashboard'  && <Dashboard  {...dashboardProps} />}
           {page === 'reports'    && <Reports     {...filteredProps} />}
-          {page === 'analysis'   && <Analysis    {...filteredProps} tosData={tosData} setTosData={setTosData} />}
+          {page === 'analysis'   && <Analysis    {...filteredProps} account={account} tosData={tosData} setTosData={setTosData} />}
           {page === 'tradeview'  && <TradeView   {...tradeViewProps} />}
           {page === 'strategies' && <Strategies  {...filteredProps} />}
         </div>
