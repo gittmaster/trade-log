@@ -557,17 +557,19 @@ function ProgressCalendar({ trades, dateRange }) {
                   ))}
                 </div>
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 3, marginTop: 20, marginLeft: 8 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginLeft: 8 }}>
+                {/* Spacer matching the day-header row height */}
+                <div style={{ height: 29 }} />
                 {weeks.map((week, wi) => {
                   let wNet = 0, wDays = 0;
                   week.forEach(day => { if (day && dayMap[day]) { wNet += dayMap[day].pnl; wDays++; } });
                   return (
-                    <div key={wi} style={{ background: '#111', border: '1px solid #222', borderRadius: 6, padding: '7px 10px', minWidth: 85, minHeight: 68, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 2 }}>
-                      <span style={{ fontSize: 12, fontWeight: 700, color: '#aaa' }}>Week {wi + 1}</span>
+                    <div key={wi} style={{ background: '#111', border: '1px solid #222', borderRadius: 8, padding: '7px 10px', minWidth: 100, height: 100, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 2 }}>
+                      <span style={{ fontSize: 12, fontWeight: 700, color: '#666' }}>Week {wi + 1}</span>
                       {wDays > 0 ? (<>
-                        <span style={{ fontSize: 18, fontWeight: 700, color: wNet >= 0 ? '#1D9E75' : '#E24B4A' }}>{fmt(wNet)}</span>
-                        <span style={{ fontSize: 12, fontWeight: 600, color: '#888' }}>{wDays} day{wDays !== 1 ? 's' : ''}</span>
-                      </>) : <span style={{ fontSize: 13, fontWeight: 700, color: '#444' }}>—</span>}
+                        <span style={{ fontSize: 16, fontWeight: 700, color: wNet >= 0 ? '#1D9E75' : '#E24B4A' }}>{fmt(wNet)}</span>
+                        <span style={{ fontSize: 11, color: '#555' }}>{wDays} day{wDays !== 1 ? 's' : ''}</span>
+                      </>) : <span style={{ fontSize: 13, fontWeight: 700, color: '#333' }}>—</span>}
                     </div>
                   );
                 })}
@@ -623,7 +625,7 @@ export default function Dashboard({ filteredTrades, dateLabel, acctLabel, dateRa
           { k: 'strat-weak-al-strong-sl', l: 'Weak AL' },
           { k: 'strat-both-weak',         l: 'Both Weak' },
         ])} />
-        <InsightCard title="By Safety Line" data={insightData('sl_quality', [{ k: 'strong', l: '★ Strong' }, { k: 'weak', l: 'Weak' }])} />
+        <InsightCard title="By Grade"      data={insightData('grade', [{ k: 'aplus', l: 'A+' }, { k: 'a', l: 'A' }, { k: 'aminus', l: 'A-' }])} />
         <InsightCard title="By Session"    data={insightData('session', SESSIONS.map(s => ({ k: s, l: s })))} />
       </div>
 
