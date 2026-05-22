@@ -1,8 +1,109 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { SESSIONS } from '../App';
+import { SESSIONS, getMultiplier } from '../App';
 
 const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 const DOW = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+
+const STRAT_LABELS = {
+  'strat-aplus-prime':       'A+ Prime',
+  'strat-strong-al-weak-sl': 'Strong AL / Weak SL',
+  'strat-weak-al-strong-sl': 'Weak AL / Strong SL',
+  'strat-both-weak':         'Both Weak',
+  'strat-unassigned':        'Unassigned',
+};
+
+
+// ─── Trade Detail Sub-panel ───────────────────────────────────────────────────
+function TradeDetail({ trade, onClose }) {
+  const mult = getMultiplier(trade.symbol, trade.custom_multiplier);
+  const pts  = (trade.entry != null && trade.exit_price != null)
+    ? Math.round(((trade.direction === 'long' ? trade.exit_price - trade.entry : trade.entry - trade.exit_price)) * 100) / 100
+    : null;
+  const heldStr = (() => {
+    try {
+      if (!trade.time) return null;
+      const entryDt = new Date(`${trade.date}T${trade.time}`);
+      const exitDate = trade.exit_date || trade.date;
+      const exitDt  = new Date(`${exitDate}T${trade.exit_time}`);
+      const ms = exitDt - entryDt;
+      if (ms <= 0) return null;
+      const h = Math.floor(ms / 3600000);
+      const m = Math.floor((ms % 3600000) / 60000);
+      return h > 0 ? `${h}h ${m}m` : `${m}m`;
+    } catch { return null; }
+  })();
+
+  const isWin  = trade.pnl > 0;
+  const isLoss = trade.pnl < 0;
+  const resultColor = isWin ? '#1D9E75' : isLoss ? '#E24B4A' : '#888';
+  const fmtPnl = v => v != null ? ((v >= 0 ? '+$' : '-$') + Math.abs(Math.round(v)).toLocaleString()) : '—';
+
+  const rows = [
+    { label: 'Side',        value: trade.direction?.toUpperCase(), color: trade.direction === 'long' ? '#1D9E75' : '#E24B4A' },
+    { label: 'Account',     value: trade.account },
+    { label: 'Symbol',      value: trade.symbol },
+    { label: 'Contracts',   value: trade.contracts || 1 },
+    { label: 'Entry',       value: trade.entry },
+    { label: 'Exit',        value: trade.exit_price || '—' },
+    { label: 'Points',      value: pts != null ? (pts >= 0 ? '+' : '') + pts : '—', color: pts >= 0 ? '#1D9E75' : '#E24B4A' },
+    { label: 'Gross P&L',   value: fmtPnl(trade.pnl), color: resultColor },
+    { label: 'Session',     value: trade.session || '—' },
+    { label: 'Held',        value: heldStr || '—' },
+    { label: 'Strategy',    value: STRAT_LABELS[trade.strategy_id] || trade.strategy_id || '—' },
+    { label: 'Exit Reason', value: trade.exit_reason || '—' },
+  ];
+
+  return (
+    <div style={{
+      position: 'absolute', top: 0, right: 0, width: '100%', height: '100%',
+      background: '#0e0e0e', display: 'flex', flexDirection: 'column',
+      animation: 'slideIn 0.15s ease',
+      zIndex: 10,
+    }}>
+      {/* Header */}
+      <div style={{ padding: '14px 20px', borderBottom: '1px solid #1e1e1e', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#666', fontSize: 18, cursor: 'pointer', padding: '0 4px' }}>‹</button>
+          <span style={{ fontSize: 14, fontWeight: 700, color: '#ccc' }}>{trade.symbol}</span>
+          <span style={{ background: trade.direction === 'long' ? '#1D9E7522' : '#E24B4A22', color: trade.direction === 'long' ? '#1D9E75' : '#E24B4A', borderRadius: 20, padding: '2px 10px', fontSize: 11, fontWeight: 700, textTransform: 'uppercase' }}>{trade.direction}</span>
+          <span style={{ background: '#1a1a2a', color: '#85B7EB', borderRadius: 20, padding: '2px 10px', fontSize: 11, fontWeight: 700 }}>{trade.exit_price ? 'Closed' : 'Open'}</span>
+          <span style={{ background: isWin ? '#1D9E7522' : isLoss ? '#E24B4A22' : '#222', color: resultColor, borderRadius: 20, padding: '2px 10px', fontSize: 11, fontWeight: 700 }}>{isWin ? 'Win' : isLoss ? 'Loss' : 'BE'}</span>
+        </div>
+        <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#444', fontSize: 20, cursor: 'pointer' }}>×</button>
+      </div>
+
+      {/* Opened / held */}
+      <div style={{ padding: '8px 20px', borderBottom: '1px solid #1e1e1e', fontSize: 11, color: '#555', flexShrink: 0 }}>
+        Opened {trade.date} {trade.time || ''}
+        {trade.exit_date || trade.exit_time ? ` · Closed ${trade.exit_date || trade.date} ${trade.exit_time || ''}` : ''}
+        {heldStr ? ` · Held ${heldStr}` : ''}
+      </div>
+
+      {/* P&L box */}
+      <div style={{ margin: '14px 20px', background: '#111', border: `1px solid ${resultColor}44`, borderLeft: `3px solid ${resultColor}`, borderRadius: 8, padding: '14px 16px', flexShrink: 0 }}>
+        <div style={{ fontSize: 11, color: '#555', marginBottom: 4 }}>NET P&L</div>
+        <div style={{ fontSize: 28, fontWeight: 700, color: resultColor }}>{fmtPnl(trade.pnl)}</div>
+        {pts != null && <div style={{ fontSize: 12, color: '#666', marginTop: 4 }}>{pts >= 0 ? '+' : ''}{pts} pts · {trade.contracts || 1} contract{trade.contracts > 1 ? 's' : ''}</div>}
+      </div>
+
+      {/* Stats table */}
+      <div style={{ flex: 1, overflowY: 'auto', padding: '0 20px 20px' }}>
+        {rows.map(({ label, value, color }) => (
+          <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '9px 0', borderBottom: '1px solid #181818' }}>
+            <span style={{ fontSize: 13, color: '#555' }}>{label}</span>
+            <span style={{ fontSize: 13, fontWeight: 600, color: color || '#ccc' }}>{value}</span>
+          </div>
+        ))}
+        {trade.notes && (
+          <div style={{ marginTop: 14, background: '#111', border: '1px solid #222', borderRadius: 8, padding: '10px 14px' }}>
+            <div style={{ fontSize: 11, color: '#555', marginBottom: 6 }}>NOTES</div>
+            <div style={{ fontSize: 13, color: '#aaa', lineHeight: 1.6 }}>{trade.notes}</div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 // ─── Day Detail Panel ─────────────────────────────────────────────────────────
 function DayPanel({ day, month, year, trades, onClose }) {
@@ -12,6 +113,7 @@ function DayPanel({ day, month, year, trades, onClose }) {
   const wins = closed.filter(t => t.pnl > 0);
   const net = closed.reduce((s,t) => s + t.pnl, 0);
   const wr = closed.length ? Math.round(wins.length / closed.length * 100) : 0;
+  const [selectedTrade, setSelectedTrade] = useState(null);
   const date = new Date(year, month, day);
   const dow = DOW[date.getDay()];
   const fmt = v => (v >= 0 ? '+$' : '-$') + Math.abs(Math.round(v)).toLocaleString();
@@ -73,8 +175,10 @@ function DayPanel({ day, month, year, trades, onClose }) {
         width: 680, height: '100vh', background: '#111', borderLeft: '1px solid #2a2a2a',
         display: 'flex', flexDirection: 'column', overflowY: 'auto',
         animation: 'slideIn 0.2s ease',
+        position: 'relative',
       }}>
         <style>{`@keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }`}</style>
+        {selectedTrade && <TradeDetail trade={selectedTrade} onClose={() => setSelectedTrade(null)} />}
 
         {/* Header */}
         <div style={{ padding: '16px 20px', borderBottom: '1px solid #1e1e1e', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
@@ -127,7 +231,7 @@ function DayPanel({ day, month, year, trades, onClose }) {
                 </thead>
                 <tbody>
                   {[...dayTrades].sort((a,b) => (a.time||'').localeCompare(b.time||'')).map((t, i) => (
-                    <tr key={t.id || i} style={{ borderBottom: '1px solid #181818' }}
+                    <tr key={t.id || i} onClick={() => setSelectedTrade(t)} style={{ borderBottom: '1px solid #181818', cursor: 'pointer' }}
                       onMouseEnter={e => e.currentTarget.style.background = '#1a1a1a'}
                       onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                     >
@@ -145,7 +249,7 @@ function DayPanel({ day, month, year, trades, onClose }) {
                         {t.pnl !== null ? (t.pnl >= 0 ? '+$' : '-$') + Math.abs(Math.round(t.pnl)).toLocaleString() : '—'}
                       </td>
                       <td style={{ padding: '10px 12px', color: '#666', fontSize: 11 }}>{t.session || '—'}</td>
-                      <td style={{ padding: '10px 12px', color: '#555', fontSize: 11, maxWidth: 100, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.strategy_id || '—'}</td>
+                      <td style={{ padding: '10px 12px', color: '#555', fontSize: 11, maxWidth: 100, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{STRAT_LABELS[t.strategy_id] || t.strategy_id || '—'}</td>
                       <td style={{ padding: '10px 12px', color: '#555', fontSize: 11, maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.notes || ''}</td>
                     </tr>
                   ))}
