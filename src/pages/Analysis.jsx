@@ -12,20 +12,27 @@ function StatCard({ label, value, color }) {
 
 // ── Chart wrapper — destroys and recreates Chart.js instance safely ────────────
 function ChartCanvas({ id, build }) {
-  const ref  = useRef(null);
-  const inst = useRef(null);
+  const ref      = useRef(null);
+  const inst     = useRef(null);
+  const cancelled = useRef(false);
 
   useEffect(() => {
     if (!ref.current) return;
-    // wait for Chart.js to be available
+    cancelled.current = false;
+
     const attempt = () => {
+      if (cancelled.current) return;          // cleanup ran — abort
       if (!window.Chart) { setTimeout(attempt, 100); return; }
-      if (!ref.current) return;
+      if (!ref.current || cancelled.current) return;
       if (inst.current) { try { inst.current.destroy(); } catch {} inst.current = null; }
-      try { inst.current = build(ref.current); } catch(e) { console.error('Chart build failed:', e); }
+      try { inst.current = build(ref.current); } catch(e) { console.error('Chart:', e); }
     };
     attempt();
-    return () => { if (inst.current) { try { inst.current.destroy(); } catch {} inst.current = null; } };
+
+    return () => {
+      cancelled.current = true;               // stop any pending setTimeout
+      if (inst.current) { try { inst.current.destroy(); } catch {} inst.current = null; }
+    };
   }, [build]);
 
   return (
@@ -221,7 +228,7 @@ export default function Analysis({ filteredTrades, dateLabel, acctLabel, dateRan
         plugins: { legend: { display: true, labels: { color: 'rgba(255,255,255,0.45)', font: { size: 10 }, boxWidth: 10 } }, tooltip: { ...baseOpts().plugins.tooltip, callbacks: { label: c => ` ${c.dataset.label}: ${c.parsed.y >= 0 ? '+' : ''}$${Math.round(c.parsed.y).toLocaleString()}` } } },
       },
     });
-  }, [tosData]);
+  }, [filteredTrips]);
 
   const fmtPnl = v => (v >= 0 ? '+$' : '-$') + Math.abs(Math.round(v)).toLocaleString();
 
