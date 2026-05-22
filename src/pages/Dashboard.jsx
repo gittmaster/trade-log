@@ -13,6 +13,136 @@ const STRAT_LABELS = {
 };
 
 
+// ─── Running P&L mini chart ──────────────────────────────────────────────────
+function RunningPnlChart({ trade }) {
+  const canvasRef = useRef(null);
+  const mult = getMultiplier(trade.symbol, trade.custom_multiplier);
+  const contracts = parseFloat(trade.contracts) || 1;
+  const isLong = trade.direction === 'long';
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const entry = parseFloat(trade.entry);
+    const exit  = parseFloat(trade.exit_price);
+    const mfe   = parseFloat(trade.mfe_price);
+    const mae   = parseFloat(trade.mae_price);
+    if (!entry || !exit) return;
+
+    // Build 4-point path: Entry(0) → worst → best → Exit
+    // For long: MAE then MFE. For short: MFE then MAE (price inverted)
+    const toPnl = price => Math.round((isLong ? price - entry : entry - price) * mult * contracts * 100) / 100;
+
+    const points = [{ label: 'Entry', pnl: 0 }];
+    if (!isNaN(mae) && !isNaN(mfe)) {
+      if (isLong) {
+        points.push({ label: 'MAE', pnl: toPnl(mae) });
+        points.push({ label: 'MFE', pnl: toPnl(mfe) });
+      } else {
+        points.push({ label: 'MFE', pnl: toPnl(mfe) });
+        points.push({ label: 'MAE', pnl: toPnl(mae) });
+      }
+    }
+    points.push({ label: 'Exit', pnl: toPnl(exit) });
+
+    const W = canvas.width, H = canvas.height;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, W, H);
+
+    const pnls = points.map(p => p.pnl);
+    const minV = Math.min(...pnls, 0);
+    const maxV = Math.max(...pnls, 0);
+    const range = maxV - minV || 1;
+    const padX = 48, padY = 20, padB = 28;
+    const chartW = W - padX - 12;
+    const chartH = H - padY - padB;
+    const px = i => padX + (i / (points.length - 1)) * chartW;
+    const py = v => padY + chartH - ((v - minV) / range) * chartH;
+
+    // Zero line
+    ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+    ctx.setLineDash([3, 3]);
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(padX, py(0)); ctx.lineTo(W - 12, py(0)); ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Fill
+    const exitPnl = points[points.length - 1].pnl;
+    const grad = ctx.createLinearGradient(0, 0, 0, H);
+    grad.addColorStop(0, exitPnl >= 0 ? 'rgba(29,158,117,0.3)' : 'rgba(226,75,74,0.3)');
+    grad.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.beginPath();
+    ctx.moveTo(px(0), py(0));
+    points.forEach((p, i) => ctx.lineTo(px(i), py(p.pnl)));
+    ctx.lineTo(px(points.length - 1), py(0));
+    ctx.closePath();
+    ctx.fillStyle = grad;
+    ctx.fill();
+
+    // Line
+    ctx.strokeStyle = exitPnl >= 0 ? '#1D9E75' : '#E24B4A';
+    ctx.lineWidth = 2;
+    ctx.lineJoin = 'round';
+    ctx.beginPath();
+    points.forEach((p, i) => i === 0 ? ctx.moveTo(px(i), py(p.pnl)) : ctx.lineTo(px(i), py(p.pnl)));
+    ctx.stroke();
+
+    // Dots
+    points.forEach((p, i) => {
+      ctx.beginPath();
+      ctx.arc(px(i), py(p.pnl), 3.5, 0, Math.PI * 2);
+      ctx.fillStyle = exitPnl >= 0 ? '#1D9E75' : '#E24B4A';
+      ctx.fill();
+    });
+
+    // Y-axis labels
+    ctx.font = '10px monospace';
+    ctx.textAlign = 'right';
+    [minV, 0, maxV].filter((v, i, a) => a.indexOf(v) === i).forEach(v => {
+      ctx.fillStyle = v === 0 ? 'rgba(255,255,255,0.3)' : v > 0 ? '#1D9E75' : '#E24B4A';
+      ctx.fillText((v >= 0 ? '+$' : '-$') + Math.abs(Math.round(v)), padX - 4, py(v) + 3);
+    });
+
+    // X-axis labels
+    ctx.textAlign = 'center';
+    ctx.fillStyle = 'rgba(255,255,255,0.3)';
+    points.forEach((p, i) => {
+      ctx.fillText(p.label, px(i), H - 8);
+    });
+  }, [trade]);
+
+  const hasMfeMae = !isNaN(parseFloat(trade.mfe_price)) && !isNaN(parseFloat(trade.mae_price));
+
+  return (
+    <div style={{ marginBottom: 14 }}>
+      <div style={{ fontSize: 11, color: '#555', marginBottom: 6, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <span>RUNNING P&L</span>
+        {!hasMfeMae && <span style={{ color: '#333', fontSize: 10 }}>Add MFE/MAE in Trade Review for full path</span>}
+      </div>
+      <canvas ref={canvasRef} width={760} height={140} style={{ width: '100%', height: 140, borderRadius: 6, background: '#0a0a0a', display: 'block' }} />
+      {hasMfeMae && (
+        <div style={{ display: 'flex', gap: 16, marginTop: 6 }}>
+          {[
+            { label: 'MFE', price: trade.mfe_price, color: '#1D9E75' },
+            { label: 'MAE', price: trade.mae_price, color: '#E24B4A' },
+          ].map(({ label, price, color }) => {
+            const mult2 = getMultiplier(trade.symbol, trade.custom_multiplier);
+            const contracts2 = parseFloat(trade.contracts) || 1;
+            const isLong2 = trade.direction === 'long';
+            const pnl = Math.round((isLong2 ? price - trade.entry : trade.entry - price) * mult2 * contracts2);
+            return (
+              <div key={label} style={{ fontSize: 11, color: '#555' }}>
+                {label}: <span style={{ color, fontWeight: 700 }}>${price}</span>
+                <span style={{ color: '#444', marginLeft: 4 }}>({pnl >= 0 ? '+$' : '-$'}{Math.abs(pnl)})</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Trade Detail Sub-panel ───────────────────────────────────────────────────
 function TradeDetail({ trade, onClose }) {
   const mult = getMultiplier(trade.symbol, trade.custom_multiplier);
@@ -45,7 +175,7 @@ function TradeDetail({ trade, onClose }) {
     { label: 'Contracts',   value: trade.contracts || 1 },
     { label: 'Entry',       value: trade.entry },
     { label: 'Exit',        value: trade.exit_price || '—' },
-    { label: 'Points',      value: pts != null ? (pts >= 0 ? '+' : '') + pts : '—', color: pts >= 0 ? '#1D9E75' : '#E24B4A' },
+    { label: 'Points',      value: pts != null ? (pts >= 0 ? '+' : '') + pts : '—', color: pts != null && pts >= 0 ? '#1D9E75' : '#E24B4A' },
     { label: 'Gross P&L',   value: fmtPnl(trade.pnl), color: resultColor },
     { label: 'Session',     value: trade.session || '—' },
     { label: 'Held',        value: heldStr || '—' },
@@ -57,8 +187,7 @@ function TradeDetail({ trade, onClose }) {
     <div style={{
       position: 'absolute', top: 0, right: 0, width: '100%', height: '100%',
       background: '#0e0e0e', display: 'flex', flexDirection: 'column',
-      animation: 'slideIn 0.15s ease',
-      zIndex: 10,
+      animation: 'slideIn 0.15s ease', zIndex: 10,
     }}>
       {/* Header */}
       <div style={{ padding: '14px 20px', borderBottom: '1px solid #1e1e1e', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
@@ -79,40 +208,42 @@ function TradeDetail({ trade, onClose }) {
         {heldStr ? ` · Held ${heldStr}` : ''}
       </div>
 
-      {/* P&L box */}
-      <div style={{ margin: '14px 20px', background: '#111', border: `1px solid ${resultColor}44`, borderLeft: `3px solid ${resultColor}`, borderRadius: 8, padding: '14px 16px', flexShrink: 0 }}>
-        <div style={{ fontSize: 11, color: '#555', marginBottom: 4 }}>NET P&L</div>
-        <div style={{ fontSize: 28, fontWeight: 700, color: resultColor }}>{fmtPnl(trade.pnl)}</div>
-        {pts != null && <div style={{ fontSize: 12, color: '#666', marginTop: 4 }}>{pts >= 0 ? '+' : ''}{pts} pts · {trade.contracts || 1} contract{trade.contracts > 1 ? 's' : ''}</div>}
-      </div>
-
-      {/* Chart image */}
-      {trade.chart_url && (
-        <div style={{ margin: '0 20px 14px', flexShrink: 0 }}>
-          <div style={{ fontSize: 11, color: '#555', marginBottom: 6 }}>CHART</div>
-          <img
-            src={trade.chart_url}
-            alt="Trade chart"
-            style={{ width: '100%', borderRadius: 8, border: '1px solid #222', display: 'block', cursor: 'pointer' }}
-            onClick={() => window.open(trade.chart_url, '_blank')}
-          />
+      <div style={{ flex: 1, overflowY: 'auto', padding: '14px 20px 20px' }}>
+        {/* P&L box */}
+        <div style={{ background: '#111', border: `1px solid ${resultColor}44`, borderLeft: `3px solid ${resultColor}`, borderRadius: 8, padding: '14px 16px', marginBottom: 14 }}>
+          <div style={{ fontSize: 11, color: '#555', marginBottom: 4 }}>NET P&L</div>
+          <div style={{ fontSize: 28, fontWeight: 700, color: resultColor }}>{fmtPnl(trade.pnl)}</div>
+          {pts != null && <div style={{ fontSize: 12, color: '#666', marginTop: 4 }}>{pts >= 0 ? '+' : ''}{pts} pts · {trade.contracts || 1} contract{trade.contracts > 1 ? 's' : ''}</div>}
         </div>
-      )}
 
-      {/* Stats table */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: '0 20px 20px' }}>
-        {rows.map(({ label, value, color }) => (
-          <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '9px 0', borderBottom: '1px solid #181818' }}>
-            <span style={{ fontSize: 13, color: '#555' }}>{label}</span>
-            <span style={{ fontSize: 13, fontWeight: 600, color: color || '#ccc' }}>{value}</span>
-          </div>
-        ))}
-        {trade.notes && (
-          <div style={{ marginTop: 14, background: '#111', border: '1px solid #222', borderRadius: 8, padding: '10px 14px' }}>
-            <div style={{ fontSize: 11, color: '#555', marginBottom: 6 }}>NOTES</div>
-            <div style={{ fontSize: 13, color: '#aaa', lineHeight: 1.6 }}>{trade.notes}</div>
+        {/* Running P&L chart */}
+        {trade.entry && trade.exit_price && <RunningPnlChart trade={trade} />}
+
+        {/* Chart image */}
+        {trade.chart_url && (
+          <div style={{ marginBottom: 14 }}>
+            <div style={{ fontSize: 11, color: '#555', marginBottom: 6 }}>CHART</div>
+            <img src={trade.chart_url} alt="Trade chart"
+              style={{ width: '100%', borderRadius: 8, border: '1px solid #222', display: 'block', cursor: 'pointer' }}
+              onClick={() => window.open(trade.chart_url, '_blank')} />
           </div>
         )}
+
+        {/* Stats table */}
+        <div>
+          {rows.map(({ label, value, color }) => (
+            <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '9px 0', borderBottom: '1px solid #181818' }}>
+              <span style={{ fontSize: 13, color: '#555' }}>{label}</span>
+              <span style={{ fontSize: 13, fontWeight: 600, color: color || '#ccc' }}>{value}</span>
+            </div>
+          ))}
+          {trade.notes && (
+            <div style={{ marginTop: 14, background: '#111', border: '1px solid #222', borderRadius: 8, padding: '10px 14px' }}>
+              <div style={{ fontSize: 11, color: '#555', marginBottom: 6 }}>NOTES</div>
+              <div style={{ fontSize: 13, color: '#aaa', lineHeight: 1.6 }}>{trade.notes}</div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -185,7 +316,7 @@ function DayPanel({ day, month, year, trades, onClose }) {
       zIndex: 2000, display: 'flex', alignItems: 'flex-start', justifyContent: 'flex-end',
     }}>
       <div style={{
-        width: 680, height: '100vh', background: '#111', borderLeft: '1px solid #2a2a2a',
+        width: 820, height: '100vh', background: '#111', borderLeft: '1px solid #2a2a2a',
         display: 'flex', flexDirection: 'column', overflowY: 'auto',
         animation: 'slideIn 0.2s ease',
         position: 'relative',
