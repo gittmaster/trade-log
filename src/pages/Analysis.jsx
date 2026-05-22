@@ -178,8 +178,8 @@ export default function Analysis({ filteredTrades, dateLabel, acctLabel }) {
       data: {
         labels,
         datasets: multiday.map((t, i) => ({
-          label: `${t.symbol} ${t.dir} ${t.pnl >= 0 ? '+' : ''}$${Math.round(t.pnl)}`,
-          data:  [0, ...t.checkpoints.map(c => c.running_pnl ?? c.rpnl ?? 0), t.pnl],
+          label: `${t.symbol} ${t.direction} ${t.pnl >= 0 ? '+' : ''}$${Math.round(t.pnl)}`,
+          data:  [0, ...t.checkpoints.map(c => c.running_pnl ?? 0), t.pnl],
           borderColor: colors[i], borderWidth: 2, pointRadius: 5, fill: false,
           borderDash: i === 0 ? [] : i === 1 ? [5, 3] : [2, 2],
         })),

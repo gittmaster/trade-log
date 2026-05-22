@@ -99,7 +99,8 @@ function parseTOS(csvText) {
         opens.splice(opens.indexOf(short), 1);
         roundTrips.push({ symbol: sym, direction: 'short',
           entry_dt: short.dt, exit_dt: f.dt, entry: short.price, exit: f.price,
-          qty: short.qty, pnl: round2((short.price - f.price) * mult * short.qty) });
+          qty: short.qty, pnl: round2((short.price - f.price) * mult * short.qty),
+          duration_hrs: round2((f.dt - short.dt) / 3600000) });
       } else { opens.push({ dt: f.dt, price: f.price, qty: f.qty, direction: 'long' }); }
 
     } else if (f.side === 'SOLD') {
@@ -108,7 +109,8 @@ function parseTOS(csvText) {
         opens.splice(opens.indexOf(long), 1);
         roundTrips.push({ symbol: sym, direction: 'long',
           entry_dt: long.dt, exit_dt: f.dt, entry: long.price, exit: f.price,
-          qty: long.qty, pnl: round2((f.price - long.price) * mult * long.qty) });
+          qty: long.qty, pnl: round2((f.price - long.price) * mult * long.qty),
+          duration_hrs: round2((f.dt - long.dt) / 3600000) });
       } else { opens.push({ dt: f.dt, price: f.price, qty: f.qty, direction: 'short' }); }
     }
   }
