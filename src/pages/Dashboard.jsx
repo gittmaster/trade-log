@@ -500,8 +500,8 @@ function ProgressCalendar({ trades, dateRange }) {
               <span style={{ background: monthNet >= 0 ? '#1D9E7522' : '#E24B4A22', color: monthNet >= 0 ? '#1D9E75' : '#E24B4A', borderRadius: 20, padding: '3px 12px', fontSize: 14, fontWeight: 700 }}>{fmt(monthNet)}</span>
               <span style={{ background: '#1a1a1a', color: '#ccc', borderRadius: 20, padding: '3px 12px', fontSize: 13, fontWeight: 600 }}>{tradeDays} days</span>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 0, alignItems: 'start' }}>
-              <div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 0, alignItems: 'start', maxWidth: 1000 }}>
+              <div style={{ minWidth: 0 }}>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4, marginBottom: 4 }}>
                   {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d => (
                     <div key={d} style={{ textAlign: 'center', fontSize: 12, fontWeight: 700, color: '#666', padding: '4px 0', background: '#0d0d0d', borderRadius: 6 }}>{d}</div>
@@ -511,7 +511,7 @@ function ProgressCalendar({ trades, dateRange }) {
                   {weeks.map((week, wi) => (
                     <div key={wi} style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4 }}>
                       {week.map((day, di) => {
-                        if (!day) return <div key={di} style={{ minHeight: 100, borderRadius: 8, background: '#0a0a0a' }} />;
+                        if (!day) return <div key={di} style={{ height: 100, borderRadius: 8, background: '#0a0a0a' }} />;
                         const d = dayMap[day];
                         const isToday = now.getFullYear() === calYear && now.getMonth() === calMonth && now.getDate() === day;
                         const hasData = !!d;
@@ -532,7 +532,7 @@ function ProgressCalendar({ trades, dateRange }) {
                             style={{
                               background: bg,
                               border: `1.5px solid ${borderCol}`,
-                              borderRadius: 8, padding: '8px 10px', minHeight: 100,
+                              borderRadius: 8, padding: '8px 10px', height: 100,
                               display: 'flex', flexDirection: 'column',
                               position: 'relative',
                               cursor: hasData ? 'pointer' : 'default',
