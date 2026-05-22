@@ -439,6 +439,7 @@ function InsightCard({ title, data }) {
 
 function ProgressCalendar({ trades, dateRange }) {
   const closed = trades.filter(t => t.pnl !== null && t.date);
+  const now = new Date();
   const [open, setOpen] = useState(true);
   const [selectedDay, setSelectedDay] = useState(null);
   const [calYear,  setCalYear]  = useState(dateRange.start.getFullYear());
