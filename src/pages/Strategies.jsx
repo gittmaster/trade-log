@@ -58,7 +58,10 @@ function getStrategyIdForTrade(trade) {
   return 'strat-both-weak';
 }
 
-export default function Strategies({ trades, strategies, saveStrategies, reloadTrades, setMsg }) {
+export default function Strategies({ trades, filteredTrades, strategies, saveStrategies, reloadTrades, setMsg }) {
+  // Use filteredTrades for all display/stats so global date+account filter is respected
+  // Keep raw trades for DB write operations (auto-assign, assign, unassign)
+  const displayTrades = filteredTrades || trades;
   // Force replace old strategies if they don't have the new AL/SL based IDs
   const hasNewStrategies = strategies.some(s => s.id === 'strat-aplus-prime');
   const effectiveStrategies = hasNewStrategies ? strategies : DEFAULT_STRATEGIES;
@@ -80,7 +83,7 @@ export default function Strategies({ trades, strategies, saveStrategies, reloadT
   const [assigning, setAssigning] = useState(false);
   const [autoAssigning, setAutoAssigning] = useState(false);
 
-  const closed = trades.filter(t => t.pnl !== null);
+  const closed = displayTrades.filter(t => t.pnl !== null);
 
   const getStratStats = (stratId) => {
     const ts = stratId === '__unassigned__'
@@ -137,10 +140,10 @@ export default function Strategies({ trades, strategies, saveStrategies, reloadT
   // Trades available to assign in the panel
   const assignableTrades = useMemo(() => {
     if (!selectedStrat) return [];
-    const base = [...trades].sort((a, b) => b.date.localeCompare(a.date));
+    const base = [...displayTrades].sort((a, b) => b.date.localeCompare(a.date));
     if (assignFilter === 'unassigned') return base.filter(t => !t.strategy_id);
     return base;
-  }, [trades, selectedStrat, assignFilter]);
+  }, [displayTrades, selectedStrat, assignFilter]);
 
   const toggleTradeSelect = (id) => {
     setSelectedTradeIds(prev => {
@@ -221,7 +224,7 @@ export default function Strategies({ trades, strategies, saveStrategies, reloadT
   const withTrades = stratWithStats.filter(s => s.stats.trades > 0);
   const bestStrat = withTrades.length ? withTrades.reduce((a, b) => b.stats.totalPnl > a.stats.totalPnl ? b : a) : null;
   const worstStrat = withTrades.length ? withTrades.reduce((a, b) => b.stats.totalPnl < a.stats.totalPnl ? b : a) : null;
-  const noStratCount = trades.filter(t => !t.strategy_id).length;
+  const noStratCount = displayTrades.filter(t => !t.strategy_id).length;
 
   const StratRow = ({ s }) => {
     const st = getStratStats(s.id);
@@ -314,7 +317,7 @@ export default function Strategies({ trades, strategies, saveStrategies, reloadT
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 8, marginBottom: 16 }}>
           {[
             { label: 'Strategies', value: effectiveStrategies.length, color: '#185FA5' },
-            { label: 'Tagged Trades', value: overallStats.trades + ' / ' + trades.length },
+            { label: 'Tagged Trades', value: overallStats.trades + ' / ' + displayTrades.length },
             { label: 'Overall P&L', value: (overallStats.pnl >= 0 ? '+$' : '-$') + Math.abs(overallStats.pnl).toLocaleString(), color: overallStats.pnl >= 0 ? '#1D9E75' : '#E24B4A' },
             { label: 'Best Strategy', value: bestStrat ? bestStrat.icon + ' ' + bestStrat.name : '—', color: '#1D9E75' },
             { label: 'Worst Strategy', value: worstStrat ? worstStrat.icon + ' ' + worstStrat.name : '—', color: '#E24B4A' },
