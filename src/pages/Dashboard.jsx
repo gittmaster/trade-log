@@ -436,9 +436,19 @@ function ProgressCalendar({ trades, dateRange }) {
   const now = new Date();
   const [open, setOpen] = useState(true);
   const [selectedDay, setSelectedDay] = useState(null);
+  const [navYear,  setNavYear]  = useState(dateRange.end.getFullYear());
+  const [navMonth, setNavMonth] = useState(dateRange.end.getMonth());
 
-  const calYear  = dateRange.end.getFullYear();
-  const calMonth = dateRange.end.getMonth();
+  const calYear  = navYear;
+  const calMonth = navMonth;
+
+  const goMonth = (dir) => {
+    let m = navMonth + dir, y = navYear;
+    if (m > 11) { m = 0; y++; }
+    if (m < 0)  { m = 11; y--; }
+    setNavMonth(m); setNavYear(y);
+  };
+  const goToday = () => { setNavMonth(now.getMonth()); setNavYear(now.getFullYear()); };
 
   const dayMap = {};
   closed.forEach(t => {
@@ -484,7 +494,10 @@ function ProgressCalendar({ trades, dateRange }) {
         {open && (
           <div style={{ border: '1px solid #222', borderTop: 'none', borderRadius: '0 0 8px 8px', padding: 16 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
-              <span style={{ fontSize: 15, fontWeight: 700, color: '#ccc' }}>{MONTH_NAMES[calMonth]} {calYear}</span>
+              <button onClick={() => goMonth(-1)} style={{ background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 6, color: '#888', fontSize: 16, cursor: 'pointer', width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>‹</button>
+              <span style={{ fontSize: 15, fontWeight: 700, color: '#ccc', minWidth: 110, textAlign: 'center' }}>{MONTH_NAMES[calMonth]} {calYear}</span>
+              <button onClick={() => goMonth(1)} style={{ background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 6, color: '#888', fontSize: 16, cursor: 'pointer', width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>›</button>
+              <button onClick={goToday} style={{ background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 6, color: '#888', fontSize: 12, cursor: 'pointer', padding: '4px 12px', fontWeight: 600 }}>This month</button>
               <span style={{ background: monthNet >= 0 ? '#1D9E7522' : '#E24B4A22', color: monthNet >= 0 ? '#1D9E75' : '#E24B4A', borderRadius: 20, padding: '3px 12px', fontSize: 14, fontWeight: 700 }}>{fmt(monthNet)}</span>
               <span style={{ background: '#1a1a1a', color: '#ccc', borderRadius: 20, padding: '3px 12px', fontSize: 13, fontWeight: 600 }}>{tradeDays} days</span>
             </div>
