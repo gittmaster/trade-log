@@ -439,22 +439,16 @@ function InsightCard({ title, data }) {
 
 function ProgressCalendar({ trades, dateRange }) {
   const closed = trades.filter(t => t.pnl !== null && t.date);
-  const now = new Date();
   const [open, setOpen] = useState(true);
   const [selectedDay, setSelectedDay] = useState(null);
-  const [navYear,  setNavYear]  = useState(dateRange.end.getFullYear());
-  const [navMonth, setNavMonth] = useState(dateRange.end.getMonth());
+  const [calYear,  setCalYear]  = useState(dateRange.end.getFullYear());
+  const [calMonth, setCalMonth] = useState(dateRange.end.getMonth());
 
-  const calYear  = navYear;
-  const calMonth = navMonth;
-
-  const goMonth = (dir) => {
-    let m = navMonth + dir, y = navYear;
-    if (m > 11) { m = 0; y++; }
-    if (m < 0)  { m = 11; y--; }
-    setNavMonth(m); setNavYear(y);
-  };
-  const goToday = () => { setNavMonth(now.getMonth()); setNavYear(now.getFullYear()); };
+  // Sync to global filter whenever dateRange changes
+  React.useEffect(() => {
+    setCalYear(dateRange.end.getFullYear());
+    setCalMonth(dateRange.end.getMonth());
+  }, [dateRange.end]);
 
   const dayMap = {};
   closed.forEach(t => {
