@@ -86,6 +86,19 @@ function TradeDetail({ trade, onClose }) {
         {pts != null && <div style={{ fontSize: 12, color: '#666', marginTop: 4 }}>{pts >= 0 ? '+' : ''}{pts} pts · {trade.contracts || 1} contract{trade.contracts > 1 ? 's' : ''}</div>}
       </div>
 
+      {/* Chart image */}
+      {trade.chart_url && (
+        <div style={{ margin: '0 20px 14px', flexShrink: 0 }}>
+          <div style={{ fontSize: 11, color: '#555', marginBottom: 6 }}>CHART</div>
+          <img
+            src={trade.chart_url}
+            alt="Trade chart"
+            style={{ width: '100%', borderRadius: 8, border: '1px solid #222', display: 'block', cursor: 'pointer' }}
+            onClick={() => window.open(trade.chart_url, '_blank')}
+          />
+        </div>
+      )}
+
       {/* Stats table */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '0 20px 20px' }}>
         {rows.map(({ label, value, color }) => (
