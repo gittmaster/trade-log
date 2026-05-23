@@ -634,7 +634,14 @@ export default function TradeView({ trades, filteredTrades, strategies, reloadTr
       strategy_id: trade.strategy_id || null,
     });
     setEditingTrade(trade); setShowForm(true);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setTimeout(() => {
+      const el = document.querySelector('[data-tradeview-scroll]');
+      if (el) {
+        // scroll the element itself or its nearest scrollable parent
+        const scrollable = el.closest('[style*="overflow"]') || el.parentElement;
+        if (scrollable) scrollable.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    }, 50);
   };
 
   const cancelForm = () => { setShowForm(false); setEditingTrade(null); setForm({ ...EMPTY_FORM }); };
@@ -648,7 +655,7 @@ export default function TradeView({ trades, filteredTrades, strategies, reloadTr
 
 
   return (
-    <div style={{ padding: '16px 20px' }}>
+    <div data-tradeview-scroll style={{ padding: '16px 20px' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
         <div>
           <div style={{ fontSize: 18, fontWeight: 500, color: '#ccc', marginBottom: 2 }}>Trade View</div>
