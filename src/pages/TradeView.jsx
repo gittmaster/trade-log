@@ -744,13 +744,14 @@ export default function TradeView({ trades, filteredTrades, strategies, reloadTr
                 </tr>
               </thead>
               <tbody>
-                {paginated.map(t => {
+                {paginated.map((t, index) => {
                   const pnlColor = t.pnl > 0 ? '#1D9E75' : t.pnl < 0 ? '#E24B4A' : '#888';
                   const sym = t.symbol === 'OTHER' ? (t.custom_symbol || 'OTHER') : t.symbol;
                   const strat = STRATEGIES.find(s => s.id === t.strategy_id);
+                  const rowBg = index % 2 === 0 ? '#0d0d0d' : '#141414';
                   return (
                     <React.Fragment key={t.id}>
-                    <tr>
+                    <tr style={{ background: rowBg }}>
                       <td>{t.trade_number || '—'}</td>
                       <td style={{ whiteSpace: 'nowrap' }}>{t.date}</td>
                       <td>{t.time || '—'}</td>
