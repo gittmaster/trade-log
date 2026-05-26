@@ -56,7 +56,9 @@ td { padding: 7px 10px; border-bottom: 0.5px solid #1e1e1e; color: #ccc; vertica
 tbody td,
 tbody td * { font-size: 13px !important; font-weight: 600; }
 tr:last-child td { border-bottom: none; }
-tr:hover td { background: #1e1e1e; }
+tbody tr:nth-child(odd) td { background-color: #0d0d0d !important; }
+tbody tr:nth-child(even) td { background-color: #141414 !important; }
+tr:hover td { background: #1e1e1e !important; }
 .empty { padding: 32px; text-align: center; color: #555; font-size: 13px; }
 
 .badge { display: inline-block; padding: 2px 7px; border-radius: 4px; font-size: 10px; font-weight: 500; }
