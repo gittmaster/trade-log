@@ -748,24 +748,23 @@ export default function TradeView({ trades, filteredTrades, strategies, reloadTr
                   const pnlColor = t.pnl > 0 ? '#1D9E75' : t.pnl < 0 ? '#E24B4A' : '#888';
                   const sym = t.symbol === 'OTHER' ? (t.custom_symbol || 'OTHER') : t.symbol;
                   const strat = STRATEGIES.find(s => s.id === t.strategy_id);
-                  const rowBg = index % 2 === 0 ? '#0d0d0d' : '#141414';
+                  const rowBg = index % 2 === 0 ? '#0d0d0d' : '#161616';
+                  const td = { background: rowBg };
                   return (
                     <React.Fragment key={t.id}>
-                    <tr style={{ background: rowBg }}>
-                      <td>{t.trade_number || '—'}</td>
-                      <td style={{ whiteSpace: 'nowrap' }}>{t.date}</td>
-                      <td>{t.time || '—'}</td>
-                      <td>{t.account}</td>
-                      <td>{sym}</td>
-                      <td><span style={{ color: t.direction==='long'?'#1D9E75':'#E24B4A', fontWeight: 600, fontSize: 11 }}>{t.direction?.toUpperCase()}</span></td>
-
-
-                      <td style={{ fontFamily: 'var(--mono)', fontSize: 12 }}>{t.entry}</td>
-                      <td style={{ fontFamily: 'var(--mono)', fontSize: 12 }}>{t.exit_price||'—'}</td>
-                      <td style={{ color: pnlColor, fontWeight: 600, fontFamily: 'var(--mono)', fontSize: 13 }}>{t.pnl!==null?(t.pnl>=0?'+$':'-$')+Math.abs(t.pnl):'—'}</td>
-                      <td><span style={{ fontSize: 12, color: '#ccc' }}>{t.exit_reason||'—'}</span></td>
-                      <td><span style={{ fontSize: 11, color: '#aaa' }}>{t.session||'—'}</span></td>
-                      <td>
+                    <tr>
+                      <td style={td}>{t.trade_number || '—'}</td>
+                      <td style={{ ...td, whiteSpace: 'nowrap' }}>{t.date}</td>
+                      <td style={td}>{t.time || '—'}</td>
+                      <td style={td}>{t.account}</td>
+                      <td style={td}>{sym}</td>
+                      <td style={td}><span style={{ color: t.direction==='long'?'#1D9E75':'#E24B4A', fontWeight: 600, fontSize: 11 }}>{t.direction?.toUpperCase()}</span></td>
+                      <td style={{ ...td, fontFamily: 'var(--mono)', fontSize: 12 }}>{t.entry}</td>
+                      <td style={{ ...td, fontFamily: 'var(--mono)', fontSize: 12 }}>{t.exit_price||'—'}</td>
+                      <td style={{ ...td, color: pnlColor, fontWeight: 600, fontFamily: 'var(--mono)', fontSize: 13 }}>{t.pnl!==null?(t.pnl>=0?'+$':'-$')+Math.abs(t.pnl):'—'}</td>
+                      <td style={td}><span style={{ fontSize: 12, color: '#ccc' }}>{t.exit_reason||'—'}</span></td>
+                      <td style={td}><span style={{ fontSize: 11, color: '#aaa' }}>{t.session||'—'}</span></td>
+                      <td style={td}>
                         {strat ? (
                           <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 20, background: strat.color+'22', color: strat.color, whiteSpace: 'nowrap' }}>
                             {strat.icon} {strat.name.slice(0,14)}
@@ -774,16 +773,16 @@ export default function TradeView({ trades, filteredTrades, strategies, reloadTr
                           <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 20, background: '#BA751722', color: '#BA7517' }}>⚠️ None</span>
                         )}
                       </td>
-                      <td>{t.chart_url?<button className="btn-link" onClick={() => setChartModal(t.chart_url)}>View</button>:'—'}</td>
-                      <td>
+                      <td style={td}>{t.chart_url?<button className="btn-link" onClick={() => setChartModal(t.chart_url)}>View</button>:'—'}</td>
+                      <td style={td}>
                         <button className="btn-link"
                           style={{ color: reviewingTrade?.id === t.id ? '#7c3aed' : '#60a5fa' }}
                           onClick={() => setReviewingTrade(reviewingTrade?.id === t.id ? null : t)}>
                           {reviewingTrade?.id === t.id ? 'Close' : 'Review'}
                         </button>
                       </td>
-                      <td><button className="btn-link" onClick={() => startEdit(t)}>Edit</button></td>
-                      <td><button className="btn-link" style={{ color: '#E24B4A' }} onClick={() => deleteTrade(t.id)}>Del</button></td>
+                      <td style={td}><button className="btn-link" onClick={() => startEdit(t)}>Edit</button></td>
+                      <td style={td}><button className="btn-link" style={{ color: '#E24B4A' }} onClick={() => deleteTrade(t.id)}>Del</button></td>
                     </tr>
                     {reviewingTrade?.id === t.id && (
                       <tr>
