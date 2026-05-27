@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import TOSUploader from '../components/TOSUploader';
+import { supabase } from '../supabase';
 
 function StatCard({ label, value, color }) {
   return (
@@ -11,8 +12,8 @@ function StatCard({ label, value, color }) {
 }
 
 function ChartCanvas({ id, build }) {
-  const ref      = useRef(null);
-  const inst     = useRef(null);
+  const ref       = useRef(null);
+  const inst      = useRef(null);
   const cancelled = useRef(false);
 
   useEffect(() => {
@@ -57,7 +58,20 @@ function baseOpts(extraPlugins) {
   };
 }
 
+// ─── Month label helper ────────────────────────────────────────────────────────
+function fmtMonth(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso + 'T12:00:00');
+  return d.toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+}
+
 export default function Analysis({ filteredTrades, dateLabel, acctLabel, dateRange, account, tosData, setTosData }) {
+  const [savedStatements, setSavedStatements] = useState([]);  // [{id, account, month, data}]
+  const [loadingDB, setLoadingDB]             = useState(true);
+  const [saveMsg, setSaveMsg]                 = useState('');
+  const [selectedMonths, setSelectedMonths]   = useState([]); // months toggled on in history panel
+
+  // ─── Load Chart.js ─────────────────────────────────────────────────────────
   useEffect(() => {
     if (window.Chart) return;
     const existing = document.getElementById('chartjs-cdn');
@@ -68,55 +82,149 @@ export default function Analysis({ filteredTrades, dateLabel, acctLabel, dateRan
     document.head.appendChild(s);
   }, []);
 
-  // Merge trips from multiple uploads — keep all accounts in tosData.trips
-  const handleImport = useCallback((parsed) => {
+  // ─── Load saved statements from Supabase on mount ──────────────────────────
+  useEffect(() => {
+    async function load() {
+      setLoadingDB(true);
+      const { data, error } = await supabase
+        .from('tos_statements')
+        .select('*')
+        .order('month', { ascending: false });
+      if (!error && data) {
+        setSavedStatements(data);
+        // Auto-load the most recent statement into tosData if nothing loaded yet
+        if (data.length > 0 && !tosData) {
+          const merged = mergeStatements(data);
+          setTosData(merged);
+        }
+      }
+      setLoadingDB(false);
+    }
+    load();
+  }, []);
+
+  // ─── Merge multiple saved statement rows into one tosData object ────────────
+  function mergeStatements(rows) {
+    const allTrips    = rows.flatMap(r => r.data?.trips    || []);
+    const allEquity   = rows.flatMap(r => r.data?.equityCurve || [])
+      .sort((a, b) => new Date(a.date) - new Date(b.date));
+    const symMap = {};
+    allTrips.forEach(t => { symMap[t.symbol] = (symMap[t.symbol] || 0) + t.pnl; });
+    return {
+      account:     [...new Set(allTrips.map(t => t.account))].join('+'),
+      trips:       allTrips,
+      equityCurve: allEquity,
+      symMap,
+      totalComm:   allTrips.reduce((s, t) => s + (t.comm || 0), 0),
+      netPnl:      allTrips.reduce((s, t) => s + t.pnl, 0),
+      wins:        allTrips.filter(t => t.pnl > 0).length,
+      total:       allTrips.length,
+      avgHold:     allTrips.length ? allTrips.reduce((s, t) => s + (t.duration_hrs || 0), 0) / allTrips.length : 0,
+    };
+  }
+
+  // ─── Handle new TOS import — save to Supabase ──────────────────────────────
+  const handleImport = useCallback(async (parsed) => {
     const trips = parsed.roundTrips || [];
     if (!trips.length) return;
 
-    // Tag each trip with its account
     const taggedTrips = trips.map(t => ({ ...t, account: parsed.account }));
-
     const eqMap = {};
     (parsed.cashBalances || []).forEach(b => { eqMap[b.date] = b.balance; });
     const equityCurve = Object.entries(eqMap)
       .sort((a, b) => new Date(a[0]) - new Date(b[0]))
       .map(([date, balance]) => ({ date, balance, account: parsed.account }));
 
-    setTosData(prev => {
-      const prevTrips = prev?.trips || [];
-      // Remove old trips for this account, add new ones
-      const otherTrips = prevTrips.filter(t => t.account !== parsed.account);
-      const allTrips = [...otherTrips, ...taggedTrips];
+    // Derive month from first trip date
+    let month = 'unknown';
+    if (taggedTrips[0]?.entry_dt) {
+      const d = new Date(taggedTrips[0].entry_dt);
+      month = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    }
 
+    const payload = {
+      account: parsed.account,
+      month,
+      data: { trips: taggedTrips, equityCurve },
+    };
+
+    setSaveMsg('Saving…');
+
+    // Upsert — one row per account+month
+    const { error } = await supabase
+      .from('tos_statements')
+      .upsert(payload, { onConflict: 'account,month' });
+
+    if (error) {
+      setSaveMsg('❌ Save failed: ' + error.message);
+    } else {
+      setSaveMsg('✅ Saved to Supabase');
+      // Refresh saved list
+      const { data: refreshed } = await supabase
+        .from('tos_statements')
+        .select('*')
+        .order('month', { ascending: false });
+      if (refreshed) {
+        setSavedStatements(refreshed);
+        const merged = mergeStatements(refreshed);
+        setTosData(merged);
+      }
+    }
+    setTimeout(() => setSaveMsg(''), 3000);
+
+    // Also update local tosData immediately
+    setTosData(prev => {
+      const prevTrips  = prev?.trips || [];
+      const otherTrips = prevTrips.filter(t => t.account !== parsed.account);
+      const allTrips   = [...otherTrips, ...taggedTrips];
       const prevEquity = (prev?.equityCurve || []).filter(e => e.account !== parsed.account);
       const allEquity  = [...prevEquity, ...equityCurve].sort((a,b) => new Date(a.date) - new Date(b.date));
-
       const symMap = {};
       allTrips.forEach(t => { symMap[t.symbol] = (symMap[t.symbol] || 0) + t.pnl; });
-
       return {
-        account:   allTrips.map(t => t.account).filter((v,i,a) => a.indexOf(v)===i).join('+'),
-        trips:     allTrips,
+        account:     allTrips.map(t => t.account).filter((v,i,a) => a.indexOf(v)===i).join('+'),
+        trips:       allTrips,
         equityCurve: allEquity,
         symMap,
-        totalComm: allTrips.reduce((s, t) => s + (t.comm || 0), 0),
-        netPnl:    allTrips.reduce((s, t) => s + t.pnl, 0),
-        wins:      allTrips.filter(t => t.pnl > 0).length,
-        total:     allTrips.length,
-        avgHold:   allTrips.reduce((s, t) => s + (t.duration_hrs || 0), 0) / allTrips.length,
+        totalComm:   allTrips.reduce((s, t) => s + (t.comm || 0), 0),
+        netPnl:      allTrips.reduce((s, t) => s + t.pnl, 0),
+        wins:        allTrips.filter(t => t.pnl > 0).length,
+        total:       allTrips.length,
+        avgHold:     allTrips.reduce((s, t) => s + (t.duration_hrs || 0), 0) / allTrips.length,
       };
     });
   }, [setTosData]);
 
-  // Filter by date range AND account
+  // ─── Toggle month selection in history panel ────────────────────────────────
+  const toggleMonth = (id) => {
+    setSelectedMonths(prev => {
+      const next = prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id];
+      // Merge selected rows and push into tosData
+      const rows = next.length > 0
+        ? savedStatements.filter(r => next.includes(r.id))
+        : savedStatements; // if none selected, show all
+      setTosData(mergeStatements(rows));
+      return next;
+    });
+  };
+
+  // ─── Delete a saved statement ───────────────────────────────────────────────
+  const deleteStatement = async (id) => {
+    if (!window.confirm('Delete this statement?')) return;
+    await supabase.from('tos_statements').delete().eq('id', id);
+    const updated = savedStatements.filter(r => r.id !== id);
+    setSavedStatements(updated);
+    setTosData(updated.length ? mergeStatements(updated) : null);
+    setSelectedMonths(prev => prev.filter(x => x !== id));
+  };
+
+  // ─── Filter trips by date range + account ──────────────────────────────────
   const filteredTrips = useMemo(() => {
     if (!tosData?.trips) return [];
     return tosData.trips.filter(t => {
-      // Account filter
       if (account && account !== 'both') {
         if ((t.account || '').toUpperCase() !== account.toUpperCase()) return false;
       }
-      // Date filter
       if (dateRange && t.entry_dt) {
         const d = new Date(t.entry_dt);
         if (d < dateRange.start || d > dateRange.end) return false;
@@ -141,6 +249,7 @@ export default function Analysis({ filteredTrades, dateLabel, acctLabel, dateRan
     });
   }, [tosData, account, dateRange?.start?.getTime(), dateRange?.end?.getTime()]);
 
+  // ─── Chart builders (unchanged) ────────────────────────────────────────────
   const buildEquity = useCallback((canvas) => {
     if (!filteredEquity?.length) return null;
     const labels = filteredEquity.map(d => d.date);
@@ -216,7 +325,6 @@ export default function Analysis({ filteredTrades, dateLabel, acctLabel, dateRan
     });
   }, [filteredTrips]);
 
-  // FIX: multiday — removed checkpoints requirement, build from pnl_points or entry/exit only
   const buildMultiday = useCallback((canvas) => {
     if (!filteredTrips.length) return null;
     const multiday = filteredTrips
@@ -224,54 +332,43 @@ export default function Analysis({ filteredTrades, dateLabel, acctLabel, dateRan
       .sort((a, b) => b.duration_hrs - a.duration_hrs)
       .slice(0, 5);
     if (!multiday.length) return null;
-
     const colors = ['#185FA5', '#1D9E75', '#BA7517', '#E24B4A', '#7c3aed'];
-
-    // Build datasets — use pnl_points if available, else just entry+exit
     const datasets = multiday.map((t, i) => {
-      let points;
-      if (t.pnl_points && t.pnl_points.length > 2) {
-        points = t.pnl_points.map(p => p.pnl);
-      } else {
-        points = [0, t.pnl];
-      }
-      const hrs = Math.round(t.duration_hrs);
+      const points = (t.pnl_points && t.pnl_points.length > 2) ? t.pnl_points.map(p => p.pnl) : [0, t.pnl];
       return {
-        label: `${t.symbol} ${t.direction} ${t.pnl >= 0 ? '+' : ''}$${Math.round(t.pnl)} (${hrs}h)`,
-        data: points,
-        borderColor: colors[i], borderWidth: 2, pointRadius: 4, fill: false,
+        label: `${t.symbol} ${t.direction} ${t.pnl >= 0 ? '+' : ''}$${Math.round(t.pnl)} (${Math.round(t.duration_hrs)}h)`,
+        data: points, borderColor: colors[i], borderWidth: 2, pointRadius: 4, fill: false,
         borderDash: i === 0 ? [] : i === 1 ? [5, 3] : [2, 2],
       };
     });
-
     const maxLen = Math.max(...datasets.map(d => d.data.length));
     const labels = ['Entry', ...Array.from({ length: maxLen - 2 }, (_, i) => `Day ${i + 1}`), 'Exit'].slice(0, maxLen);
-
     return new window.Chart(canvas, {
       type: 'line',
       data: { labels, datasets },
-      options: {
-        ...baseOpts(),
-        plugins: {
-          legend: { display: true, labels: { color: 'rgba(255,255,255,0.45)', font: { size: 10 }, boxWidth: 10 } },
-          tooltip: { ...baseOpts().plugins.tooltip, callbacks: { label: c => ` ${c.dataset.label}: ${c.parsed.y >= 0 ? '+' : ''}$${Math.round(c.parsed.y).toLocaleString()}` } },
-        },
-      },
+      options: { ...baseOpts(), plugins: { legend: { display: true, labels: { color: 'rgba(255,255,255,0.45)', font: { size: 10 }, boxWidth: 10 } }, tooltip: { ...baseOpts().plugins.tooltip, callbacks: { label: c => ` ${c.dataset.label}: ${c.parsed.y >= 0 ? '+' : ''}$${Math.round(c.parsed.y).toLocaleString()}` } } } },
     });
   }, [filteredTrips]);
 
   const fmtPnl = v => (v >= 0 ? '+$' : '-$') + Math.abs(Math.round(v)).toLocaleString();
-
-  // Compute stats from filteredTrips (respects account + date filter)
   const tw = filteredTrips.filter(t => t.pnl > 0).length;
   const tt = filteredTrips.length;
   const tn = filteredTrips.reduce((s, t) => s + t.pnl, 0);
   const tc = filteredTrips.reduce((s, t) => s + (t.comm || 0), 0);
+  const loadedAccounts = tosData ? [...new Set((tosData.trips || []).map(t => t.account))].join(' + ') : null;
 
-  // Label for which accounts are loaded
-  const loadedAccounts = tosData
-    ? [...new Set((tosData.trips || []).map(t => t.account))].join(' + ')
-    : null;
+  // ─── Month-over-month summary ───────────────────────────────────────────────
+  const monthSummary = useMemo(() => {
+    const map = {};
+    savedStatements.forEach(row => {
+      const trips = row.data?.trips || [];
+      const pnl   = trips.reduce((s, t) => s + t.pnl, 0);
+      const wins  = trips.filter(t => t.pnl > 0).length;
+      const key   = `${row.account}|${row.month}`;
+      map[key] = { id: row.id, account: row.account, month: row.month, pnl, trades: trips.length, wins };
+    });
+    return Object.values(map).sort((a, b) => b.month.localeCompare(a.month));
+  }, [savedStatements]);
 
   return (
     <div style={{ padding: '16px 20px' }}>
@@ -280,17 +377,87 @@ export default function Analysis({ filteredTrades, dateLabel, acctLabel, dateRan
         <div style={{ fontSize: 12, color: '#555' }}>{dateLabel} · {acctLabel}</div>
       </div>
 
-      <div style={{ background: '#111', border: '1px solid #222', borderRadius: 8, padding: '12px 14px', marginBottom: 20 }}>
-        <div style={{ fontSize: 12, fontWeight: 600, color: '#ccc', marginBottom: 8 }}>
-          📊 Import TOS Account Statement
-          {loadedAccounts && <span style={{ marginLeft: 8, fontSize: 11, color: '#1D9E75' }}>✅ Loaded: {loadedAccounts}</span>}
+      {/* ── Import + History row ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20 }}>
+
+        {/* Import panel */}
+        <div style={{ background: '#111', border: '1px solid #222', borderRadius: 8, padding: '12px 14px' }}>
+          <div style={{ fontSize: 12, fontWeight: 600, color: '#ccc', marginBottom: 8 }}>
+            📊 Import TOS Account Statement
+            {loadedAccounts && <span style={{ marginLeft: 8, fontSize: 11, color: '#1D9E75' }}>✅ {loadedAccounts}</span>}
+            {saveMsg && <span style={{ marginLeft: 8, fontSize: 11, color: saveMsg.startsWith('❌') ? '#E24B4A' : '#1D9E75' }}>{saveMsg}</span>}
+          </div>
+          <TOSUploader trades={filteredTrades} onComplete={handleImport} />
+          <div style={{ fontSize: 11, color: '#444', marginTop: 8 }}>Imports are saved to Supabase and persist across sessions.</div>
         </div>
-        <TOSUploader trades={filteredTrades} onComplete={handleImport} />
+
+        {/* Month-over-month history panel */}
+        <div style={{ background: '#111', border: '1px solid #222', borderRadius: 8, padding: '12px 14px' }}>
+          <div style={{ fontSize: 12, fontWeight: 600, color: '#ccc', marginBottom: 8 }}>
+            📅 Statement History
+            {loadingDB && <span style={{ marginLeft: 8, fontSize: 11, color: '#555' }}>Loading…</span>}
+            {monthSummary.length > 0 && <span style={{ marginLeft: 8, fontSize: 11, color: '#555' }}>{monthSummary.length} months · click to toggle</span>}
+          </div>
+
+          {!loadingDB && monthSummary.length === 0 && (
+            <div style={{ fontSize: 12, color: '#444', padding: '12px 0' }}>No statements saved yet — import one above.</div>
+          )}
+
+          {monthSummary.length > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 220, overflowY: 'auto' }}>
+              {monthSummary.map(row => {
+                const selected = selectedMonths.length === 0 || selectedMonths.includes(row.id);
+                const wr = row.trades ? Math.round(row.wins / row.trades * 100) : 0;
+                return (
+                  <div key={row.id}
+                    onClick={() => toggleMonth(row.id)}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 8,
+                      padding: '6px 10px', borderRadius: 6, cursor: 'pointer',
+                      background: selected ? '#1a1a2a' : '#0d0d0d',
+                      border: `1px solid ${selected ? '#185FA5' : '#1a1a1a'}`,
+                      transition: 'all 0.12s',
+                    }}>
+                    <span style={{ fontSize: 10, color: '#185FA5', fontWeight: 700, width: 20 }}>{row.account}</span>
+                    <span style={{ fontSize: 12, color: '#ccc', flex: 1 }}>{fmtMonth(row.month + '-01')}</span>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: row.pnl >= 0 ? '#1D9E75' : '#E24B4A', width: 70, textAlign: 'right' }}>{fmtPnl(row.pnl)}</span>
+                    <span style={{ fontSize: 11, color: '#888', width: 40, textAlign: 'right' }}>{wr}% WR</span>
+                    <span style={{ fontSize: 11, color: '#555', width: 24, textAlign: 'right' }}>{row.trades}t</span>
+                    <button
+                      onClick={e => { e.stopPropagation(); deleteStatement(row.id); }}
+                      style={{ background: 'none', border: 'none', color: '#333', cursor: 'pointer', fontSize: 14, padding: '0 2px', lineHeight: 1 }}
+                      title="Delete">×</button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Month-over-month P&L bar */}
+          {monthSummary.length > 1 && (
+            <div style={{ marginTop: 12, borderTop: '1px solid #1a1a1a', paddingTop: 10 }}>
+              <div style={{ fontSize: 11, color: '#555', marginBottom: 6 }}>Monthly P&L trend</div>
+              <div style={{ display: 'flex', gap: 3, alignItems: 'flex-end', height: 48 }}>
+                {[...monthSummary].reverse().map(row => {
+                  const max = Math.max(...monthSummary.map(r => Math.abs(r.pnl)), 1);
+                  const pct = Math.abs(row.pnl) / max;
+                  return (
+                    <div key={row.id} title={`${fmtMonth(row.month + '-01')}: ${fmtPnl(row.pnl)}`}
+                      style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+                      <div style={{ width: '100%', background: row.pnl >= 0 ? '#1D9E75' : '#E24B4A', borderRadius: '3px 3px 0 0', height: Math.max(pct * 36, 3), opacity: 0.8 }} />
+                      <div style={{ fontSize: 9, color: '#555', whiteSpace: 'nowrap', overflow: 'hidden', maxWidth: '100%', textAlign: 'center' }}>{fmtMonth(row.month + '-01').split(' ')[0]}</div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {!tosData && (
         <div style={{ textAlign: 'center', padding: '40px 20px', color: '#444', fontSize: 13 }}>
-          Upload a TOS account statement above to see charts
+          {loadingDB ? 'Loading saved statements…' : 'Upload a TOS account statement above to see charts'}
         </div>
       )}
 
