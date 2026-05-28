@@ -68,7 +68,7 @@ export const EMPTY_FORM = {
   trade_number: '', date: new Date().toISOString().split('T')[0], time: getNowEST(),
   account: '', symbol: '', custom_symbol: '', custom_multiplier: '', contracts: '',
   direction: '', entry: '', exit_price: '', stop: '', target: '',
-  exit_reason: '', exit_time: '', exit_date: '',
+  exit_reason: '', exit_time: getNowEST(), exit_date: new Date().toISOString().split('T')[0],
   mfe_price: '', mae_price: '',
   al_strength: '', al_touches: '', al_age: '', al_tier: 'Primary',
   sl_quality: '',  sl_touches: '', sl_age: '', sl_tier: 'Primary',
