@@ -393,7 +393,7 @@ export default function App() {
 
         {/* ── Page content ── */}
         <div style={{ flex: 1, overflow: 'auto' }}>
-          {page === 'home'       && <AtlasHome trades={trades} onSendToChat={(msg) => { setChatOpen(true); setTimeout(() => { window._atlasSend && window._atlasSend(msg); }, 150); }} />}
+          {page === 'home'       && <AtlasHome trades={trades} />}
           {page === 'dashboard'  && <Dashboard  {...dashboardProps} />}
           {page === 'reports'    && <Reports     {...filteredProps} />}
           {page === 'analysis'   && <Analysis    {...filteredProps} account={account} tosData={tosData} setTosData={setTosData} />}
