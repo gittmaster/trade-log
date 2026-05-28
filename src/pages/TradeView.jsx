@@ -111,16 +111,42 @@ function TradeForm({ form, setForm, onSubmit, onCancel, uploading, isEdit }) {
   };
   const tog = (active) => `tog ${active ? 'tog-blue' : ''}`;
 
+  const [errors, setErrors] = useState({});
+
   const handleSubmit = () => {
-    if (!form.strategy_id) {
-      setStratError(true);
-      const el = document.getElementById('strategy-field');
+    const e = {};
+    if (!form.strategy_id)  e.strategy_id  = true;
+    if (!form.date)         e.date          = true;
+    if (!form.time)         e.time          = true;
+    if (!form.account)      e.account       = true;
+    if (!form.symbol)       e.symbol        = true;
+    if (!form.direction)    e.direction     = true;
+    if (!form.contracts)    e.contracts     = true;
+    if (!form.entry)        e.entry         = true;
+    if (!form.stop)         e.stop          = true;
+    if (!form.al_strength)  e.al_strength   = true;
+    if (!form.al_touches)   e.al_touches    = true;
+    if (!form.al_age)       e.al_age        = true;
+    if (!form.sl_quality)   e.sl_quality    = true;
+    if (!form.sl_touches)   e.sl_touches    = true;
+    if (!form.sl_age)       e.sl_age        = true;
+    if (!form.exit_reason)  e.exit_reason   = true;
+    setErrors(e);
+    if (Object.keys(e).length > 0) {
+      setStratError(!!e.strategy_id);
+      // scroll to first error
+      const firstKey = Object.keys(e)[0];
+      const el = document.getElementById(firstKey + '-field') || document.getElementById('strategy-field');
       if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
       return;
     }
     setStratError(false);
+    setErrors({});
     onSubmit();
   };
+
+  const errStyle = (field) => errors[field] ? { outline: '1.5px solid #E24B4A', borderRadius: 6 } : {};
+  const errLabel = (field) => errors[field] ? <span style={{ color: '#E24B4A', fontSize: 10, marginLeft: 6 }}>required</span> : null;
 
   const pickStrategy = (id) => {
     setForm(f => ({ ...f, strategy_id: id }));
@@ -159,8 +185,8 @@ function TradeForm({ form, setForm, onSubmit, onCancel, uploading, isEdit }) {
 
       <div className="form-grid-4">
         <div className="field"><label>Trade #</label><input type="number" value={form.trade_number || ''} onChange={e => setForm(f => ({ ...f, trade_number: e.target.value }))} /></div>
-        <div className="field"><label>Entry Date</label><input type="date" value={form.date || ''} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} /></div>
-        <div className="field"><label>Entry Time (EST)</label><input type="time" value={form.time || ''} onChange={e => setForm(f => ({ ...f, time: e.target.value }))} /></div>
+        <div id="date-field" className="field"><label>Entry Date {errLabel('date')}</label><input type="date" value={form.date || ''} onChange={e => { setForm(f => ({ ...f, date: e.target.value })); setErrors(e => ({...e, date: false})); }} style={errStyle('date')} /></div>
+        <div id="time-field" className="field"><label>Entry Time (EST) {errLabel('time')}</label><input type="time" value={form.time || ''} onChange={e => { setForm(f => ({ ...f, time: e.target.value })); setErrors(e => ({...e, time: false})); }} style={errStyle('time')} /></div>
       </div>
       <div className="form-grid-3">
         <div className="field"><label>Exit Date</label><input type="date" value={form.exit_date || ''} onChange={e => setForm(f => ({ ...f, exit_date: e.target.value }))} /></div>
@@ -168,13 +194,13 @@ function TradeForm({ form, setForm, onSubmit, onCancel, uploading, isEdit }) {
       </div>
 
       <div className="form-grid-3">
-        <div className="field"><label>Account</label>
-          <div className="toggle-row">{['A1','A2'].map(a => <button key={a} className={tog(form.account===a)} onClick={() => setForm(f => ({ ...f, account: a }))}>{a}</button>)}</div>
+        <div id="account-field" className="field"><label>Account {errLabel('account')}</label>
+          <div className="toggle-row" style={errors.account?{outline:'1.5px solid #E24B4A',borderRadius:6}:{}}>{['A1','A2'].map(a => <button key={a} className={tog(form.account===a)} onClick={() => { setForm(f => ({ ...f, account: a })); setErrors(e => ({...e, account: false})); }}>{a}</button>)}</div>
         </div>
-        <div className="field"><label>Symbol</label>
-          <div className="toggle-row">
+        <div id="symbol-field" className="field"><label>Symbol {errLabel('symbol')}</label>
+          <div className="toggle-row" style={errors.symbol?{outline:'1.5px solid #E24B4A',borderRadius:6}:{}}>
             {['MGC','MNQ','MYM','MCL','OTHER'].map(s => (
-              <button key={s} className={tog(form.symbol===s)} onClick={() => setForm(f => ({ ...f, symbol: s, custom_symbol: '', custom_multiplier: '' }))}>{s}</button>
+              <button key={s} className={tog(form.symbol===s)} onClick={() => { setForm(f => ({ ...f, symbol: s, custom_symbol: '', custom_multiplier: '' })); setErrors(e => ({...e, symbol: false})); }}>{s}</button>
             ))}
           </div>
           {form.symbol === 'OTHER' && (
@@ -184,32 +210,32 @@ function TradeForm({ form, setForm, onSubmit, onCancel, uploading, isEdit }) {
             </div>
           )}
         </div>
-        <div className="field"><label>Direction</label>
-          <div className="toggle-row">
-            <button className={`tog ${form.direction==='long'?'tog-green':''}`} onClick={() => setForm(f => ({ ...f, direction: 'long' }))}>Long</button>
-            <button className={`tog ${form.direction==='short'?'tog-red':''}`} onClick={() => setForm(f => ({ ...f, direction: 'short' }))}>Short</button>
+        <div id="direction-field" className="field"><label>Direction {errLabel('direction')}</label>
+          <div className="toggle-row" style={errors.direction?{outline:'1.5px solid #E24B4A',borderRadius:6}:{}}>
+            <button className={`tog ${form.direction==='long'?'tog-green':''}`} onClick={() => { setForm(f => ({ ...f, direction: 'long' })); setErrors(e => ({...e, direction: false})); }}>Long</button>
+            <button className={`tog ${form.direction==='short'?'tog-red':''}`} onClick={() => { setForm(f => ({ ...f, direction: 'short' })); setErrors(e => ({...e, direction: false})); }}>Short</button>
           </div>
         </div>
-        <div className="field"><label>Contracts</label>
-          <div className="toggle-row">
+        <div id="contracts-field" className="field"><label>Contracts {errLabel('contracts')}</label>
+          <div className="toggle-row" style={errors.contracts?{outline:'1.5px solid #E24B4A',borderRadius:6}:{}}>
             {['1','2','3'].map(n => (
-              <button key={n} className={tog(form.contracts===n)} onClick={() => setForm(f => ({ ...f, contracts: n }))}>{n}</button>
+              <button key={n} className={tog(form.contracts===n)} onClick={() => { setForm(f => ({ ...f, contracts: n })); setErrors(e => ({...e, contracts: false})); }}>{n}</button>
             ))}
-            <input type="number" min="1" placeholder="Other" value={!['1','2','3'].includes(form.contracts) ? form.contracts : ''} onChange={e => setForm(f => ({ ...f, contracts: e.target.value }))} style={{ width: 60, background: '#0d0d0d', border: '1px solid #2a2a2a', borderRadius: 6, padding: '4px 8px', color: '#ccc', fontSize: 12 }} />
+            <input type="number" min="1" placeholder="Other" value={!['1','2','3'].includes(form.contracts) ? form.contracts : ''} onChange={e => { setForm(f => ({ ...f, contracts: e.target.value })); setErrors(e => ({...e, contracts: false})); }} style={{ width: 60, background: '#0d0d0d', border: errors.contracts ? '1px solid #E24B4A' : '1px solid #2a2a2a', borderRadius: 6, padding: '4px 8px', color: '#ccc', fontSize: 12 }} />
           </div>
         </div>
       </div>
 
       <div className="form-grid-4">
-        <div className="field"><label>Entry</label><input type="number" step="0.01" value={form.entry||''} onChange={e => setForm(f => ({ ...f, entry: e.target.value }))} /></div>
+        <div id="entry-field" className="field"><label>Entry {errLabel('entry')}</label><input type="number" step="0.01" value={form.entry||''} onChange={e => { setForm(f => ({ ...f, entry: e.target.value })); setErrors(e => ({...e, entry: false})); }} style={errStyle('entry')} /></div>
         <div className="field"><label>Exit</label><input type="number" step="0.01" value={form.exit_price||''} onChange={e => setForm(f => ({ ...f, exit_price: e.target.value }))} /></div>
-        <div className="field"><label>Stop</label><input type="number" step="0.01" value={form.stop||''} onChange={e => setForm(f => ({ ...f, stop: e.target.value }))} /></div>
+        <div id="stop-field" className="field"><label>Stop {errLabel('stop')}</label><input type="number" step="0.01" value={form.stop||''} onChange={e => { setForm(f => ({ ...f, stop: e.target.value })); setErrors(e => ({...e, stop: false})); }} style={errStyle('stop')} /></div>
         <div className="field"><label>Target</label><input type="number" step="0.01" value={form.target||''} onChange={e => setForm(f => ({ ...f, target: e.target.value }))} /></div>
       </div>
 
       <div className="form-grid-2">
-        <div className="field"><label>Exit Reason</label>
-          <div className="toggle-row">{['target','stop','manual','open'].map(r => <button key={r} className={tog(form.exit_reason===r)} onClick={() => setForm(f => ({ ...f, exit_reason: r }))}>{r}</button>)}</div>
+        <div id="exit_reason-field" className="field"><label>Exit Reason {errLabel('exit_reason')}</label>
+          <div className="toggle-row" style={errors.exit_reason?{outline:'1.5px solid #E24B4A',borderRadius:6}:{}}>{['target','stop','manual','open'].map(r => <button key={r} className={tog(form.exit_reason===r)} onClick={() => { setForm(f => ({ ...f, exit_reason: r })); setErrors(e => ({...e, exit_reason: false})); }}>{r}</button>)}</div>
         </div>
         <div className="field">
           <label>Grade <span style={{ fontSize: 11, color: '#ccc', fontWeight: 400 }}>(auto-calculated)</span></label>
@@ -226,15 +252,15 @@ function TradeForm({ form, setForm, onSubmit, onCancel, uploading, isEdit }) {
       <div style={{ background: '#111', border: '1px solid #222', borderRadius: 8, padding: '12px 14px', marginBottom: 12 }}>
         <div style={{ fontSize: 12, color: '#ccc', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Action Line</div>
         <div className="form-grid-3">
-          <div className="field"><label>Strength</label>
-            <div className="toggle-row">
-              <button className={`tog ${form.al_strength==='strong'?'tog-green':''}`} onClick={() => setForm(f => { const u={...f,al_strength:'strong'}; return {...u,grade:autoGrade('strong',u.al_touches,u.al_age,u.sl_quality,u.sl_touches,u.sl_age)}; })}>★ Strong</button>
-              <button className={`tog ${form.al_strength==='standard'?'tog-blue':''}`} onClick={() => setForm(f => { const u={...f,al_strength:'standard'}; return {...u,grade:autoGrade('standard',u.al_touches,u.al_age,u.sl_quality,u.sl_touches,u.sl_age)}; })}>Standard</button>
+          <div id="al_strength-field" className="field"><label>Strength {errLabel('al_strength')}</label>
+            <div className="toggle-row" style={errors.al_strength?{outline:'1.5px solid #E24B4A',borderRadius:6}:{}}>
+              <button className={`tog ${form.al_strength==='strong'?'tog-green':''}`} onClick={() => { setErrors(e=>({...e,al_strength:false})); setForm(f => { const u={...f,al_strength:'strong'}; return {...u,grade:autoGrade('strong',u.al_touches,u.al_age,u.sl_quality,u.sl_touches,u.sl_age)}; }); }}>★ Strong</button>
+              <button className={`tog ${form.al_strength==='standard'?'tog-blue':''}`} onClick={() => { setErrors(e=>({...e,al_strength:false})); setForm(f => { const u={...f,al_strength:'standard'}; return {...u,grade:autoGrade('standard',u.al_touches,u.al_age,u.sl_quality,u.sl_touches,u.sl_age)}; }); }}>Standard</button>
             </div>
           </div>
-          <div className="field"><label>Touches</label><input type="number" value={form.al_touches||''} onChange={e => setForm(f => { const u={...f,al_touches:e.target.value}; return {...u,grade:autoGrade(u.al_strength,u.al_touches,u.al_age,u.sl_quality,u.sl_touches,u.sl_age)}; })} /></div>
-          <div className="field"><label>Age</label>
-            <div className="toggle-row">{['<1day','<1wk','1wk+'].map(a => <button key={a} className={tog(form.al_age===a)} onClick={() => setForm(f => { const u={...f,al_age:a}; return {...u,grade:autoGrade(u.al_strength,u.al_touches,a,u.sl_quality,u.sl_touches,u.sl_age)}; })}>{a}</button>)}</div>
+          <div id="al_touches-field" className="field"><label>Touches {errLabel('al_touches')}</label><input type="number" value={form.al_touches||''} onChange={e => { setErrors(er=>({...er,al_touches:false})); setForm(f => { const u={...f,al_touches:e.target.value}; return {...u,grade:autoGrade(u.al_strength,u.al_touches,u.al_age,u.sl_quality,u.sl_touches,u.sl_age)}; }); }} style={errStyle('al_touches')} /></div>
+          <div id="al_age-field" className="field"><label>Age {errLabel('al_age')}</label>
+            <div className="toggle-row" style={errors.al_age?{outline:'1.5px solid #E24B4A',borderRadius:6}:{}}>{['<1day','<1wk','1wk+'].map(a => <button key={a} className={tog(form.al_age===a)} onClick={() => { setErrors(e=>({...e,al_age:false})); setForm(f => { const u={...f,al_age:a}; return {...u,grade:autoGrade(u.al_strength,u.al_touches,a,u.sl_quality,u.sl_touches,u.sl_age)}; }); }}>{a}</button>)}</div>
           </div>
         </div>
         <div className="field" style={{ marginBottom: 0 }}><label>AL Tier</label>
@@ -246,15 +272,15 @@ function TradeForm({ form, setForm, onSubmit, onCancel, uploading, isEdit }) {
       <div style={{ background: '#111', border: '1px solid #222', borderRadius: 8, padding: '12px 14px', marginBottom: 12 }}>
         <div style={{ fontSize: 12, color: '#ccc', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Safety Line</div>
         <div className="form-grid-3">
-          <div className="field"><label>Quality</label>
-            <div className="toggle-row">
-              <button className={`tog ${form.sl_quality==='strong'?'tog-green':''}`} onClick={() => setForm(f => { const u={...f,sl_quality:'strong'}; return {...u,grade:autoGrade(u.al_strength,u.al_touches,u.al_age,'strong',u.sl_touches,u.sl_age)}; })}>★ Strong</button>
-              <button className={`tog ${form.sl_quality==='weak'?'tog-red':''}`} onClick={() => setForm(f => { const u={...f,sl_quality:'weak'}; return {...u,grade:autoGrade(u.al_strength,u.al_touches,u.al_age,'weak',u.sl_touches,u.sl_age)}; })}>Weak</button>
+          <div id="sl_quality-field" className="field"><label>Quality {errLabel('sl_quality')}</label>
+            <div className="toggle-row" style={errors.sl_quality?{outline:'1.5px solid #E24B4A',borderRadius:6}:{}}>
+              <button className={`tog ${form.sl_quality==='strong'?'tog-green':''}`} onClick={() => { setErrors(e=>({...e,sl_quality:false})); setForm(f => { const u={...f,sl_quality:'strong'}; return {...u,grade:autoGrade(u.al_strength,u.al_touches,u.al_age,'strong',u.sl_touches,u.sl_age)}; }); }}>★ Strong</button>
+              <button className={`tog ${form.sl_quality==='weak'?'tog-red':''}`} onClick={() => { setErrors(e=>({...e,sl_quality:false})); setForm(f => { const u={...f,sl_quality:'weak'}; return {...u,grade:autoGrade(u.al_strength,u.al_touches,u.al_age,'weak',u.sl_touches,u.sl_age)}; }); }}>Weak</button>
             </div>
           </div>
-          <div className="field"><label>Touches</label><input type="number" value={form.sl_touches||''} onChange={e => setForm(f => { const u={...f,sl_touches:e.target.value}; return {...u,grade:autoGrade(u.al_strength,u.al_touches,u.al_age,u.sl_quality,u.sl_touches,u.sl_age)}; })} /></div>
-          <div className="field"><label>Age</label>
-            <div className="toggle-row">{['<1day','<1wk','1wk+'].map(a => <button key={a} className={tog(form.sl_age===a)} onClick={() => setForm(f => { const u={...f,sl_age:a}; return {...u,grade:autoGrade(u.al_strength,u.al_touches,u.al_age,u.sl_quality,u.sl_touches,a)}; })}>{a}</button>)}</div>
+          <div id="sl_touches-field" className="field"><label>Touches {errLabel('sl_touches')}</label><input type="number" value={form.sl_touches||''} onChange={e => { setErrors(er=>({...er,sl_touches:false})); setForm(f => { const u={...f,sl_touches:e.target.value}; return {...u,grade:autoGrade(u.al_strength,u.al_touches,u.al_age,u.sl_quality,u.sl_touches,u.sl_age)}; }); }} style={errStyle('sl_touches')} /></div>
+          <div id="sl_age-field" className="field"><label>Age {errLabel('sl_age')}</label>
+            <div className="toggle-row" style={errors.sl_age?{outline:'1.5px solid #E24B4A',borderRadius:6}:{}}>{['<1day','<1wk','1wk+'].map(a => <button key={a} className={tog(form.sl_age===a)} onClick={() => { setErrors(e=>({...e,sl_age:false})); setForm(f => { const u={...f,sl_age:a}; return {...u,grade:autoGrade(u.al_strength,u.al_touches,u.al_age,u.sl_quality,u.sl_touches,a)}; }); }}>{a}</button>)}</div>
           </div>
         </div>
         <div className="form-grid-2" style={{ marginTop: 8, marginBottom: 0 }}>
