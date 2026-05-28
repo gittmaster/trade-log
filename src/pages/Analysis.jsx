@@ -246,52 +246,88 @@ export default function Analysis({ filteredTrades, dateLabel, acctLabel, dateRan
       if (!tosData?.trips?.length) return 'No TOS statements have been imported yet.';
       const trips = tosData.trips;
       const netPnl = trips.reduce((s, t) => s + t.pnl, 0);
-      const wins   = trips.filter(t => t.pnl > 0).length;
-      const wr     = trips.length ? Math.round(wins / trips.length * 100) : 0;
+      const winTrips  = trips.filter(t => t.pnl > 0);
+      const lossTrips = trips.filter(t => t.pnl <= 0);
+      const wr     = trips.length ? Math.round(winTrips.length / trips.length * 100) : 0;
       const comm   = trips.reduce((s, t) => s + (t.comm || 0), 0);
+
+      // Symbol breakdown
       const symMap = {};
       trips.forEach(t => { symMap[t.symbol] = (symMap[t.symbol] || 0) + t.pnl; });
       const symSummary = Object.entries(symMap).map(([s, p]) => `${s}: ${p >= 0 ? '+' : ''}$${Math.round(p)}`).join(', ');
+
+      // Hold time: winners vs losers
+      const fmtHrs = h => h < 1 ? `${Math.round(h * 60)}min` : `${Math.round(h * 10) / 10}hrs`;
+      const winHrs  = winTrips.filter(t => t.duration_hrs > 0).map(t => t.duration_hrs);
+      const lossHrs = lossTrips.filter(t => t.duration_hrs > 0).map(t => t.duration_hrs);
+      const avgWinHold  = winHrs.length  ? winHrs.reduce((s,h)=>s+h,0)  / winHrs.length  : null;
+      const avgLossHold = lossHrs.length ? lossHrs.reduce((s,h)=>s+h,0) / lossHrs.length : null;
+      const holdSummary = (avgWinHold !== null && avgLossHold !== null)
+        ? `Avg hold — Winners: ${fmtHrs(avgWinHold)}, Losers: ${fmtHrs(avgLossHold)}`
+        : 'Hold time data available on individual trades';
+
+      // Direction breakdown
+      const longTrips  = trips.filter(t => t.direction === 'long');
+      const shortTrips = trips.filter(t => t.direction === 'short');
+      const longPnl    = longTrips.reduce((s,t) => s+t.pnl, 0);
+      const shortPnl   = shortTrips.reduce((s,t) => s+t.pnl, 0);
+      const longWR     = longTrips.length  ? Math.round(longTrips.filter(t=>t.pnl>0).length  / longTrips.length  * 100) : 0;
+      const shortWR    = shortTrips.length ? Math.round(shortTrips.filter(t=>t.pnl>0).length / shortTrips.length * 100) : 0;
 
       // Month breakdown
       const monthMap = {};
       trips.forEach(t => {
         if (!t.entry_dt) return;
-        const m = t.entry_dt.slice(0, 7);
-        if (!monthMap[m]) monthMap[m] = { pnl: 0, wins: 0, total: 0 };
+        const dt = t.entry_dt instanceof Date ? t.entry_dt : new Date(t.entry_dt);
+        const m = `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}`;
+        if (!monthMap[m]) monthMap[m] = { pnl: 0, wins: 0, total: 0, holdWin: [], holdLoss: [] };
         monthMap[m].pnl   += t.pnl;
         monthMap[m].wins  += t.pnl > 0 ? 1 : 0;
         monthMap[m].total += 1;
+        if (t.duration_hrs > 0) {
+          if (t.pnl > 0) monthMap[m].holdWin.push(t.duration_hrs);
+          else monthMap[m].holdLoss.push(t.duration_hrs);
+        }
       });
       const monthLines = Object.entries(monthMap)
         .sort((a, b) => a[0].localeCompare(b[0]))
-        .map(([m, d]) => `  ${m}: ${d.pnl >= 0 ? '+' : ''}$${Math.round(d.pnl)}, ${d.total} trades, ${Math.round(d.wins/d.total*100)}% WR`)
+        .map(([m, d]) => {
+          const mWH = d.holdWin.length  ? fmtHrs(d.holdWin.reduce((s,h)=>s+h,0)/d.holdWin.length)   : '—';
+          const mLH = d.holdLoss.length ? fmtHrs(d.holdLoss.reduce((s,h)=>s+h,0)/d.holdLoss.length) : '—';
+          return `  ${m}: ${d.pnl >= 0 ? '+' : ''}$${Math.round(d.pnl)}, ${d.total}t, ${Math.round(d.wins/d.total*100)}% WR, avg hold win=${mWH} loss=${mLH}`;
+        })
         .join('\n');
 
       // Equity curve summary
       const eq = tosData.equityCurve || [];
       const eqSummary = eq.length
-        ? `Equity curve: ${eq.length} data points, start $${Math.round(eq[0]?.balance || 0).toLocaleString()}, end $${Math.round(eq[eq.length-1]?.balance || 0).toLocaleString()}`
+        ? `Equity curve: ${eq.length} data points, start $${Math.round(eq[0]?.balance||0).toLocaleString()}, end $${Math.round(eq[eq.length-1]?.balance||0).toLocaleString()}`
         : 'No equity curve data.';
 
-      // Top 5 trades
-      const sorted = [...trips].sort((a, b) => Math.abs(b.pnl) - Math.abs(a.pnl)).slice(0, 5);
-      const topTrades = sorted.map(t => `  ${t.symbol} ${t.direction||''} ${t.entry_dt?.slice(0,10)||''}: ${t.pnl >= 0 ? '+' : ''}$${Math.round(t.pnl)}`).join('\n');
+      // All individual trades (capped at 200 for context size)
+      const tradeLines = trips.slice(0, 200).map(t => {
+        const dt = t.entry_dt instanceof Date ? t.entry_dt.toISOString().slice(0,16) : String(t.entry_dt||'').slice(0,16);
+        const hold = t.duration_hrs > 0 ? fmtHrs(t.duration_hrs) : '—';
+        return `  ${dt} ${t.symbol} ${t.direction||''} P&L:${t.pnl>=0?'+':''}$${Math.round(t.pnl)} hold:${hold}`;
+      }).join('\n');
 
       return `TOS BROKER STATEMENT DATA:
 - Accounts: ${[...new Set(trips.map(t => t.account))].join(', ')}
-- Total trades: ${trips.length}
+- Total trades: ${trips.length} (${winTrips.length}W / ${lossTrips.length}L)
 - Net P&L: ${netPnl >= 0 ? '+' : ''}$${Math.round(netPnl).toLocaleString()}
 - Win rate: ${wr}%
 - Commissions paid: -$${Math.round(comm).toLocaleString()}
 - By symbol: ${symSummary}
+- Longs: ${longTrips.length}t, ${longWR}% WR, ${longPnl>=0?'+':''}$${Math.round(longPnl)}
+- Shorts: ${shortTrips.length}t, ${shortWR}% WR, ${shortPnl>=0?'+':''}$${Math.round(shortPnl)}
+- ${holdSummary}
 - ${eqSummary}
 
-Month-over-month:
+Month-over-month (with avg hold times per outcome):
 ${monthLines || '  (no monthly data)'}
 
-Largest trades:
-${topTrades}`;
+All trades (entry date, symbol, direction, P&L, hold time):
+${tradeLines}`;
     })();
 
     const systemPrompt = `You are a trading performance analyst assistant embedded in a trading journal app.
@@ -308,7 +344,7 @@ ${tosContext}`;
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-api-key': process.env.REACT_APP_ANTHROPIC_API_KEY,
+          'x-api-key': process.env.REACT_APP_ANTHROPIC_KEY,
           'anthropic-version': '2023-06-01',
           'anthropic-dangerous-direct-browser-access': 'true',
         },
