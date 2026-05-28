@@ -54,15 +54,25 @@ export function autoGrade(al_strength, al_touches, al_age, sl_quality, sl_touche
   return 'aminus';
 }
 
+function getNowEST() {
+  const now = new Date();
+  const month = now.getMonth() + 1;
+  const useEDT = month > 3 && month < 11;
+  const offsetMin = useEDT ? -4 * 60 : -5 * 60;
+  const localOffset = now.getTimezoneOffset();
+  const t = new Date(now.getTime() + (localOffset + offsetMin) * 60000);
+  return String(t.getHours()).padStart(2,'0') + ':' + String(t.getMinutes()).padStart(2,'0');
+}
+
 export const EMPTY_FORM = {
-  trade_number: '', date: new Date().toISOString().split('T')[0], time: '',
-  account: 'A1', symbol: 'MGC', custom_symbol: '', custom_multiplier: '', contracts: '1',
-  direction: 'long', entry: '', exit_price: '', stop: '', target: '',
+  trade_number: '', date: new Date().toISOString().split('T')[0], time: getNowEST(),
+  account: '', symbol: '', custom_symbol: '', custom_multiplier: '', contracts: '',
+  direction: '', entry: '', exit_price: '', stop: '', target: '',
   exit_reason: '', exit_time: '', exit_date: '',
   mfe_price: '', mae_price: '',
-  al_strength: 'standard', al_touches: '', al_age: '<1wk', al_tier: 'Primary',
-  sl_quality: 'weak',       sl_touches: '', sl_age: '<1wk', sl_tier: 'Primary',
-  sl_price: '', grade: 'a', yellow_levels: '', confirmations: [], notes: '',
+  al_strength: '', al_touches: '', al_age: '', al_tier: 'Primary',
+  sl_quality: '',  sl_touches: '', sl_age: '', sl_tier: 'Primary',
+  sl_price: '', grade: '', yellow_levels: '', confirmations: [], notes: '',
   chart_file: null, strategy_id: null,
 };
 
@@ -442,3 +452,4 @@ export default function App() {
     </div>
   );
 }
+
