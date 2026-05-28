@@ -8,6 +8,7 @@ import TradeView from './pages/TradeView';
 import Strategies from './pages/Strategies';
 import Analysis  from './pages/Analysis';
 import AIChat from './AIChat';
+import AtlasHome from './pages/AtlasHome';
 import DateRangePicker from './components/DateRangePicker';
 import FilterBar, { defaultFilters } from './components/FilterBar';
 import './App.css';
@@ -181,7 +182,7 @@ export default function App() {
   const [loading,        setLoading]        = useState(true);
   const [seeding,        setSeeding]        = useState(false);
   const [msg,            setMsg]            = useState('');
-  const [page,           setPage]           = useState('dashboard');
+  const [page,           setPage]           = useState('home');
   const [account,        setAccount]        = useState('both');
   const [dateRange,      setDateRange]      = useState(getDefaultDateRange());
   const [filters,        setFilters]        = useState(defaultFilters());
@@ -264,10 +265,11 @@ export default function App() {
   };
 
   const navItems = [
-    { id: 'dashboard', icon: 'ti-layout-dashboard', label: 'Dashboard'  },
-    { id: 'reports',   icon: 'ti-chart-bar',         label: 'Reports'    },
+    { id: 'home',      icon: 'ti-sparkles',           label: 'Atlas AI'   },
+    { id: 'dashboard', icon: 'ti-layout-dashboard',   label: 'Dashboard'  },
+    { id: 'reports',   icon: 'ti-chart-bar',           label: 'Reports'    },
     { id: 'analysis',  icon: 'ti-chart-dots',          label: 'Analysis'   },
-    { id: 'tradeview', icon: 'ti-list',               label: 'Trade View' },
+    { id: 'tradeview', icon: 'ti-list',                label: 'Trade View' },
     { id: 'strategies',icon: 'ti-bulb',               label: 'Strategies' },
   ];
 
@@ -294,8 +296,8 @@ export default function App() {
             display: 'flex', alignItems: 'center', gap: 10,
             padding: '9px 16px', cursor: 'pointer',
             color: '#fff',
-            background:   page === item.id ? '#185FA511' : 'transparent',
-            borderRight:  page === item.id ? '2px solid #185FA5' : '2px solid transparent',
+            background:   page === item.id ? (item.id === 'home' ? '#C9973A11' : '#185FA511') : 'transparent',
+            borderRight:  page === item.id ? (item.id === 'home' ? '2px solid #C9973A' : '2px solid #185FA5') : '2px solid transparent',
             transition: 'all 0.12s',
             fontWeight: 500, fontSize: 14,
           }}
@@ -333,7 +335,7 @@ export default function App() {
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
 
         {/* ── Global toolbar ── */}
-        <div style={{
+        <div style={{ display: page === 'home' ? 'none' : undefined,
           padding: '8px 20px', borderBottom: '1px solid #222', background: '#111',
           display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap',
           zIndex: 100, position: 'relative', flexShrink: 0,
@@ -391,6 +393,7 @@ export default function App() {
 
         {/* ── Page content ── */}
         <div style={{ flex: 1, overflow: 'auto' }}>
+          {page === 'home'       && <AtlasHome trades={trades} onSendToChat={(msg) => { setChatOpen(true); setTimeout(() => { window._atlasSend && window._atlasSend(msg); }, 150); }} />}
           {page === 'dashboard'  && <Dashboard  {...dashboardProps} />}
           {page === 'reports'    && <Reports     {...filteredProps} />}
           {page === 'analysis'   && <Analysis    {...filteredProps} account={account} tosData={tosData} setTosData={setTosData} />}
