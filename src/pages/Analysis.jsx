@@ -65,6 +65,200 @@ function fmtMonth(iso) {
   return d.toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
 }
 
+
+// ─── TOS Daily Calendar ────────────────────────────────────────────────────────
+const MONTH_NAMES_CAL = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const DOW_SHORT = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+
+function TOSCalendar({ trips }) {
+  const now = new Date();
+  const [navYear,  setNavYear]  = useState(now.getFullYear());
+  const [navMonth, setNavMonth] = useState(now.getMonth());
+  const [selectedDay, setSelectedDay] = useState(null);
+  const [viewAcct, setViewAcct] = useState('both');
+
+  const goMonth = (dir) => {
+    let m = navMonth + dir, y = navYear;
+    if (m > 11) { m = 0; y++; }
+    if (m < 0)  { m = 11; y--; }
+    setNavMonth(m); setNavYear(y);
+  };
+
+  // Filter trips by account
+  const visibleTrips = trips.filter(t => {
+    if (viewAcct === 'both') return true;
+    return (t.account || '').toUpperCase() === viewAcct.toUpperCase();
+  });
+
+  // Build day map for current nav month
+  const dayMap = {};
+  visibleTrips.forEach(t => {
+    if (!t.entry_dt) return;
+    const d = new Date(t.entry_dt);
+    if (d.getFullYear() !== navYear || d.getMonth() !== navMonth) return;
+    const day = d.getDate();
+    if (!dayMap[day]) dayMap[day] = { pnl: 0, trades: 0, wins: 0, items: [] };
+    dayMap[day].pnl    += t.pnl;
+    dayMap[day].trades += 1;
+    if (t.pnl > 0) dayMap[day].wins += 1;
+    dayMap[day].items.push(t);
+  });
+
+  const monthNet   = Object.values(dayMap).reduce((s, d) => s + d.pnl, 0);
+  const tradeDays  = Object.keys(dayMap).length;
+  const monthWins  = Object.values(dayMap).filter(d => d.pnl > 0).length;
+  const fmt = v => (v >= 0 ? '+$' : '-$') + Math.abs(Math.round(v)).toLocaleString();
+  const fmtSmall = v => (v >= 0 ? '+$' : '-$') + Math.abs(Math.round(v)).toLocaleString();
+
+  const firstDay    = new Date(navYear, navMonth, 1).getDay();
+  const daysInMonth = new Date(navYear, navMonth + 1, 0).getDate();
+  const cells = [];
+  for (let i = 0; i < firstDay; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+  while (cells.length % 7 !== 0) cells.push(null);
+  const weeks = [];
+  for (let i = 0; i < cells.length; i += 7) weeks.push(cells.slice(i, i + 7));
+
+  const accounts = [...new Set(trips.map(t => t.account).filter(Boolean))];
+
+  return (
+    <div style={{ background: '#111', border: '1px solid #222', borderRadius: 8, padding: '14px 16px', marginTop: 12 }}>
+      {/* Header row */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>
+        <button onClick={() => goMonth(-1)} style={{ background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 6, color: '#888', fontSize: 16, cursor: 'pointer', width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>‹</button>
+        <span style={{ fontSize: 15, fontWeight: 700, color: '#ccc', minWidth: 130, textAlign: 'center' }}>{MONTH_NAMES_CAL[navMonth]} {navYear}</span>
+        <button onClick={() => goMonth(1)} style={{ background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 6, color: '#888', fontSize: 16, cursor: 'pointer', width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>›</button>
+        <button onClick={() => { setNavMonth(now.getMonth()); setNavYear(now.getFullYear()); }} style={{ background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 6, color: '#888', fontSize: 12, cursor: 'pointer', padding: '4px 12px', fontWeight: 600 }}>This month</button>
+
+        {/* Account filter */}
+        <div style={{ display: 'flex', gap: 4, marginLeft: 'auto' }}>
+          {['both', ...accounts].map(a => (
+            <button key={a} onClick={() => setViewAcct(a)} style={{
+              padding: '4px 12px', borderRadius: 6, fontSize: 12, cursor: 'pointer', fontWeight: 600,
+              border: '1px solid', borderColor: viewAcct === a ? '#185FA5' : '#2a2a2a',
+              background: viewAcct === a ? '#185FA522' : 'transparent',
+              color: viewAcct === a ? '#85B7EB' : '#666',
+            }}>{a === 'both' ? 'Both' : a}</button>
+          ))}
+        </div>
+
+        {/* Monthly stats */}
+        <span style={{ background: monthNet >= 0 ? '#1D9E7522' : '#E24B4A22', color: monthNet >= 0 ? '#1D9E75' : '#E24B4A', borderRadius: 20, padding: '3px 12px', fontSize: 13, fontWeight: 700 }}>{fmt(monthNet)}</span>
+        <span style={{ background: '#1a1a1a', color: '#888', borderRadius: 20, padding: '3px 10px', fontSize: 12 }}>{tradeDays} days</span>
+        <span style={{ background: '#1a1a1a', color: '#888', borderRadius: 20, padding: '3px 10px', fontSize: 12 }}>{monthWins}/{tradeDays} green</span>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8, alignItems: 'start' }}>
+        <div>
+          {/* Day of week headers */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 3, marginBottom: 3 }}>
+            {DOW_SHORT.map(d => (
+              <div key={d} style={{ textAlign: 'center', fontSize: 12, fontWeight: 700, color: '#555', padding: '3px 0' }}>{d}</div>
+            ))}
+          </div>
+          {/* Weeks */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+            {weeks.map((week, wi) => (
+              <div key={wi} style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 3 }}>
+                {week.map((day, di) => {
+                  if (!day) return <div key={di} style={{ minHeight: 72 }} />;
+                  const d = dayMap[day];
+                  const isToday = now.getFullYear() === navYear && now.getMonth() === navMonth && now.getDate() === day;
+                  const isSelected = selectedDay === day;
+                  let bg = '#0d0d0d', borderColor = '#1e1e1e';
+                  if (d) { bg = d.pnl >= 0 ? '#1D9E7510' : '#E24B4A0e'; borderColor = d.pnl >= 0 ? '#1D9E7535' : '#E24B4A35'; }
+                  if (isToday) borderColor = '#185FA5';
+                  if (isSelected) borderColor = '#C9973A';
+                  const wr = d ? Math.round(d.wins / d.trades * 100) : 0;
+                  return (
+                    <div key={di}
+                      onClick={() => d && setSelectedDay(selectedDay === day ? null : day)}
+                      style={{
+                        background: bg, border: `${isToday || isSelected ? '1.5px' : '1px'} solid ${borderColor}`,
+                        borderRadius: 6, padding: '4px 6px', minHeight: 72,
+                        display: 'flex', flexDirection: 'column', gap: 2,
+                        cursor: d ? 'pointer' : 'default', transition: 'all 0.1s',
+                      }}
+                      onMouseEnter={e => { if (d) e.currentTarget.style.borderColor = '#555'; }}
+                      onMouseLeave={e => { if (d && !isSelected) e.currentTarget.style.borderColor = borderColor; }}
+                    >
+                      <span style={{ fontSize: 12, fontWeight: 700, color: '#555', textAlign: 'right' }}>{day}</span>
+                      {d && (<>
+                        <span style={{ fontSize: 13, fontWeight: 700, color: d.pnl >= 0 ? '#1D9E75' : '#E24B4A' }}>{fmtSmall(d.pnl)}</span>
+                        <span style={{ fontSize: 11, color: '#666' }}>{d.trades} trade{d.trades !== 1 ? 's' : ''}</span>
+                        <span style={{ fontSize: 11, color: '#666' }}>{wr}%</span>
+                      </>)}
+                    </div>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Week summaries */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 3, marginTop: 22 }}>
+          {weeks.map((week, wi) => {
+            let wNet = 0, wDays = 0;
+            week.forEach(day => { if (day && dayMap[day]) { wNet += dayMap[day].pnl; wDays++; } });
+            return (
+              <div key={wi} style={{ background: '#0d0d0d', border: '1px solid #1e1e1e', borderRadius: 6, padding: '6px 10px', minWidth: 90, minHeight: 72, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 2 }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: '#444' }}>Week {wi + 1}</span>
+                {wDays > 0 ? (<>
+                  <span style={{ fontSize: 16, fontWeight: 700, color: wNet >= 0 ? '#1D9E75' : '#E24B4A' }}>{fmt(wNet)}</span>
+                  <span style={{ fontSize: 11, color: '#555' }}>{wDays} day{wDays !== 1 ? 's' : ''}</span>
+                </>) : <span style={{ fontSize: 13, color: '#333' }}>—</span>}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Day detail panel */}
+      {selectedDay && dayMap[selectedDay] && (() => {
+        const d = dayMap[selectedDay];
+        const dow = new Date(navYear, navMonth, selectedDay).toLocaleDateString('en-US', { weekday: 'long' });
+        return (
+          <div style={{ marginTop: 14, background: '#0d0d0d', border: '1px solid #2a2a2a', borderRadius: 8, padding: '12px 16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+              <div>
+                <span style={{ fontSize: 14, fontWeight: 700, color: '#ccc' }}>{dow}, {MONTH_NAMES_CAL[navMonth]} {selectedDay}</span>
+                <span style={{ marginLeft: 10, fontSize: 14, fontWeight: 700, color: d.pnl >= 0 ? '#1D9E75' : '#E24B4A' }}>{fmt(d.pnl)}</span>
+              </div>
+              <button onClick={() => setSelectedDay(null)} style={{ background: 'none', border: 'none', color: '#555', fontSize: 18, cursor: 'pointer' }}>×</button>
+            </div>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+              <thead>
+                <tr>{['Time','Acct','Symbol','Dir','Entry','Exit','P&L','Hold'].map(h => (
+                  <th key={h} style={{ padding: '5px 8px', textAlign: 'left', color: '#444', fontSize: 10, textTransform: 'uppercase', borderBottom: '1px solid #1e1e1e' }}>{h}</th>
+                ))}</tr>
+              </thead>
+              <tbody>
+                {d.items.sort((a,b) => new Date(a.entry_dt) - new Date(b.entry_dt)).map((t, i) => {
+                  const entryTime = t.entry_dt ? new Date(t.entry_dt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }) : '—';
+                  const holdStr = t.duration_hrs > 0 ? (t.duration_hrs < 1 ? Math.round(t.duration_hrs * 60) + 'm' : Math.round(t.duration_hrs * 10) / 10 + 'h') : '—';
+                  return (
+                    <tr key={i} style={{ borderBottom: '1px solid #181818' }}>
+                      <td style={{ padding: '7px 8px', color: '#666' }}>{entryTime}</td>
+                      <td style={{ padding: '7px 8px' }}><span style={{ background: '#1a2535', color: '#85B7EB', borderRadius: 4, padding: '1px 6px', fontSize: 11, fontWeight: 700 }}>{t.account}</span></td>
+                      <td style={{ padding: '7px 8px', color: '#ccc', fontWeight: 700 }}>{t.symbol}</td>
+                      <td style={{ padding: '7px 8px', color: t.direction === 'long' ? '#1D9E75' : '#E24B4A', fontWeight: 700, textTransform: 'uppercase', fontSize: 11 }}>{t.direction}</td>
+                      <td style={{ padding: '7px 8px', color: '#aaa', fontFamily: 'monospace' }}>{t.entry}</td>
+                      <td style={{ padding: '7px 8px', color: '#aaa', fontFamily: 'monospace' }}>{t.exit || '—'}</td>
+                      <td style={{ padding: '7px 8px', fontWeight: 700, color: t.pnl > 0 ? '#1D9E75' : '#E24B4A', fontFamily: 'monospace' }}>{t.pnl >= 0 ? '+$' : '-$'}{Math.abs(Math.round(t.pnl)).toLocaleString()}</td>
+                      <td style={{ padding: '7px 8px', color: '#555' }}>{holdStr}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        );
+      })()}
+    </div>
+  );
+}
+
 export default function Analysis({ filteredTrades, dateLabel, acctLabel, dateRange, account, tosData, setTosData }) {
   const [savedStatements, setSavedStatements] = useState([]);  // [{id, account, month, data}]
   const [loadingDB, setLoadingDB]             = useState(true);
@@ -685,6 +879,15 @@ ${tosContext}`;
                     <span style={{ color: '#666' }}> — none found in current filter</span>}
                 </div>
                 <ChartCanvas id="md-chart" build={buildMultiday} />
+              </div>
+
+              {/* ── TOS Daily Calendar ── */}
+              <div style={{ background: '#111', border: '1px solid #222', borderRadius: 8, padding: '12px 14px', marginTop: 12 }}>
+                <div style={{ fontSize: 11, color: '#bbb', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>
+                  Daily P&L Calendar — TOS Broker Data
+                </div>
+                <div style={{ fontSize: 11, color: '#444', marginBottom: 8 }}>Click any day to see trade details</div>
+                <TOSCalendar trips={filteredTrips} />
               </div>
             </>
           )}
