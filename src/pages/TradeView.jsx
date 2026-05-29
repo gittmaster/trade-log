@@ -233,6 +233,23 @@ function TradeForm({ form, setForm, onSubmit, onCancel, uploading, isEdit }) {
         <div className="field"><label>Target</label><input type="number" step="0.01" value={form.target||''} onChange={e => setForm(f => ({ ...f, target: e.target.value }))} /></div>
       </div>
 
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+        <div className="field">
+          <label style={{ color: '#22c55e' }}>Best Price Reached (MFE) <span style={{ color: '#444', fontWeight: 400, textTransform: 'none', fontSize: 10 }}>optional</span></label>
+          <input type="number" step="0.01" value={form.mfe_price||''}
+            onChange={e => setForm(f => ({ ...f, mfe_price: e.target.value }))}
+            placeholder={form.direction === 'short' ? 'e.g. 4580 — lowest price reached' : 'e.g. 4720 — highest price reached'}
+            style={{ borderColor: '#1e3a1e', color: '#22c55e' }} />
+        </div>
+        <div className="field">
+          <label style={{ color: '#ef4444' }}>Worst Price Reached (MAE) <span style={{ color: '#444', fontWeight: 400, textTransform: 'none', fontSize: 10 }}>optional</span></label>
+          <input type="number" step="0.01" value={form.mae_price||''}
+            onChange={e => setForm(f => ({ ...f, mae_price: e.target.value }))}
+            placeholder={form.direction === 'short' ? 'e.g. 4640 — highest price against' : 'e.g. 4590 — lowest price against'}
+            style={{ borderColor: '#3a1e1e', color: '#ef4444' }} />
+        </div>
+      </div>
+
       <div className="form-grid-2">
         <div id="exit_reason-field" className="field"><label>Exit Reason {errLabel('exit_reason')}</label>
           <div className="toggle-row" style={errors.exit_reason?{outline:'1.5px solid #E24B4A',borderRadius:6}:{}}>{['target','stop','manual','open'].map(r => <button key={r} className={tog(form.exit_reason===r)} onClick={() => { setForm(f => ({ ...f, exit_reason: r })); setErrors(e => ({...e, exit_reason: false})); }}>{r}</button>)}</div>
