@@ -177,90 +177,6 @@ function PnLChart({ entry, exitPrice, mfePrice, maePrice, stopPrice, targetPrice
   );
 }
 
-// ── MFEInput — enter best/worst price, shows chart live ───────────────────────
-function MFEInput({ tradeId, entry, exitPrice, stopPrice, targetPrice, direction, mult, qty }) {
-  const [mfe,   setMfe]   = useState('');
-  const [mae,   setMae]   = useState('');
-  const [saved, setSaved] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const isLong = direction === 'long';
-
-  useEffect(() => {
-    if (!tradeId) { setLoading(false); return; }
-    supabase.from('trades').select('mfe_price, mae_price').eq('id', tradeId).single()
-      .then(({ data: d }) => {
-        if (d?.mfe_price) setMfe(String(d.mfe_price));
-        if (d?.mae_price) setMae(String(d.mae_price));
-        setLoading(false);
-      }).catch(() => setLoading(false));
-  }, [tradeId]);
-
-  const save = async () => {
-    if (!tradeId) return;
-    const { error } = await supabase.from('trades').update({
-      mfe_price: mfe ? parseFloat(mfe) : null,
-      mae_price: mae ? parseFloat(mae) : null,
-    }).eq('id', tradeId);
-    if (!error) { setSaved(true); setTimeout(() => setSaved(false), 2000); }
-  };
-
-  if (loading) return null;
-
-  return (
-    <div style={{ padding: '14px 16px', background: '#080a0e', borderTop: '1px solid #1a2030' }}>
-      <div style={{ fontSize: 11, color: '#94a3b8', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 10 }}>
-        Best & Worst Price Reached
-        <span style={{ color: '#64748b', marginLeft: 6, fontSize: 10, textTransform: 'none', letterSpacing: 0 }}>— enter to draw chart</span>
-      </div>
-
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-          <div>
-            <div style={{ fontSize: 11, color: '#22c55e', marginBottom: 5, fontWeight: 600 }}>BEST PRICE (MFE)</div>
-            <input type="number" step="0.1" value={mfe}
-              placeholder={isLong ? 'e.g. 4720' : 'e.g. 4580'}
-              onChange={e => setMfe(e.target.value)}
-              style={{ width: '100%', background: '#111', border: '1px solid #1e3a1e', borderRadius: 6,
-                padding: '10px', color: '#22c55e', fontSize: 14, fontFamily: 'monospace',
-                outline: 'none', boxSizing: 'border-box' }}
-            />
-          </div>
-          <div>
-            <div style={{ fontSize: 11, color: '#ef4444', marginBottom: 5, fontWeight: 600 }}>WORST PRICE (MAE)</div>
-            <input type="number" step="0.1" value={mae}
-              placeholder={isLong ? 'e.g. 4590' : 'e.g. 4640'}
-              onChange={e => setMae(e.target.value)}
-              style={{ width: '100%', background: '#111', border: '1px solid #3a1e1e', borderRadius: 6,
-                padding: '10px', color: '#ef4444', fontSize: 14, fontFamily: 'monospace',
-                outline: 'none', boxSizing: 'border-box' }}
-            />
-          </div>
-        </div>
-
-        {(mfe || mae) && (
-          <div style={{ background: '#0a0c10', border: '1px solid #1a2030', borderRadius: 6, padding: '10px 8px 4px' }}>
-            <PnLChart
-              entry={entry} exitPrice={exitPrice}
-              mfePrice={mfe || null} maePrice={mae || null}
-              stopPrice={stopPrice} targetPrice={targetPrice}
-              direction={direction} mult={mult} qty={qty}
-            />
-          </div>
-        )}
-
-        <button onClick={save} style={{
-          width: '100%', padding: '11px', borderRadius: 6, border: 'none',
-          background: saved ? '#22c55e' : '#1a2a3a',
-          color: saved ? '#fff' : '#60a5fa', cursor: 'pointer',
-          fontSize: 14, fontWeight: 700, fontFamily: 'inherit', transition: 'all 0.2s',
-        }}>
-          {saved ? '✓ Saved' : 'Save MFE / MAE'}
-        </button>
-      </div>
-    </div>
-  );
-}
-
 // ── Main ──────────────────────────────────────────────────────────────────────
 export default function TradeReviewChart({ trade, onClose }) {
   const {
@@ -358,12 +274,60 @@ export default function TradeReviewChart({ trade, onClose }) {
         </div>
       )}
 
-      {/* MFE/MAE input + live chart */}
-      <MFEInput
-        tradeId={id} entry={entry} exitPrice={exit_price}
-        stopPrice={stop} targetPrice={target}
-        direction={direction} mult={mult} qty={qty}
-      />
+      {/* Running P&L analysis — uses saved MFE/MAE */}
+      {(() => {
+        const mfeP = trade.mfe_price ? parseFloat(trade.mfe_price) : null;
+        const maeP = trade.mae_price ? parseFloat(trade.mae_price) : null;
+        const isLong = direction === 'long';
+        const toPnl = (price) => price != null ? Math.round((isLong ? price - entryP : entryP - price) * mult * qty) : null;
+        const mfePnl = toPnl(mfeP);
+        const maePnl = toPnl(maeP);
+        const hasData = mfePnl !== null || maePnl !== null;
+
+        if (!hasData) return (
+          <div style={{ padding: '12px 16px', background: '#080a0e', borderTop: '1px solid #1a2030' }}>
+            <div style={{ fontSize: 11, color: '#64748b', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 4 }}>Running P&L</div>
+            <div style={{ fontSize: 12, color: '#334155' }}>No MFE / MAE recorded — add them in the New Trade or Edit form to see running P&L analysis here.</div>
+          </div>
+        );
+
+        const leftOnTable = mfePnl != null && exitPnl < mfePnl ? mfePnl - exitPnl : 0;
+        const capturedOfMfe = mfePnl > 0 ? Math.round(exitPnl / mfePnl * 100) : null;
+        const drawnDown = maePnl != null ? Math.abs(maePnl) : null;
+
+        return (
+          <div style={{ padding: '14px 16px', background: '#080a0e', borderTop: '1px solid #1a2030' }}>
+            <div style={{ fontSize: 11, color: '#94a3b8', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 12 }}>
+              Running P&L Analysis
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, marginBottom: 12 }}>
+              {[
+                { label: 'Best Reached (MFE)', value: mfePnl != null ? (mfePnl >= 0 ? '+$' : '-$') + Math.abs(mfePnl).toLocaleString() : '—', color: '#22c55e' },
+                { label: 'Worst Reached (MAE)', value: maePnl != null ? (maePnl >= 0 ? '+$' : '-$') + Math.abs(maePnl).toLocaleString() : '—', color: '#ef4444' },
+                { label: 'Captured of MFE', value: capturedOfMfe != null ? capturedOfMfe + '%' : '—',
+                  color: capturedOfMfe == null ? '#64748b' : capturedOfMfe >= 80 ? '#22c55e' : capturedOfMfe >= 50 ? '#f59e0b' : '#ef4444' },
+                { label: 'Left on Table', value: leftOnTable > 0 ? '-$' + leftOnTable.toLocaleString() : '✓ Full capture',
+                  color: leftOnTable > 0 ? '#f59e0b' : '#22c55e' },
+              ].map((s, i) => (
+                <div key={i} style={{ background: '#0d0f14', border: '1px solid #1a2030', borderRadius: 6, padding: '8px 10px', textAlign: 'center' }}>
+                  <div style={{ fontSize: 10, color: '#94a3b8', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 4 }}>{s.label}</div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: s.color, fontFamily: 'monospace' }}>{s.value}</div>
+                </div>
+              ))}
+            </div>
+            {leftOnTable > 100 && (
+              <div style={{ background: '#f59e0b12', border: '1px solid #f59e0b33', borderRadius: 6, padding: '8px 12px', fontSize: 12, color: '#f59e0b' }}>
+                ⚠️ Exited ${leftOnTable.toLocaleString()} before MFE — price reached {isLong ? mfeP : maeP} but you closed at {exitP}
+              </div>
+            )}
+            {capturedOfMfe !== null && capturedOfMfe >= 90 && (
+              <div style={{ background: '#22c55e12', border: '1px solid #22c55e33', borderRadius: 6, padding: '8px 12px', fontSize: 12, color: '#22c55e' }}>
+                ✅ Excellent capture — took {capturedOfMfe}% of the available move
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {/* AL / SL */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', borderTop: '1px solid #1a2030', background: '#080a0e' }}>
