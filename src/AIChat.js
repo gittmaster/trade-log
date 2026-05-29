@@ -43,6 +43,87 @@ function isTextFile(file) {
   return file.type.startsWith('text/') || /\.(csv|txt|md|json|js|jsx|ts|tsx|css|html|xml|log)$/i.test(file.name);
 }
 
+// ─── Simple markdown renderer (tables, bold, code, line breaks) ───────────────
+function renderMarkdown(text) {
+  if (!text) return null;
+  const lines = text.split('\n');
+  const elements = [];
+  let i = 0;
+
+  while (i < lines.length) {
+    const line = lines[i];
+
+    // Detect table: line with | chars and next line is separator (---|---)
+    if (line.includes('|') && i + 1 < lines.length && lines[i+1].match(/^[|\s\-:]+$/)) {
+      const tableLines = [line];
+      i += 2; // skip separator
+      while (i < lines.length && lines[i].includes('|')) {
+        tableLines.push(lines[i]);
+        i++;
+      }
+      const headers = tableLines[0].split('|').map(h => h.trim()).filter(Boolean);
+      const rows = tableLines.slice(1).map(r => r.split('|').map(c => c.trim()).filter(Boolean));
+      elements.push(
+        <div key={i} style={{ overflowX: 'auto', margin: '8px 0' }}>
+          <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: 12 }}>
+            <thead>
+              <tr>{headers.map((h, hi) => (
+                <th key={hi} style={{ padding: '6px 10px', textAlign: 'left', borderBottom: '1px solid #333', color: '#ccc', fontWeight: 600, whiteSpace: 'nowrap', background: '#1a1a1a' }}>{h}</th>
+              ))}</tr>
+            </thead>
+            <tbody>
+              {rows.map((row, ri) => (
+                <tr key={ri} style={{ borderBottom: '1px solid #222' }}>
+                  {row.map((cell, ci) => {
+                    const isNeg = /^-\$/.test(cell);
+                    const isPos = /^\+?\$[0-9]/.test(cell) && !isNeg;
+                    return (
+                      <td key={ci} style={{ padding: '6px 10px', color: isPos ? '#1D9E75' : isNeg ? '#E24B4A' : '#bbb', whiteSpace: 'nowrap' }}>{cell}</td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      );
+      continue;
+    }
+
+    // Bold headers (** or ###)
+    if (line.startsWith('### ') || line.startsWith('## ') || line.startsWith('# ')) {
+      const txt = line.replace(/^#{1,3}\s/, '');
+      elements.push(<div key={i} style={{ fontWeight: 700, color: '#ccc', marginTop: 10, marginBottom: 4, fontSize: 13 }}>{txt}</div>);
+      i++; continue;
+    }
+
+    // Bullet
+    if (line.match(/^[\-\*]\s/)) {
+      elements.push(<div key={i} style={{ paddingLeft: 12, color: '#bbb', fontSize: 13, lineHeight: 1.6 }}>• {inlineFmt(line.slice(2))}</div>);
+      i++; continue;
+    }
+
+    // Empty line → spacer
+    if (!line.trim()) {
+      elements.push(<div key={i} style={{ height: 6 }} />);
+      i++; continue;
+    }
+
+    // Normal line
+    elements.push(<div key={i} style={{ color: '#bbb', fontSize: 13, lineHeight: 1.6 }}>{inlineFmt(line)}</div>);
+    i++;
+  }
+  return <div>{elements}</div>;
+}
+
+function inlineFmt(text) {
+  // bold: **text**
+  const parts = text.split(/\*\*(.*?)\*\*/g);
+  return parts.map((p, i) => i % 2 === 1 ? <strong key={i} style={{ color: '#ccc' }}>{p}</strong> : p);
+}
+
+
+
 // ─── Shared chat UI — used in both embedded and standalone modes ──────────────
 function ChatUI({ trades, inputRef, onClose }) {
   const [messages, setMessages] = useState([
@@ -177,8 +258,11 @@ function ChatUI({ trades, inputRef, onClose }) {
       <div className="ai-messages" style={{ flex: 1, maxHeight: 'none' }}>
         {messages.map((m, i) => (
           <div key={i} className={`ai-msg ${m.role}`}>
-            <div className="ai-msg-content">
-              {m.displayContent || (typeof m.content === 'string' ? m.content : m.content?.find?.(b => b.type === 'text')?.text || '')}
+            <div className="ai-msg-content" style={m.role === 'assistant' ? { whiteSpace: 'normal' } : {}}>
+              {m.role === 'assistant'
+                ? renderMarkdown(typeof m.content === 'string' ? m.content : m.content?.find?.(b => b.type === 'text')?.text || '')
+                : (m.displayContent || (typeof m.content === 'string' ? m.content : m.content?.find?.(b => b.type === 'text')?.text || ''))
+              }
               {m.attachmentName && (
                 <div style={{ marginTop: 6, fontSize: 12, opacity: 0.75 }}>Attachment: {m.attachmentName}</div>
               )}
