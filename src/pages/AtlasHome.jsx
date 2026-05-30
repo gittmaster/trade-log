@@ -14,12 +14,7 @@ STRATEGY RULES:
 - Avoid: 15:00-19:00 late session, 23:00-07:00 dead zone, apex compression.
 - MGC multiplier: $10/point. MNQ multiplier: $2/point.
 
-You have access to the trader's complete trade history below. Be concise, direct, and data-driven. Reference specific trade numbers when relevant.
-IMPORTANT FORMATTING RULES:
-- Always use markdown tables (with | pipes and --- separator row) when showing comparisons, monthly breakdowns, or multi-column data.
-- Use **bold** for key metrics and section headers.
-- Use bullet points (- item) for lists.
-- Never apologize for not being able to show tables — always use pipe-format markdown tables.`;
+You have access to the trader's complete trade history below. Be concise, direct, and data-driven. Reference specific trade numbers when relevant.`;
 
 function formatTrades(trades) {
   if (!trades?.length) return 'No trades logged yet.';
@@ -37,52 +32,32 @@ const QUICK_PROMPTS = [
   'Compare my two accounts',
 ];
 
-
-// ─── Markdown renderer ────────────────────────────────────────────────────────
-function renderMarkdown(text) {
-  if (!text) return null;
-  const lines = text.split('\n');
-  const elements = [];
-  let i = 0;
-  while (i < lines.length) {
-    const line = lines[i];
-    if (line.includes('|') && i + 1 < lines.length && lines[i+1].match(/^[|\s\-:]+$/)) {
-      const tableLines = [line];
-      i += 2;
-      while (i < lines.length && lines[i].includes('|')) { tableLines.push(lines[i]); i++; }
-      const headers = tableLines[0].split('|').map(h => h.trim()).filter(Boolean);
-      const rows = tableLines.slice(1).map(r => r.split('|').map(c => c.trim()).filter(Boolean));
-      elements.push(
-        <div key={i} style={{ overflowX: 'auto', margin: '8px 0' }}>
-          <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: 12 }}>
-            <thead><tr>{headers.map((h, hi) => (
-              <th key={hi} style={{ padding: '6px 10px', textAlign: 'left', borderBottom: '1px solid #333', color: '#ccc', fontWeight: 600, whiteSpace: 'nowrap', background: '#1a1a1a' }}>{h}</th>
-            ))}</tr></thead>
-            <tbody>{rows.map((row, ri) => (
-              <tr key={ri} style={{ borderBottom: '1px solid #222' }}>
-                {row.map((cell, ci) => {
-                  const isNeg = /^-\$/.test(cell); const isPos = /^\+?\$[0-9]/.test(cell) && !isNeg;
-                  return <td key={ci} style={{ padding: '6px 10px', color: isPos ? '#1D9E75' : isNeg ? '#E24B4A' : '#bbb', whiteSpace: 'nowrap' }}>{cell}</td>;
-                })}
-              </tr>
-            ))}</tbody>
-          </table>
-        </div>
-      );
-      continue;
-    }
-    if (line.match(/^#{1,3}\s/)) { elements.push(<div key={i} style={{ fontWeight: 700, color: '#ccc', marginTop: 10, marginBottom: 4, fontSize: 13 }}>{line.replace(/^#{1,3}\s/, '')}</div>); i++; continue; }
-    if (line.match(/^[\-\*]\s/)) { elements.push(<div key={i} style={{ paddingLeft: 12, color: '#bbb', fontSize: 13, lineHeight: 1.6 }}>• {inlineFmt(line.slice(2))}</div>); i++; continue; }
-    if (!line.trim()) { elements.push(<div key={i} style={{ height: 6 }} />); i++; continue; }
-    elements.push(<div key={i} style={{ color: '#bbb', fontSize: 13, lineHeight: 1.6 }}>{inlineFmt(line)}</div>);
-    i++;
-  }
-  return <div>{elements}</div>;
-}
-function inlineFmt(text) {
-  const parts = text.split(/\*\*(.*?)\*\*/g);
-  return parts.map((p, i) => i % 2 === 1 ? <strong key={i} style={{ color: '#ccc' }}>{p}</strong> : p);
-}
+const FOCUS_ITEMS = [
+  {
+    icon: '↗',
+    title: 'Review your weekly performance',
+    desc: 'Spot what's working and where the slippage is — your weekly snapshot is ready.',
+    prompt: 'Give me a full weekly performance review. Include: total trades, win rate, net P&L, best and worst trade, which session performed best, and the single biggest mistake I made this week. Be specific with numbers.',
+  },
+  {
+    icon: '⚡',
+    title: 'Plan your trading day',
+    desc: 'Map the day — 3 focus areas pulled from your recent trades.',
+    prompt: 'Based on my recent trade history, give me a trading day plan. Include: (1) the 3 most important things to focus on today based on my patterns, (2) sessions I should target, (3) one rule I must not break today. Be specific.',
+  },
+  {
+    icon: '📖',
+    title: 'Update my playbook',
+    desc: 'Pair recent results with your rules and surface where to tighten up.',
+    prompt: 'Review my recent trades against my AL/SL strategy rules. Tell me: (1) which rules I followed well, (2) which rules I broke and the cost, (3) one specific rule change or addition I should make to my playbook right now.',
+  },
+  {
+    icon: '🔍',
+    title: 'Find my best setup',
+    desc: 'Surface the highest-probability setup from your trade history.',
+    prompt: 'Analyze my trade history and find my single highest-probability setup. Show me: the AL/SL combination, session, symbol, direction, win rate, avg P&L, and number of trades. Then tell me what conditions to wait for before taking it again.',
+  },
+];
 
 export default function AtlasHome({ trades }) {
   const [input, setInput]       = useState('');
@@ -184,10 +159,9 @@ export default function AtlasHome({ trades }) {
                 borderRadius: m.role === 'user' ? '12px 12px 4px 12px' : '12px 12px 12px 4px',
                 background: m.role === 'user' ? '#185FA5' : '#131313',
                 border: m.role === 'user' ? 'none' : '1px solid #222',
-                fontSize: 13, color: '#ddd', lineHeight: 1.6,
-                whiteSpace: m.role === 'user' ? 'pre-wrap' : 'normal',
+                fontSize: 13, color: '#ddd', lineHeight: 1.6, whiteSpace: 'pre-wrap',
               }}>
-                {m.role === 'assistant' ? renderMarkdown(m.content) : m.content}
+                {m.content}
               </div>
             </div>
           ))}
@@ -214,6 +188,34 @@ export default function AtlasHome({ trades }) {
               onMouseLeave={e => { e.currentTarget.style.borderColor = '#222'; e.currentTarget.style.color = '#666'; e.currentTarget.style.background = 'transparent'; }}
             >{q}</button>
           ))}
+        </div>
+      )}
+
+      {/* ── Recommended Focus — only when no chat ── */}
+      {!chatOpen && (
+        <div style={{ width: '100%', maxWidth: 680, padding: '0 20px 16px', flexShrink: 0 }}>
+          <div style={{ fontSize: 12, color: '#444', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>Recommended focus</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            {FOCUS_ITEMS.map((item, i) => (
+              <button key={i} onClick={() => send(item.prompt)} style={{
+                display: 'flex', alignItems: 'center', gap: 14,
+                background: 'transparent', border: '1px solid #1a1a1a',
+                borderRadius: 10, padding: '12px 14px',
+                cursor: 'pointer', textAlign: 'left', width: '100%',
+                transition: 'all 0.15s',
+              }}
+                onMouseEnter={e => { e.currentTarget.style.background = '#111'; e.currentTarget.style.borderColor = '#C9973A33'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = '#1a1a1a'; }}
+              >
+                <div style={{ width: 36, height: 36, borderRadius: 8, background: '#111', border: '1px solid #222', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0 }}>{item.icon}</div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: '#ccc', marginBottom: 2 }}>{item.title}</div>
+                  <div style={{ fontSize: 12, color: '#555', lineHeight: 1.4 }}>{item.desc}</div>
+                </div>
+                <div style={{ color: '#333', fontSize: 16, flexShrink: 0 }}>→</div>
+              </button>
+            ))}
+          </div>
         </div>
       )}
 
