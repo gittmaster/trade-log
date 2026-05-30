@@ -36,7 +36,7 @@ const FOCUS_ITEMS = [
   {
     icon: '↗',
     title: 'Review your weekly performance',
-    desc: 'Spot what's working and where the slippage is — your weekly snapshot is ready.',
+    desc: "Spot what's working and where the slippage is — your weekly snapshot is ready.",
     prompt: 'Give me a full weekly performance review. Include: total trades, win rate, net P&L, best and worst trade, which session performed best, and the single biggest mistake I made this week. Be specific with numbers.',
   },
   {
