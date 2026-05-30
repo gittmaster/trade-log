@@ -66,6 +66,126 @@ function fmtMonth(iso) {
 }
 
 
+
+// ─── TOS Day Side Panel ────────────────────────────────────────────────────────
+function TOSDayPanel({ day, month, year, items, onClose }) {
+  const dow = new Date(year, month, day).toLocaleDateString('en-US', { weekday: 'long' });
+  const net = items.reduce((s, t) => s + t.pnl, 0);
+  const wins = items.filter(t => t.pnl > 0).length;
+  const wr = items.length ? Math.round(wins / items.length * 100) : 0;
+  const fmt = v => (v >= 0 ? '+$' : '-$') + Math.abs(Math.round(v)).toLocaleString();
+  const canvasRef = useRef(null);
+  const overlayRef = useRef(null);
+
+  useEffect(() => {
+    const handler = (e) => { if (overlayRef.current && e.target === overlayRef.current) onClose(); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [onClose]);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || !items.length) return;
+    const sorted = [...items].sort((a,b) => new Date(a.entry_dt) - new Date(b.entry_dt));
+    const points = [0];
+    let running = 0;
+    sorted.forEach(t => { running += t.pnl; points.push(running); });
+    const W = canvas.width, H = canvas.height;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0,0,W,H);
+    const minV = Math.min(...points, 0), maxV = Math.max(...points, 0);
+    const range = maxV - minV || 1;
+    const px = i => (i / (points.length - 1)) * (W - 20) + 10;
+    const py = v => H - 20 - ((v - minV) / range) * (H - 30);
+    ctx.strokeStyle = 'rgba(255,255,255,0.08)'; ctx.setLineDash([3,3]); ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(10, py(0)); ctx.lineTo(W-10, py(0)); ctx.stroke(); ctx.setLineDash([]);
+    const grad = ctx.createLinearGradient(0,0,0,H);
+    grad.addColorStop(0, net >= 0 ? 'rgba(29,158,117,0.35)' : 'rgba(226,75,74,0.35)');
+    grad.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.beginPath(); ctx.moveTo(px(0), py(0));
+    points.forEach((v,i) => ctx.lineTo(px(i), py(v)));
+    ctx.lineTo(px(points.length-1), py(0)); ctx.closePath();
+    ctx.fillStyle = grad; ctx.fill();
+    ctx.strokeStyle = net >= 0 ? '#1D9E75' : '#E24B4A'; ctx.lineWidth = 2; ctx.lineJoin = 'round';
+    ctx.beginPath(); points.forEach((v,i) => i===0 ? ctx.moveTo(px(i),py(v)) : ctx.lineTo(px(i),py(v))); ctx.stroke();
+  }, [items, net]);
+
+  return (
+    <div ref={overlayRef} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 2000, display: 'flex', alignItems: 'flex-start', justifyContent: 'flex-end' }}>
+      <div style={{ width: 720, height: '100vh', background: '#111', borderLeft: '1px solid #2a2a2a', display: 'flex', flexDirection: 'column', overflowY: 'auto', animation: 'slideIn 0.2s ease' }}>
+        <style>{`@keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }`}</style>
+
+        {/* Header */}
+        <div style={{ padding: '16px 20px', borderBottom: '1px solid #1e1e1e', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+          <div>
+            <div style={{ fontSize: 16, fontWeight: 700, color: '#fff' }}>{dow}, {MONTH_NAMES_CAL[month]} {day}, {year}</div>
+            <div style={{ fontSize: 13, color: net >= 0 ? '#1D9E75' : '#E24B4A', fontWeight: 700, marginTop: 2 }}>Net P&L {fmt(net)}</div>
+          </div>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#666', fontSize: 22, cursor: 'pointer' }}>×</button>
+        </div>
+
+        {/* Chart + stats */}
+        <div style={{ display: 'flex', borderBottom: '1px solid #1e1e1e', flexShrink: 0 }}>
+          <div style={{ flex: 1, padding: '16px' }}>
+            <canvas ref={canvasRef} width={380} height={120} style={{ width: '100%', height: 120 }} />
+          </div>
+          <div style={{ width: 260, padding: '16px 20px', borderLeft: '1px solid #1e1e1e', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 20px' }}>
+            {[
+              { label: 'Total Trades', value: items.length },
+              { label: 'Net P&L', value: fmt(net), color: net >= 0 ? '#1D9E75' : '#E24B4A' },
+              { label: 'Win Rate', value: wr + '%', color: wr >= 50 ? '#1D9E75' : '#E24B4A' },
+              { label: 'Winners / Losers', value: `${wins} / ${items.length - wins}` },
+              { label: 'Avg Winner', value: wins ? fmt(items.filter(t=>t.pnl>0).reduce((s,t)=>s+t.pnl,0)/wins) : '—', color: '#1D9E75' },
+              { label: 'Avg Loser', value: (items.length-wins) ? fmt(items.filter(t=>t.pnl<0).reduce((s,t)=>s+t.pnl,0)/(items.length-wins)) : '—', color: '#E24B4A' },
+            ].map(({ label, value, color }) => (
+              <div key={label}>
+                <div style={{ fontSize: 10, color: '#555', marginBottom: 3 }}>{label}</div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: color || '#fff' }}>{value}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Trade table */}
+        <div style={{ flex: 1, overflowY: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+            <thead>
+              <tr style={{ borderBottom: '1px solid #1e1e1e' }}>
+                {['Time','Acct','Symbol','Dir','Entry','Exit','P&L','Hold','Stop','Checkpoints'].map(h => (
+                  <th key={h} style={{ padding: '8px 12px', textAlign: 'left', color: '#444', fontWeight: 500, fontSize: 10, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {[...items].sort((a,b) => new Date(a.entry_dt) - new Date(b.entry_dt)).map((t, i) => {
+                const entryTime = t.entry_dt ? new Date(t.entry_dt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }) : '—';
+                const holdStr = t.duration_hrs > 0 ? (t.duration_hrs < 1 ? Math.round(t.duration_hrs * 60) + 'm' : (Math.round(t.duration_hrs * 10)/10) + 'h') : '—';
+                const cpCount = t.checkpoints?.length || 0;
+                return (
+                  <tr key={i} style={{ borderBottom: '1px solid #181818' }}
+                    onMouseEnter={e => e.currentTarget.style.background = '#1a1a1a'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                    <td style={{ padding: '10px 12px', color: '#888' }}>{entryTime}</td>
+                    <td style={{ padding: '10px 12px' }}><span style={{ background: '#1a2535', color: '#85B7EB', borderRadius: 4, padding: '2px 7px', fontSize: 11, fontWeight: 700 }}>{t.account}</span></td>
+                    <td style={{ padding: '10px 12px', color: '#ccc', fontWeight: 700 }}>{t.symbol}</td>
+                    <td style={{ padding: '10px 12px', color: t.direction === 'long' ? '#1D9E75' : '#E24B4A', fontWeight: 700, textTransform: 'uppercase', fontSize: 11 }}>{t.direction}</td>
+                    <td style={{ padding: '10px 12px', color: '#ccc', fontFamily: 'monospace' }}>{t.entry}</td>
+                    <td style={{ padding: '10px 12px', color: '#ccc', fontFamily: 'monospace' }}>{t.exit || '—'}</td>
+                    <td style={{ padding: '10px 12px', fontWeight: 700, color: t.pnl > 0 ? '#1D9E75' : '#E24B4A', fontFamily: 'monospace' }}>{t.pnl >= 0 ? '+$' : '-$'}{Math.abs(Math.round(t.pnl)).toLocaleString()}</td>
+                    <td style={{ padding: '10px 12px', color: '#666' }}>{holdStr}</td>
+                    <td style={{ padding: '10px 12px', color: '#555', fontFamily: 'monospace' }}>{t.tos_stop || '—'}</td>
+                    <td style={{ padding: '10px 12px', color: '#555' }}>{cpCount > 0 ? `${cpCount} settle` : '—'}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── TOS Daily Calendar ────────────────────────────────────────────────────────
 const MONTH_NAMES_CAL = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 const DOW_SHORT = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
@@ -214,47 +334,14 @@ function TOSCalendar({ trips }) {
         </div>
       </div>
 
-      {/* Day detail panel */}
-      {selectedDay && dayMap[selectedDay] && (() => {
-        const d = dayMap[selectedDay];
-        const dow = new Date(navYear, navMonth, selectedDay).toLocaleDateString('en-US', { weekday: 'long' });
-        return (
-          <div style={{ marginTop: 14, background: '#0d0d0d', border: '1px solid #2a2a2a', borderRadius: 8, padding: '12px 16px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-              <div>
-                <span style={{ fontSize: 14, fontWeight: 700, color: '#ccc' }}>{dow}, {MONTH_NAMES_CAL[navMonth]} {selectedDay}</span>
-                <span style={{ marginLeft: 10, fontSize: 14, fontWeight: 700, color: d.pnl >= 0 ? '#1D9E75' : '#E24B4A' }}>{fmt(d.pnl)}</span>
-              </div>
-              <button onClick={() => setSelectedDay(null)} style={{ background: 'none', border: 'none', color: '#555', fontSize: 18, cursor: 'pointer' }}>×</button>
-            </div>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
-              <thead>
-                <tr>{['Time','Acct','Symbol','Dir','Entry','Exit','P&L','Hold'].map(h => (
-                  <th key={h} style={{ padding: '5px 8px', textAlign: 'left', color: '#444', fontSize: 10, textTransform: 'uppercase', borderBottom: '1px solid #1e1e1e' }}>{h}</th>
-                ))}</tr>
-              </thead>
-              <tbody>
-                {d.items.sort((a,b) => new Date(a.entry_dt) - new Date(b.entry_dt)).map((t, i) => {
-                  const entryTime = t.entry_dt ? new Date(t.entry_dt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }) : '—';
-                  const holdStr = t.duration_hrs > 0 ? (t.duration_hrs < 1 ? Math.round(t.duration_hrs * 60) + 'm' : Math.round(t.duration_hrs * 10) / 10 + 'h') : '—';
-                  return (
-                    <tr key={i} style={{ borderBottom: '1px solid #181818' }}>
-                      <td style={{ padding: '7px 8px', color: '#666' }}>{entryTime}</td>
-                      <td style={{ padding: '7px 8px' }}><span style={{ background: '#1a2535', color: '#85B7EB', borderRadius: 4, padding: '1px 6px', fontSize: 11, fontWeight: 700 }}>{t.account}</span></td>
-                      <td style={{ padding: '7px 8px', color: '#ccc', fontWeight: 700 }}>{t.symbol}</td>
-                      <td style={{ padding: '7px 8px', color: t.direction === 'long' ? '#1D9E75' : '#E24B4A', fontWeight: 700, textTransform: 'uppercase', fontSize: 11 }}>{t.direction}</td>
-                      <td style={{ padding: '7px 8px', color: '#aaa', fontFamily: 'monospace' }}>{t.entry}</td>
-                      <td style={{ padding: '7px 8px', color: '#aaa', fontFamily: 'monospace' }}>{t.exit || '—'}</td>
-                      <td style={{ padding: '7px 8px', fontWeight: 700, color: t.pnl > 0 ? '#1D9E75' : '#E24B4A', fontFamily: 'monospace' }}>{t.pnl >= 0 ? '+$' : '-$'}{Math.abs(Math.round(t.pnl)).toLocaleString()}</td>
-                      <td style={{ padding: '7px 8px', color: '#555' }}>{holdStr}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        );
-      })()}
+      {/* Day side panel */}
+      {selectedDay && dayMap[selectedDay] && (
+        <TOSDayPanel
+          day={selectedDay} month={navMonth} year={navYear}
+          items={dayMap[selectedDay].items}
+          onClose={() => setSelectedDay(null)}
+        />
+      )}
     </div>
   );
 }
@@ -582,6 +669,7 @@ IMPORTANT FORMATTING RULES:
 - Use **bold** for key metrics and section headers.
 - Use bullet points (- item) for lists.
 - Never apologize for not being able to show tables — always use pipe-format markdown tables.
+- Always end your response with a follow-up suggestion (e.g. 'Want me to break this down by account?' or 'I can turn this into a checklist if you'd like.').
 
 ${tosContext}`;
 
@@ -597,7 +685,7 @@ ${tosContext}`;
         },
         body: JSON.stringify({
           model: 'claude-sonnet-4-20250514',
-          max_tokens: 1000,
+          max_tokens: 2000,
           system: systemPrompt,
           messages: [...history, userMsg],
         }),
