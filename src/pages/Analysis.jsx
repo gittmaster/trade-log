@@ -952,7 +952,7 @@ ${tosContext}`;
 
   return (
     <div style={{ padding: '16px 20px' }}>
-      {/* Header + Tab bar */
+      {/* Header + Tab bar */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
         <div>
           <div style={{ fontSize: 18, fontWeight: 500, color: '#ccc', marginBottom: 2 }}>Analysis</div>
