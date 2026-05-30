@@ -151,9 +151,9 @@ function TOSDayPanel({ day, month, year, items, onClose, onStrategyUpdate }) {
   }, [items, net]);
 
   return (
-    <div ref={overlayRef} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 2000, display: 'flex', alignItems: 'flex-start', justifyContent: 'flex-end' }}>
-      <div style={{ width: 720, height: '100vh', background: '#111', borderLeft: '1px solid #2a2a2a', display: 'flex', flexDirection: 'column', overflowY: 'auto', animation: 'slideIn 0.2s ease' }}>
-        <style>{`@keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }`}</style>
+    <div ref={overlayRef} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+      <div style={{ width: '90vw', maxWidth: 860, maxHeight: '90vh', background: '#111', border: '1px solid #2a2a2a', borderRadius: 14, display: 'flex', flexDirection: 'column', overflowY: 'auto', animation: 'fadeUp 0.2s ease', boxShadow: '0 24px 80px rgba(0,0,0,0.8)' }}>
+        <style>{`@keyframes fadeUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }`}</style>
 
         {/* Header */}
         <div style={{ padding: '16px 20px', borderBottom: '1px solid #1e1e1e', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
@@ -161,7 +161,7 @@ function TOSDayPanel({ day, month, year, items, onClose, onStrategyUpdate }) {
             <div style={{ fontSize: 16, fontWeight: 700, color: '#fff' }}>{dow}, {MONTH_NAMES_CAL[month]} {day}, {year}</div>
             <div style={{ fontSize: 13, color: net >= 0 ? '#1D9E75' : '#E24B4A', fontWeight: 700, marginTop: 2 }}>Net P&L {fmt(net)}</div>
           </div>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#666', fontSize: 22, cursor: 'pointer' }}>×</button>
+          <button onClick={onClose} style={{ background: 'none', border: '1px solid #2a2a2a', borderRadius: 8, color: '#888', fontSize: 13, cursor: 'pointer', padding: '6px 14px' }}>✕ Close</button>
         </div>
 
         {/* Chart + stats */}
