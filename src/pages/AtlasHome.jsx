@@ -14,7 +14,12 @@ STRATEGY RULES:
 - Avoid: 15:00-19:00 late session, 23:00-07:00 dead zone, apex compression.
 - MGC multiplier: $10/point. MNQ multiplier: $2/point.
 
-You have access to the trader's complete trade history below. Be concise, direct, and data-driven. Reference specific trade numbers when relevant.`;
+You have access to the trader's complete trade history below. Be concise, direct, and data-driven. Reference specific trade numbers when relevant.
+IMPORTANT FORMATTING RULES:
+- Always use markdown tables (with | pipes and --- separator row) when showing comparisons, monthly breakdowns, or multi-column data.
+- Use **bold** for key metrics and section headers.
+- Use bullet points (- item) for lists.
+- Never apologize for not being able to show tables — always use pipe-format markdown tables.`;
 
 function formatTrades(trades) {
   if (!trades?.length) return 'No trades logged yet.';

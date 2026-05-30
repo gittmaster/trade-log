@@ -259,6 +259,53 @@ function TOSCalendar({ trips }) {
   );
 }
 
+
+// ─── Markdown renderer ────────────────────────────────────────────────────────
+function renderMarkdown(text) {
+  if (!text) return null;
+  const lines = text.split('\n');
+  const elements = [];
+  let i = 0;
+  while (i < lines.length) {
+    const line = lines[i];
+    if (line.includes('|') && i + 1 < lines.length && lines[i+1].match(/^[|\s\-:]+$/)) {
+      const tableLines = [line];
+      i += 2;
+      while (i < lines.length && lines[i].includes('|')) { tableLines.push(lines[i]); i++; }
+      const headers = tableLines[0].split('|').map(h => h.trim()).filter(Boolean);
+      const rows = tableLines.slice(1).map(r => r.split('|').map(c => c.trim()).filter(Boolean));
+      elements.push(
+        <div key={i} style={{ overflowX: 'auto', margin: '8px 0' }}>
+          <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: 12 }}>
+            <thead><tr>{headers.map((h, hi) => (
+              <th key={hi} style={{ padding: '6px 10px', textAlign: 'left', borderBottom: '1px solid #333', color: '#ccc', fontWeight: 600, whiteSpace: 'nowrap', background: '#1a1a1a' }}>{h}</th>
+            ))}</tr></thead>
+            <tbody>{rows.map((row, ri) => (
+              <tr key={ri} style={{ borderBottom: '1px solid #222' }}>
+                {row.map((cell, ci) => {
+                  const isNeg = /^-\$/.test(cell); const isPos = /^\+?\$[0-9]/.test(cell) && !isNeg;
+                  return <td key={ci} style={{ padding: '6px 10px', color: isPos ? '#1D9E75' : isNeg ? '#E24B4A' : '#bbb', whiteSpace: 'nowrap' }}>{cell}</td>;
+                })}
+              </tr>
+            ))}</tbody>
+          </table>
+        </div>
+      );
+      continue;
+    }
+    if (line.match(/^#{1,3}\s/)) { elements.push(<div key={i} style={{ fontWeight: 700, color: '#ccc', marginTop: 10, marginBottom: 4, fontSize: 13 }}>{line.replace(/^#{1,3}\s/, '')}</div>); i++; continue; }
+    if (line.match(/^[\-\*]\s/)) { elements.push(<div key={i} style={{ paddingLeft: 12, color: '#bbb', fontSize: 13, lineHeight: 1.6 }}>• {inlineFmt(line.slice(2))}</div>); i++; continue; }
+    if (!line.trim()) { elements.push(<div key={i} style={{ height: 6 }} />); i++; continue; }
+    elements.push(<div key={i} style={{ color: '#bbb', fontSize: 13, lineHeight: 1.6 }}>{inlineFmt(line)}</div>);
+    i++;
+  }
+  return <div>{elements}</div>;
+}
+function inlineFmt(text) {
+  const parts = text.split(/\*\*(.*?)\*\*/g);
+  return parts.map((p, i) => i % 2 === 1 ? <strong key={i} style={{ color: '#ccc' }}>{p}</strong> : p);
+}
+
 export default function Analysis({ filteredTrades, dateLabel, acctLabel, dateRange, account, tosData, setTosData }) {
   const [savedStatements, setSavedStatements] = useState([]);  // [{id, account, month, data}]
   const [loadingDB, setLoadingDB]             = useState(true);
@@ -529,6 +576,12 @@ You have access to the user's ThinkOrSwim (TOS) broker account statement data sh
 Answer questions about their performance, equity curve, commissions, symbols, and patterns.
 Be concise, specific, and use the actual numbers from the data. Format dollar amounts with $ signs.
 If asked something the data doesn't cover, say so clearly.
+
+IMPORTANT FORMATTING RULES:
+- Always use markdown tables (with | pipes and --- separator row) when showing comparisons, monthly breakdowns, or multi-column data.
+- Use **bold** for key metrics and section headers.
+- Use bullet points (- item) for lists.
+- Never apologize for not being able to show tables — always use pipe-format markdown tables.
 
 ${tosContext}`;
 
@@ -930,9 +983,9 @@ ${tosContext}`;
                   background: msg.role === 'user' ? '#185FA5' : '#131313',
                   border: msg.role === 'user' ? 'none' : '1px solid #222',
                   fontSize: 13, color: '#ddd', lineHeight: 1.5,
-                  whiteSpace: 'pre-wrap',
+                  whiteSpace: msg.role === 'user' ? 'pre-wrap' : 'normal',
                 }}>
-                  {msg.content}
+                  {msg.role === 'assistant' ? renderMarkdown(msg.content) : msg.content}
                 </div>
               </div>
             ))}

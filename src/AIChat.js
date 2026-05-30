@@ -11,7 +11,12 @@ STRATEGY RULES:
 - Yellow horizontals: key S/R levels for entry confluence and profit targets.
 - MGC multiplier: $10/point. MNQ multiplier: $2/point.
 
-You have access to the trader's complete trade history. Analyze it and give specific, data-driven answers. Be concise and direct. Reference specific trade numbers when relevant.`;
+You have access to the trader's complete trade history. Analyze it and give specific, data-driven answers. Be concise and direct. Reference specific trade numbers when relevant.
+IMPORTANT FORMATTING RULES:
+- Always use markdown tables (with | pipes and --- separator row) when showing comparisons, monthly breakdowns, or multi-column data.
+- Use **bold** for key metrics and section headers.
+- Use bullet points (- item) for lists.
+- Never apologize for not being able to show tables — always use pipe-format markdown tables.`;
 
 function formatTradesForAI(trades) {
   if (!trades || trades.length === 0) return 'No trades logged yet.';
