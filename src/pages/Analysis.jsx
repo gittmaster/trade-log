@@ -68,11 +68,51 @@ function fmtMonth(iso) {
 
 
 // ─── TOS Day Side Panel ────────────────────────────────────────────────────────
-function TOSDayPanel({ day, month, year, items, onClose }) {
+const STRAT_OPTIONS = [
+  { value: '',                        label: '— unassigned —' },
+  { value: 'strat-aplus-prime',       label: 'A+ Prime' },
+  { value: 'strat-strong-al-weak-sl', label: 'Strong AL / Weak SL' },
+  { value: 'strat-weak-al-strong-sl', label: 'Weak AL / Strong SL' },
+  { value: 'strat-both-weak',         label: 'Both Weak' },
+];
+
+function TOSDayPanel({ day, month, year, items, onClose, onStrategyUpdate }) {
   const dow = new Date(year, month, day).toLocaleDateString('en-US', { weekday: 'long' });
   const net = items.reduce((s, t) => s + t.pnl, 0);
   const wins = items.filter(t => t.pnl > 0).length;
   const wr = items.length ? Math.round(wins / items.length * 100) : 0;
+  const tripKey = (t) => `${t.account}|${t.symbol}|${t.direction}|${t.entry}|${new Date(t.entry_dt).toISOString().slice(0,16)}`;
+  const [stratMap, setStratMap] = useState(() => {
+    const m = {};
+    items.forEach(t => { if (t.strategy_id) m[tripKey(t)] = t.strategy_id; });
+    return m;
+  });
+  const [mfeMap, setMfeMap] = useState(() => {
+    const m = {};
+    items.forEach(t => { if (t.mfe_price != null) m[tripKey(t)] = String(t.mfe_price); });
+    return m;
+  });
+  const [maeMap, setMaeMap] = useState(() => {
+    const m = {};
+    items.forEach(t => { if (t.mae_price != null) m[tripKey(t)] = String(t.mae_price); });
+    return m;
+  });
+  const [saving, setSaving] = useState({});
+  const handleStrategyChange = async (t, stratId) => {
+    const key = tripKey(t);
+    setStratMap(prev => ({ ...prev, [key]: stratId }));
+    setSaving(prev => ({ ...prev, [key]: true }));
+    if (onStrategyUpdate) await onStrategyUpdate(t, stratId);
+    setSaving(prev => ({ ...prev, [key]: false }));
+  };
+  const handleMfeMaeSave = async (t) => {
+    const key = tripKey(t);
+    const mfe = parseFloat(mfeMap[key]);
+    const mae = parseFloat(maeMap[key]);
+    setSaving(prev => ({ ...prev, [key + '_mm']: true }));
+    if (onStrategyUpdate) await onStrategyUpdate(t, stratMap[key] || t.strategy_id || '', mfe || null, mae || null);
+    setSaving(prev => ({ ...prev, [key + '_mm']: false }));
+  };
   const fmt = v => (v >= 0 ? '+$' : '-$') + Math.abs(Math.round(v)).toLocaleString();
   const canvasRef = useRef(null);
   const overlayRef = useRef(null);
@@ -151,7 +191,7 @@ function TOSDayPanel({ day, month, year, items, onClose }) {
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
             <thead>
               <tr style={{ borderBottom: '1px solid #1e1e1e' }}>
-                {['Time','Acct','Symbol','Dir','Entry','Exit','P&L','Hold','Stop','Checkpoints'].map(h => (
+                {['Time','Acct','Symbol','Dir','Entry','Exit','P&L','Hold','MFE','MAE','Strategy'].map(h => (
                   <th key={h} style={{ padding: '8px 12px', textAlign: 'left', color: '#444', fontWeight: 500, fontSize: 10, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{h}</th>
                 ))}
               </tr>
@@ -173,8 +213,30 @@ function TOSDayPanel({ day, month, year, items, onClose }) {
                     <td style={{ padding: '10px 12px', color: '#ccc', fontFamily: 'monospace' }}>{t.exit || '—'}</td>
                     <td style={{ padding: '10px 12px', fontWeight: 700, color: t.pnl > 0 ? '#1D9E75' : '#E24B4A', fontFamily: 'monospace' }}>{t.pnl >= 0 ? '+$' : '-$'}{Math.abs(Math.round(t.pnl)).toLocaleString()}</td>
                     <td style={{ padding: '10px 12px', color: '#666' }}>{holdStr}</td>
-                    <td style={{ padding: '10px 12px', color: '#555', fontFamily: 'monospace' }}>{t.tos_stop || '—'}</td>
-                    <td style={{ padding: '10px 12px', color: '#555' }}>{cpCount > 0 ? `${cpCount} settle` : '—'}</td>
+                    <td style={{ padding: '6px 8px' }}>
+                      <input type="number" step="0.1"
+                        value={mfeMap[tripKey(t)] || ''}
+                        onChange={e => setMfeMap(prev => ({ ...prev, [tripKey(t)]: e.target.value }))}
+                        onBlur={() => handleMfeMaeSave(t)}
+                        placeholder="e.g. 4720"
+                        style={{ width: 80, background: '#0a1a0a', border: '1px solid #1e3a1e', borderRadius: 4, color: '#22c55e', fontSize: 11, padding: '3px 6px', fontFamily: 'monospace' }} />
+                      {saving[tripKey(t) + '_mm'] && <div style={{ fontSize: 9, color: '#555' }}>saving…</div>}
+                    </td>
+                    <td style={{ padding: '6px 8px' }}>
+                      <input type="number" step="0.1"
+                        value={maeMap[tripKey(t)] || ''}
+                        onChange={e => setMaeMap(prev => ({ ...prev, [tripKey(t)]: e.target.value }))}
+                        onBlur={() => handleMfeMaeSave(t)}
+                        placeholder="e.g. 4590"
+                        style={{ width: 80, background: '#1a0a0a', border: '1px solid #3a1e1e', borderRadius: 4, color: '#ef4444', fontSize: 11, padding: '3px 6px', fontFamily: 'monospace' }} />
+                    </td>
+                    <td style={{ padding: '8px 12px', minWidth: 140 }}>
+                      <select value={stratMap[tripKey(t)] || ''} onChange={e => handleStrategyChange(t, e.target.value)}
+                        style={{ background: '#111', border: '1px solid #2a2a2a', borderRadius: 5, color: stratMap[tripKey(t)] ? '#85B7EB' : '#444', fontSize: 11, padding: '4px 6px', cursor: 'pointer', width: '100%' }}>
+                        {STRAT_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                      </select>
+                      {saving[tripKey(t)] && <div style={{ fontSize: 9, color: '#555', marginTop: 2 }}>saving…</div>}
+                    </td>
                   </tr>
                 );
               })}
@@ -190,7 +252,7 @@ function TOSDayPanel({ day, month, year, items, onClose }) {
 const MONTH_NAMES_CAL = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 const DOW_SHORT = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 
-function TOSCalendar({ trips }) {
+function TOSCalendar({ trips, onStrategyUpdate }) {
   const now = new Date();
   const [navYear,  setNavYear]  = useState(now.getFullYear());
   const [navMonth, setNavMonth] = useState(now.getMonth());
@@ -340,6 +402,7 @@ function TOSCalendar({ trips }) {
           day={selectedDay} month={navMonth} year={navYear}
           items={dayMap[selectedDay].items}
           onClose={() => setSelectedDay(null)}
+          onStrategyUpdate={onStrategyUpdate}
         />
       )}
     </div>
@@ -1028,7 +1091,7 @@ ${tosContext}`;
                   Daily P&L Calendar — TOS Broker Data
                 </div>
                 <div style={{ fontSize: 11, color: '#444', marginBottom: 8 }}>Click any day to see trade details</div>
-                <TOSCalendar trips={filteredTrips} />
+                <TOSCalendar trips={filteredTrips} onStrategyUpdate={handleTOSStrategyUpdate} />
               </div>
             </>
           )}
