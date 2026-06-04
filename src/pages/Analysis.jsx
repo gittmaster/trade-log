@@ -540,12 +540,24 @@ export default function Analysis({ filteredTrades, dateLabel, acctLabel, dateRan
       .sort((a, b) => new Date(a[0]) - new Date(b[0]))
       .map(([date, balance]) => ({ date, balance, account: parsed.account }));
 
-    // Derive month from first trip date
+    // Derive month from statement period end date (most accurate)
     let month = 'unknown';
-    if (taggedTrips[0]?.entry_dt) {
-      const d = new Date(taggedTrips[0].entry_dt);
-      month = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    const periodEnd = parsed.period?.split('–')[1]?.trim() || parsed.period?.split('-').pop()?.trim();
+    if (periodEnd) {
+      try {
+        const parts = periodEnd.split('/');
+        const yr = parts[2].length === 2 ? '20' + parts[2] : parts[2];
+        const d = new Date(`${yr}-${parts[0].padStart(2,'0')}-${parts[1].padStart(2,'0')}`);
+        if (!isNaN(d)) month = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      } catch {}
     }
+    // Fallback to last trip date if period not available
+    if (month === 'unknown' && taggedTrips.length) {
+      const lastTrip = taggedTrips[taggedTrips.length - 1];
+      const d = new Date(lastTrip.entry_dt);
+      if (!isNaN(d)) month = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    }
+    console.log('📅 Statement period:', parsed.period, '→ month:', month);
 
     const payload = {
       account: parsed.account,
