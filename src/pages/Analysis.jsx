@@ -554,17 +554,23 @@ export default function Analysis({ filteredTrades, dateLabel, acctLabel, dateRan
     };
 
     setSaveMsg('Saving…');
+    console.log('💾 Saving payload:', payload.account, payload.month, 'trips:', payload.data.trips.length);
 
     // Delete existing row for this account+month, then insert fresh
-    await supabase
+    const { error: delErr } = await supabase
       .from('tos_statements')
       .delete()
       .eq('account', payload.account)
       .eq('month', payload.month);
+    if (delErr) console.warn('Delete error (ok if no existing row):', delErr.message);
 
-    const { error } = await supabase
+    const { data: insertedRow, error } = await supabase
       .from('tos_statements')
-      .insert(payload);
+      .insert(payload)
+      .select()
+      .single();
+
+    console.log('Insert result:', insertedRow ? '✅ row id=' + insertedRow.id : '❌ no row', error?.message || '');
 
     if (error) {
       setSaveMsg('❌ Save failed: ' + error.message);
