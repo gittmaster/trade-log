@@ -284,8 +284,9 @@ export default function TOSUploader({ trades, onComplete }) {
 
       {/* Drop zone — always visible, accepts multiple files */}
       <div
-        onDragOver={e => { e.preventDefault(); setDragging(true); }}
-        onDragLeave={() => setDragging(false)}
+        onDragOver={e => { e.preventDefault(); e.stopPropagation(); setDragging(true); }}
+        onDragEnter={e => { e.preventDefault(); setDragging(true); }}
+        onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget)) setDragging(false); }}
         onDrop={onDrop}
         onClick={() => document.getElementById('tos-multi-input').click()}
         style={{
