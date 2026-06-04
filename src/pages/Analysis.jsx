@@ -505,7 +505,12 @@ export default function Analysis({ filteredTrades, dateLabel, acctLabel, dateRan
 
   // ─── Merge multiple saved statement rows into one tosData object ────────────
   function mergeStatements(rows) {
-    const allTrips    = rows.flatMap(r => r.data?.trips    || []);
+    const seen = new Set();
+    const allTrips = rows.flatMap(r => r.data?.trips || []).filter(t => {
+      const key = `${t.account}|${t.symbol}|${t.direction}|${t.entry}|${String(t.entry_dt).slice(0,16)}`;
+      if (seen.has(key)) return false;
+      seen.add(key); return true;
+    });
     const allEquity   = rows.flatMap(r => r.data?.equityCurve || [])
       .sort((a, b) => new Date(a.date) - new Date(b.date));
     const symMap = {};
@@ -605,8 +610,14 @@ export default function Analysis({ filteredTrades, dateLabel, acctLabel, dateRan
     // Also update local tosData immediately
     setTosData(prev => {
       const prevTrips  = prev?.trips || [];
-      const otherTrips = prevTrips.filter(t => t.account !== parsed.account);
-      const allTrips   = [...otherTrips, ...taggedTrips];
+      // Remove trips for same account AND same month to prevent duplicates on re-upload
+      const otherTrips = prevTrips.filter(t => {
+        if (t.account !== parsed.account) return true;
+        const d = new Date(t.entry_dt);
+        const tm = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+        return tm !== month;
+      });
+      const allTrips = [...otherTrips, ...taggedTrips];
       const prevEquity = (prev?.equityCurve || []).filter(e => e.account !== parsed.account);
       const allEquity  = [...prevEquity, ...equityCurve].sort((a,b) => new Date(a.date) - new Date(b.date));
       const symMap = {};
