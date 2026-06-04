@@ -528,7 +528,12 @@ export default function Analysis({ filteredTrades, dateLabel, acctLabel, dateRan
     const trips = parsed.roundTrips || [];
     if (!trips.length) return;
 
-    const taggedTrips = trips.map(t => ({ ...t, account: parsed.account }));
+    const taggedTrips = trips.map(t => ({
+      ...t,
+      account:  parsed.account,
+      entry_dt: t.entry_dt instanceof Date ? t.entry_dt.toISOString() : t.entry_dt,
+      exit_dt:  t.exit_dt  instanceof Date ? t.exit_dt.toISOString()  : t.exit_dt,
+    }));
     const eqMap = {};
     (parsed.cashBalances || []).forEach(b => { eqMap[b.date] = b.balance; });
     const equityCurve = Object.entries(eqMap)
@@ -550,13 +555,20 @@ export default function Analysis({ filteredTrades, dateLabel, acctLabel, dateRan
 
     setSaveMsg('Saving…');
 
-    // Upsert — one row per account+month
+    // Delete existing row for this account+month, then insert fresh
+    await supabase
+      .from('tos_statements')
+      .delete()
+      .eq('account', payload.account)
+      .eq('month', payload.month);
+
     const { error } = await supabase
       .from('tos_statements')
-      .upsert(payload, { onConflict: 'account,month' });
+      .insert(payload);
 
     if (error) {
       setSaveMsg('❌ Save failed: ' + error.message);
+      console.error('Supabase save error:', error);
     } else {
       setSaveMsg('✅ Saved to Supabase');
       // Refresh saved list
@@ -570,7 +582,7 @@ export default function Analysis({ filteredTrades, dateLabel, acctLabel, dateRan
         setTosData(merged);
       }
     }
-    setTimeout(() => setSaveMsg(''), 3000);
+    // clear msg after delay
 
     // Also update local tosData immediately
     setTosData(prev => {
