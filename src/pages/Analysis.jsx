@@ -780,14 +780,21 @@ ${tosContext}`;
 
   const filteredEquity = useMemo(() => {
     if (!tosData?.equityCurve) return [];
+    const parseEqDate = (s) => {
+      try {
+        if (!s) return null;
+        if (s.includes('-')) return new Date(s); // ISO format
+        const parts = s.split('/');
+        if (parts.length < 3) return null;
+        const yr = parts[2].length === 2 ? '20' + parts[2] : parts[2];
+        return new Date(`${yr}-${parts[0].padStart(2,'0')}-${parts[1].padStart(2,'0')}`);
+      } catch { return null; }
+    };
     const inRange = (e) => {
       if (!dateRange || !e.date) return true;
-      try {
-        const parts = e.date.split('/');
-        const yr = parts[2].length === 2 ? '20' + parts[2] : parts[2];
-        const d = new Date(`${yr}-${parts[0].padStart(2,'0')}-${parts[1].padStart(2,'0')}`);
-        return d >= dateRange.start && d <= dateRange.end;
-      } catch { return true; }
+      const d = parseEqDate(e.date);
+      if (!d || isNaN(d)) return true;
+      return d >= dateRange.start && d <= dateRange.end;
     };
     const rows = tosData.equityCurve.filter(e => {
       if (account && account !== 'both') {
@@ -805,10 +812,7 @@ ${tosContext}`;
       });
       return Object.values(byDate)
         .sort((a, b) => {
-          try {
-            const p = (s) => { const pts = s.split('/'); const yr = pts[2].length===2?'20'+pts[2]:pts[2]; return new Date(`${yr}-${pts[0].padStart(2,'0')}-${pts[1].padStart(2,'0')}`); };
-            return p(a.date) - p(b.date);
-          } catch { return 0; }
+          return (parseEqDate(a.date) || 0) - (parseEqDate(b.date) || 0);
         });
     }
     return rows;
