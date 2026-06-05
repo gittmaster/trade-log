@@ -151,9 +151,9 @@ function TOSDayPanel({ day, month, year, items, onClose, onStrategyUpdate }) {
   }, [items, net]);
 
   return (
-    <div ref={overlayRef} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-      <div style={{ width: '90vw', maxWidth: 860, maxHeight: '90vh', background: '#111', border: '1px solid #2a2a2a', borderRadius: 14, display: 'flex', flexDirection: 'column', overflowY: 'auto', animation: 'fadeUp 0.2s ease', boxShadow: '0 24px 80px rgba(0,0,0,0.8)' }}>
-        <style>{`@keyframes fadeUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }`}</style>
+    <div ref={overlayRef} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 2000, display: 'flex', alignItems: 'flex-start', justifyContent: 'flex-end' }}>
+      <div style={{ width: 720, height: '100vh', background: '#111', borderLeft: '1px solid #2a2a2a', display: 'flex', flexDirection: 'column', overflowY: 'auto', animation: 'slideIn 0.2s ease' }}>
+        <style>{`@keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }`}</style>
 
         {/* Header */}
         <div style={{ padding: '16px 20px', borderBottom: '1px solid #1e1e1e', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
@@ -161,7 +161,7 @@ function TOSDayPanel({ day, month, year, items, onClose, onStrategyUpdate }) {
             <div style={{ fontSize: 16, fontWeight: 700, color: '#fff' }}>{dow}, {MONTH_NAMES_CAL[month]} {day}, {year}</div>
             <div style={{ fontSize: 13, color: net >= 0 ? '#1D9E75' : '#E24B4A', fontWeight: 700, marginTop: 2 }}>Net P&L {fmt(net)}</div>
           </div>
-          <button onClick={onClose} style={{ background: 'none', border: '1px solid #2a2a2a', borderRadius: 8, color: '#888', fontSize: 13, cursor: 'pointer', padding: '6px 14px' }}>✕ Close</button>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#666', fontSize: 22, cursor: 'pointer' }}>×</button>
         </div>
 
         {/* Chart + stats */}
@@ -505,12 +505,7 @@ export default function Analysis({ filteredTrades, dateLabel, acctLabel, dateRan
 
   // ─── Merge multiple saved statement rows into one tosData object ────────────
   function mergeStatements(rows) {
-    const seen = new Set();
-    const allTrips = rows.flatMap(r => r.data?.trips || []).filter(t => {
-      const key = `${t.account}|${t.symbol}|${t.direction}|${t.entry}|${String(t.entry_dt).slice(0,16)}`;
-      if (seen.has(key)) return false;
-      seen.add(key); return true;
-    });
+    const allTrips    = rows.flatMap(r => r.data?.trips    || []);
     const allEquity   = rows.flatMap(r => r.data?.equityCurve || [])
       .sort((a, b) => new Date(a.date) - new Date(b.date));
     const symMap = {};
@@ -533,36 +528,19 @@ export default function Analysis({ filteredTrades, dateLabel, acctLabel, dateRan
     const trips = parsed.roundTrips || [];
     if (!trips.length) return;
 
-    const taggedTrips = trips.map(t => ({
-      ...t,
-      account:  parsed.account,
-      entry_dt: t.entry_dt instanceof Date ? t.entry_dt.toISOString() : t.entry_dt,
-      exit_dt:  t.exit_dt  instanceof Date ? t.exit_dt.toISOString()  : t.exit_dt,
-    }));
+    const taggedTrips = trips.map(t => ({ ...t, account: parsed.account }));
     const eqMap = {};
     (parsed.cashBalances || []).forEach(b => { eqMap[b.date] = b.balance; });
     const equityCurve = Object.entries(eqMap)
       .sort((a, b) => new Date(a[0]) - new Date(b[0]))
       .map(([date, balance]) => ({ date, balance, account: parsed.account }));
 
-    // Derive month from statement period end date (most accurate)
+    // Derive month from first trip date
     let month = 'unknown';
-    const periodEnd = parsed.period?.split('–')[1]?.trim() || parsed.period?.split('-').pop()?.trim();
-    if (periodEnd) {
-      try {
-        const parts = periodEnd.split('/');
-        const yr = parts[2].length === 2 ? '20' + parts[2] : parts[2];
-        const d = new Date(`${yr}-${parts[0].padStart(2,'0')}-${parts[1].padStart(2,'0')}`);
-        if (!isNaN(d)) month = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-      } catch {}
+    if (taggedTrips[0]?.entry_dt) {
+      const d = new Date(taggedTrips[0].entry_dt);
+      month = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
     }
-    // Fallback to last trip date if period not available
-    if (month === 'unknown' && taggedTrips.length) {
-      const lastTrip = taggedTrips[taggedTrips.length - 1];
-      const d = new Date(lastTrip.entry_dt);
-      if (!isNaN(d)) month = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-    }
-    console.log('📅 Statement period:', parsed.period, '→ month:', month);
 
     const payload = {
       account: parsed.account,
@@ -571,27 +549,14 @@ export default function Analysis({ filteredTrades, dateLabel, acctLabel, dateRan
     };
 
     setSaveMsg('Saving…');
-    console.log('💾 Saving payload:', payload.account, payload.month, 'trips:', payload.data.trips.length);
 
-    // Delete existing row for this account+month, then insert fresh
-    const { error: delErr } = await supabase
+    // Upsert — one row per account+month
+    const { error } = await supabase
       .from('tos_statements')
-      .delete()
-      .eq('account', payload.account)
-      .eq('month', payload.month);
-    if (delErr) console.warn('Delete error (ok if no existing row):', delErr.message);
-
-    const { data: insertedRow, error } = await supabase
-      .from('tos_statements')
-      .insert(payload)
-      .select()
-      .single();
-
-    console.log('Insert result:', insertedRow ? '✅ row id=' + insertedRow.id : '❌ no row', error?.message || '');
+      .upsert(payload, { onConflict: 'account,month' });
 
     if (error) {
       setSaveMsg('❌ Save failed: ' + error.message);
-      console.error('Supabase save error:', error);
     } else {
       setSaveMsg('✅ Saved to Supabase');
       // Refresh saved list
@@ -605,19 +570,13 @@ export default function Analysis({ filteredTrades, dateLabel, acctLabel, dateRan
         setTosData(merged);
       }
     }
-    // clear msg after delay
+    setTimeout(() => setSaveMsg(''), 3000);
 
     // Also update local tosData immediately
     setTosData(prev => {
       const prevTrips  = prev?.trips || [];
-      // Remove trips for same account AND same month to prevent duplicates on re-upload
-      const otherTrips = prevTrips.filter(t => {
-        if (t.account !== parsed.account) return true;
-        const d = new Date(t.entry_dt);
-        const tm = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
-        return tm !== month;
-      });
-      const allTrips = [...otherTrips, ...taggedTrips];
+      const otherTrips = prevTrips.filter(t => t.account !== parsed.account);
+      const allTrips   = [...otherTrips, ...taggedTrips];
       const prevEquity = (prev?.equityCurve || []).filter(e => e.account !== parsed.account);
       const allEquity  = [...prevEquity, ...equityCurve].sort((a,b) => new Date(a.date) - new Date(b.date));
       const symMap = {};
@@ -821,10 +780,7 @@ ${tosContext}`;
 
   const filteredEquity = useMemo(() => {
     if (!tosData?.equityCurve) return [];
-    return tosData.equityCurve.filter(e => {
-      if (account && account !== 'both') {
-        if ((e.account || '').toUpperCase() !== account.toUpperCase()) return false;
-      }
+    const inRange = (e) => {
       if (!dateRange || !e.date) return true;
       try {
         const parts = e.date.split('/');
@@ -832,7 +788,30 @@ ${tosContext}`;
         const d = new Date(`${yr}-${parts[0].padStart(2,'0')}-${parts[1].padStart(2,'0')}`);
         return d >= dateRange.start && d <= dateRange.end;
       } catch { return true; }
+    };
+    const rows = tosData.equityCurve.filter(e => {
+      if (account && account !== 'both') {
+        if ((e.account || '').toUpperCase() !== account.toUpperCase()) return false;
+      }
+      return inRange(e);
     });
+    // When both accounts: sum balances by date instead of showing duplicates
+    if (!account || account === 'both') {
+      const byDate = {};
+      rows.forEach(e => {
+        if (!byDate[e.date]) byDate[e.date] = { date: e.date, balance: 0, count: 0 };
+        byDate[e.date].balance += e.balance;
+        byDate[e.date].count   += 1;
+      });
+      return Object.values(byDate)
+        .sort((a, b) => {
+          try {
+            const p = (s) => { const pts = s.split('/'); const yr = pts[2].length===2?'20'+pts[2]:pts[2]; return new Date(`${yr}-${pts[0].padStart(2,'0')}-${pts[1].padStart(2,'0')}`); };
+            return p(a.date) - p(b.date);
+          } catch { return 0; }
+        });
+    }
+    return rows;
   }, [tosData, account, dateRange?.start?.getTime(), dateRange?.end?.getTime()]);
 
   // ─── Chart builders (unchanged) ────────────────────────────────────────────
@@ -962,34 +941,6 @@ ${tosContext}`;
     if (btn) btn.style.display = 'none';
     return () => { if (btn) btn.style.display = ''; };
   }, []);
-
-
-  // ─── Save strategy/MFE/MAE to Supabase tos_statements ────────────────────
-  const handleTOSStrategyUpdate = useCallback(async (trip, stratId, mfePrice = null, maePrice = null) => {
-    if (!savedStatements?.length) return;
-    const matchKey = (t) => `${t.account}|${t.symbol}|${t.direction}|${t.entry}`;
-    const tripMK = matchKey(trip);
-    const stmt = savedStatements.find(s =>
-      (s.data?.trips || []).some(t => matchKey(t) === tripMK && Math.abs(new Date(t.entry_dt) - new Date(trip.entry_dt)) < 60000)
-    );
-    if (!stmt) return;
-    const updatedTrips = (stmt.data.trips || []).map(t =>
-      matchKey(t) === tripMK && Math.abs(new Date(t.entry_dt) - new Date(trip.entry_dt)) < 60000
-        ? { ...t, strategy_id: stratId, ...(mfePrice != null ? { mfe_price: mfePrice } : {}), ...(maePrice != null ? { mae_price: maePrice } : {}) }
-        : t
-    );
-    const updatedData = { ...stmt.data, trips: updatedTrips };
-    await supabase.from('tos_statements').update({ data: updatedData }).eq('id', stmt.id);
-    setSavedStatements(prev => prev.map(s => s.id === stmt.id ? { ...s, data: updatedData } : s));
-    setTosData(prev => ({
-      ...prev,
-      trips: (prev?.trips || []).map(t =>
-        matchKey(t) === tripMK && Math.abs(new Date(t.entry_dt) - new Date(trip.entry_dt)) < 60000
-          ? { ...t, strategy_id: stratId, ...(mfePrice != null ? { mfe_price: mfePrice } : {}), ...(maePrice != null ? { mae_price: maePrice } : {}) }
-          : t
-      )
-    }));
-  }, [savedStatements, setTosData]);
 
   return (
     <div style={{ padding: '16px 20px' }}>
