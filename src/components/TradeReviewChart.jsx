@@ -240,6 +240,22 @@ export default function TradeReviewChart({ trade, onClose }) {
       {/* price outcome bar */}
       <OutcomeBar entry={entry} exit={exit_price} stop={stop} target={target} direction={direction} />
 
+      {/* Running P&L chart */}
+      {entry && exit_price && (
+        <div style={{ padding: '14px 16px 8px', background: '#080a0e', borderTop: '1px solid #1a2030' }}>
+          <div style={{ fontSize: 11, color: '#94a3b8', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 10 }}>
+            Running P&L Path
+            {!trade.mfe_price && !trade.mae_price && <span style={{ marginLeft: 8, fontSize: 10, color: '#334155', textTransform: 'none', letterSpacing: 0 }}>— add MFE/MAE for full 4-point path</span>}
+          </div>
+          <PnLChart
+            entry={entry} exitPrice={exit_price}
+            mfePrice={trade.mfe_price} maePrice={trade.mae_price}
+            stopPrice={stop} targetPrice={target}
+            direction={direction} mult={mult} qty={qty}
+          />
+        </div>
+      )}
+
       {/* stats */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', borderTop: '1px solid #1a2030', background: '#0d0f14' }}>
         {[
