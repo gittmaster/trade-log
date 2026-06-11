@@ -233,23 +233,6 @@ function TradeForm({ form, setForm, onSubmit, onCancel, uploading, isEdit }) {
         <div className="field"><label>Target</label><input type="number" step="0.01" value={form.target||''} onChange={e => setForm(f => ({ ...f, target: e.target.value }))} /></div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
-        <div className="field">
-          <label style={{ color: '#22c55e' }}>Best Price Reached (MFE) <span style={{ color: '#444', fontWeight: 400, textTransform: 'none', fontSize: 10 }}>optional</span></label>
-          <input type="number" step="0.01" value={form.mfe_price||''}
-            onChange={e => setForm(f => ({ ...f, mfe_price: e.target.value }))}
-            placeholder={form.direction === 'short' ? 'e.g. 4580 — lowest price reached' : 'e.g. 4720 — highest price reached'}
-            style={{ borderColor: '#1e3a1e', color: '#22c55e' }} />
-        </div>
-        <div className="field">
-          <label style={{ color: '#ef4444' }}>Worst Price Reached (MAE) <span style={{ color: '#444', fontWeight: 400, textTransform: 'none', fontSize: 10 }}>optional</span></label>
-          <input type="number" step="0.01" value={form.mae_price||''}
-            onChange={e => setForm(f => ({ ...f, mae_price: e.target.value }))}
-            placeholder={form.direction === 'short' ? 'e.g. 4640 — highest price against' : 'e.g. 4590 — lowest price against'}
-            style={{ borderColor: '#3a1e1e', color: '#ef4444' }} />
-        </div>
-      </div>
-
       <div className="form-grid-2">
         <div id="exit_reason-field" className="field"><label>Exit Reason {errLabel('exit_reason')}</label>
           <div className="toggle-row" style={errors.exit_reason?{outline:'1.5px solid #E24B4A',borderRadius:6}:{}}>{['target','stop','manual','open'].map(r => <button key={r} className={tog(form.exit_reason===r)} onClick={() => { setForm(f => ({ ...f, exit_reason: r })); setErrors(e => ({...e, exit_reason: false})); }}>{r}</button>)}</div>
@@ -537,7 +520,18 @@ function ManageLevels() {
 const PAGE_SIZE = 25;
 
 export default function TradeView({ trades, filteredTrades, strategies, reloadTrades, setMsg }) {
-  const [activeFilter, setActiveFilter] = useState('all');
+  const [activeFilters, setActiveFilters] = useState(new Set(['all']));
+  const toggleFilter = (f) => {
+    setActiveFilters(prev => {
+      const next = new Set(prev);
+      if (f === 'all') return new Set(['all']);
+      next.delete('all');
+      if (next.has(f)) { next.delete(f); if (next.size === 0) return new Set(['all']); }
+      else next.add(f);
+      return next;
+    });
+    setTablePage(1);
+  };
   const [sortCol, setSortCol] = useState('date');
   const [sortDir, setSortDir] = useState('desc');
   const [tablePage, setTablePage] = useState(1);
@@ -573,24 +567,41 @@ export default function TradeView({ trades, filteredTrades, strategies, reloadTr
   };
 
   const applyLocalFilter = (base) => {
-    if (activeFilter === 'all') return base;
-    if (activeFilter === 'win') return base.filter(t => t.pnl > 0);
-    if (activeFilter === 'loss') return base.filter(t => t.pnl < 0);
-    if (activeFilter === 'no-strategy') return base.filter(t => !t.strategy_id);
-    if (activeFilter === 'week') {
-      const { monday, sunday } = getWeekRange();
-      return base.filter(t => { if (!t.date) return false; const d = new Date(t.date + 'T12:00:00'); return d >= monday && d <= sunday; });
-    }
-    if (['aplus','a','aminus'].includes(activeFilter)) return base.filter(t => t.grade === activeFilter);
-    if (symbols.includes(activeFilter)) return base.filter(t => (t.symbol === 'OTHER' ? t.custom_symbol : t.symbol) === activeFilter);
-    if (activeFilter === 'al-primary') return base.filter(t => t.al_tier === 'Primary');
-    if (activeFilter === 'al-secondary') return base.filter(t => t.al_tier === 'Secondary');
-    if (activeFilter === 'al-tertiary') return base.filter(t => t.al_tier === 'Tertiary');
-    if (activeFilter === 'sl-primary') return base.filter(t => t.sl_tier === 'Primary');
-    if (activeFilter === 'sl-secondary') return base.filter(t => t.sl_tier === 'Secondary');
-    if (activeFilter === 'sl-tertiary') return base.filter(t => t.sl_tier === 'Tertiary');
-    if (STRATEGIES.find(s => s.id === activeFilter)) return base.filter(t => t.strategy_id === activeFilter);
-    return base;
+    if (activeFilters.has('all')) return base;
+    return base.filter(t => {
+      // All active filters must match (AND logic within categories, OR across same category)
+      const hasResult = activeFilters.has('win') || activeFilters.has('loss');
+      const hasSymbol = symbols.some(s => activeFilters.has(s));
+      const hasWeek   = activeFilters.has('week');
+      const hasStrat  = STRATEGIES.some(s => activeFilters.has(s.id));
+      const hasGrade  = ['aplus','a','aminus'].some(g => activeFilters.has(g));
+      const hasNoStrat = activeFilters.has('no-strategy');
+
+      if (hasResult) {
+        const pass = (activeFilters.has('win') && t.pnl > 0) || (activeFilters.has('loss') && t.pnl < 0);
+        if (!pass) return false;
+      }
+      if (hasSymbol) {
+        const sym = t.symbol === 'OTHER' ? t.custom_symbol : t.symbol;
+        if (!symbols.filter(s => activeFilters.has(s)).includes(sym)) return false;
+      }
+      if (hasWeek) {
+        const { monday, sunday } = getWeekRange();
+        if (!t.date) return false;
+        const d = new Date(t.date + 'T12:00:00');
+        if (d < monday || d > sunday) return false;
+      }
+      if (hasStrat) {
+        if (!STRATEGIES.filter(s => activeFilters.has(s.id)).map(s => s.id).includes(t.strategy_id)) return false;
+      }
+      if (hasGrade) {
+        if (!['aplus','a','aminus'].filter(g => activeFilters.has(g)).includes(t.grade)) return false;
+      }
+      if (hasNoStrat) {
+        if (t.strategy_id) return false;
+      }
+      return true;
+    });
   };
 
   const localFiltered = applyLocalFilter(allTrades);
@@ -720,7 +731,7 @@ export default function TradeView({ trades, filteredTrades, strategies, reloadTr
             <span style={{ fontSize: 16 }}>⚠️</span>
             <span style={{ fontSize: 13, color: '#BA7517' }}>{noStratCount} trade{noStratCount !== 1 ? 's' : ''} not tagged to a strategy</span>
           </div>
-          <button onClick={() => { setActiveFilter('no-strategy'); setTablePage(1); }} style={{ fontSize: 12, padding: '4px 12px', borderRadius: 6, border: '1px solid #BA751744', background: 'transparent', color: '#BA7517', cursor: 'pointer' }}>
+          <button onClick={() => { toggleFilter('no-strategy'); }} style={{ fontSize: 12, padding: '4px 12px', borderRadius: 6, border: '1px solid #BA751744', background: 'transparent', color: '#BA7517', cursor: 'pointer' }}>
             View & tag them →
           </button>
         </div>
@@ -742,15 +753,15 @@ export default function TradeView({ trades, filteredTrades, strategies, reloadTr
 
       <div className="table-card">
         <div className="table-header">
-          <h2>Trade History ({sorted.length}{activeFilter !== 'all' ? ' filtered' : ''})</h2>
+          <h2>Trade History ({sorted.length}{!activeFilters.has('all') ? ' filtered' : ''})</h2>
         </div>
 
         <div className="filter-row">
           {[['all','All'],['win','Win'],['loss','Loss'],['week','This Week'],...symbols.map(s=>[s,s])].map(([f,label]) => (
-            <button key={f} className={`filter-btn ${activeFilter===f?'active':''}`} onClick={() => { setActiveFilter(f); setTablePage(1); }}>{label}</button>
+            <button key={f} className={`filter-btn ${activeFilters.has(f)?'active':''}`} onClick={() => toggleFilter(f)}>{label}</button>
           ))}
           {noStratCount > 0 && (
-            <button className={`filter-btn ${activeFilter==='no-strategy'?'active':''}`} style={activeFilter!=='no-strategy'?{borderColor:'#BA751744',color:'#BA7517'}:{}} onClick={() => { setActiveFilter(activeFilter==='no-strategy'?'all':'no-strategy'); setTablePage(1); }}>
+            <button className={`filter-btn ${activeFilters.has('no-strategy')?'active':''}`} style={!activeFilters.has('no-strategy')?{borderColor:'#BA751744',color:'#BA7517'}:{}} onClick={() => toggleFilter('no-strategy')}>
               ⚠️ No Strategy ({noStratCount})
             </button>
           )}
@@ -760,9 +771,9 @@ export default function TradeView({ trades, filteredTrades, strategies, reloadTr
           <span style={{ fontSize: 11, color: '#999', alignSelf: 'center', marginRight: 4 }}>Strategy:</span>
           {STRATEGIES.map(s => (
             <button key={s.id}
-              className={`filter-btn ${activeFilter===s.id?'active':''}`}
-              style={activeFilter===s.id?{borderColor:s.color,color:s.color,background:s.color+'22'}:{borderColor:'#2a2a2a'}}
-              onClick={() => { setActiveFilter(activeFilter===s.id?'all':s.id); setTablePage(1); }}
+              className={`filter-btn ${activeFilters.has(s.id)?'active':''}`}
+              style={activeFilters.has(s.id)?{borderColor:s.color,color:s.color,background:s.color+'22'}:{borderColor:'#2a2a2a'}}
+              onClick={() => toggleFilter(s.id)}
             >
               {s.icon} {s.name}
             </button>
