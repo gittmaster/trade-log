@@ -747,7 +747,7 @@ ${tosContext}`;
           'anthropic-dangerous-direct-browser-access': 'true',
         },
         body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
+          model: 'claude-sonnet-4-6',
           max_tokens: 2000,
           system: systemPrompt,
           messages: [...history, userMsg],
@@ -780,42 +780,18 @@ ${tosContext}`;
 
   const filteredEquity = useMemo(() => {
     if (!tosData?.equityCurve) return [];
-    const parseEqDate = (s) => {
-      try {
-        if (!s) return null;
-        if (s.includes('-')) return new Date(s); // ISO format
-        const parts = s.split('/');
-        if (parts.length < 3) return null;
-        const yr = parts[2].length === 2 ? '20' + parts[2] : parts[2];
-        return new Date(`${yr}-${parts[0].padStart(2,'0')}-${parts[1].padStart(2,'0')}`);
-      } catch { return null; }
-    };
-    const inRange = (e) => {
-      if (!dateRange || !e.date) return true;
-      const d = parseEqDate(e.date);
-      if (!d || isNaN(d)) return true;
-      return d >= dateRange.start && d <= dateRange.end;
-    };
-    const rows = tosData.equityCurve.filter(e => {
+    return tosData.equityCurve.filter(e => {
       if (account && account !== 'both') {
         if ((e.account || '').toUpperCase() !== account.toUpperCase()) return false;
       }
-      return inRange(e);
+      if (!dateRange || !e.date) return true;
+      try {
+        const parts = e.date.split('/');
+        const yr = parts[2].length === 2 ? '20' + parts[2] : parts[2];
+        const d = new Date(`${yr}-${parts[0].padStart(2,'0')}-${parts[1].padStart(2,'0')}`);
+        return d >= dateRange.start && d <= dateRange.end;
+      } catch { return true; }
     });
-    // When both accounts: sum balances by date instead of showing duplicates
-    if (!account || account === 'both') {
-      const byDate = {};
-      rows.forEach(e => {
-        if (!byDate[e.date]) byDate[e.date] = { date: e.date, balance: 0, count: 0 };
-        byDate[e.date].balance += e.balance;
-        byDate[e.date].count   += 1;
-      });
-      return Object.values(byDate)
-        .sort((a, b) => {
-          return (parseEqDate(a.date) || 0) - (parseEqDate(b.date) || 0);
-        });
-    }
-    return rows;
   }, [tosData, account, dateRange?.start?.getTime(), dateRange?.end?.getTime()]);
 
   // ─── Chart builders (unchanged) ────────────────────────────────────────────
@@ -945,34 +921,6 @@ ${tosContext}`;
     if (btn) btn.style.display = 'none';
     return () => { if (btn) btn.style.display = ''; };
   }, []);
-
-
-  // ─── Save strategy/MFE/MAE to Supabase tos_statements ────────────────────
-  const handleTOSStrategyUpdate = useCallback(async (trip, stratId, mfePrice = null, maePrice = null) => {
-    if (!savedStatements?.length) return;
-    const matchKey = (t) => `${t.account}|${t.symbol}|${t.direction}|${t.entry}`;
-    const tripMK = matchKey(trip);
-    const stmt = savedStatements.find(s =>
-      (s.data?.trips || []).some(t => matchKey(t) === tripMK && Math.abs(new Date(t.entry_dt) - new Date(trip.entry_dt)) < 60000)
-    );
-    if (!stmt) return;
-    const updatedTrips = (stmt.data.trips || []).map(t =>
-      matchKey(t) === tripMK && Math.abs(new Date(t.entry_dt) - new Date(trip.entry_dt)) < 60000
-        ? { ...t, strategy_id: stratId, ...(mfePrice != null ? { mfe_price: mfePrice } : {}), ...(maePrice != null ? { mae_price: maePrice } : {}) }
-        : t
-    );
-    const updatedData = { ...stmt.data, trips: updatedTrips };
-    await supabase.from('tos_statements').update({ data: updatedData }).eq('id', stmt.id);
-    setSavedStatements(prev => prev.map(s => s.id === stmt.id ? { ...s, data: updatedData } : s));
-    setTosData(prev => ({
-      ...prev,
-      trips: (prev?.trips || []).map(t =>
-        matchKey(t) === tripMK && Math.abs(new Date(t.entry_dt) - new Date(trip.entry_dt)) < 60000
-          ? { ...t, strategy_id: stratId, ...(mfePrice != null ? { mfe_price: mfePrice } : {}), ...(maePrice != null ? { mae_price: maePrice } : {}) }
-          : t
-      )
-    }));
-  }, [savedStatements, setTosData]);
 
   return (
     <div style={{ padding: '16px 20px' }}>
