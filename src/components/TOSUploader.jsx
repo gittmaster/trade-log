@@ -179,7 +179,10 @@ function parseTOS(csvText) {
       openPos[sym].push({ dt: fill.dt, price: fill.price, direction: dir });
     } else if (fill.posEffect === 'TO CLOSE') {
       const dir = fill.side === 'BUY' ? 'short' : 'long';
-      const openIdx = openPos[sym].findIndex(o => o.direction === dir);
+      // Match by closest price (not FIFO) to handle hedged/overlapping positions
+      const candidates = openPos[sym].map((o, i) => ({ o, i, diff: Math.abs(o.price - fill.price) })).filter(c => c.o.direction === dir);
+      const best = candidates.sort((a, b) => a.diff - b.diff)[0];
+      const openIdx = best ? best.i : -1;
       if (openIdx >= 0) {
         // Matched — create round trip
         const open = openPos[sym][openIdx];
