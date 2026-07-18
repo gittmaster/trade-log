@@ -115,7 +115,8 @@ function parseTOS(csvText) {
     if (!dt) continue;
     tradeHistory.push({ dt, side, posEffect: posEff, symbol: normSym(symRaw.replace('/','')), price });
   }
-  console.log('Trade history rows found:', tradeHistory.length, tradeHistory.slice(0,3).map(t => `${t.posEffect} ${t.side} ${t.symbol} @${t.price}`));
+  console.log('Trade history rows found:', tradeHistory.length);
+  console.log('All history:', tradeHistory.map(t => `${t.dt.toISOString().slice(0,16)} ${t.posEffect} ${t.side} ${t.symbol} @${t.price}`));
 
   // ── 2. Parse Futures Statements for ADJ rows and cash balances ─────────────
   const adjRows = [];
@@ -176,15 +177,15 @@ function parseTOS(csvText) {
       const dir = fill.side === 'BUY' ? 'long' : 'short';
       openPos[sym].push({ dt: fill.dt, price: fill.price, direction: dir });
     } else if (fill.posEffect === 'TO CLOSE') {
-      // Find matching open position (opposite direction)
-      const dir = fill.side === 'BUY' ? 'short' : 'long'; // BUY TO CLOSE closes a short
+      const dir = fill.side === 'BUY' ? 'short' : 'long';
       const openIdx = openPos[sym].findIndex(o => o.direction === dir);
       if (openIdx >= 0) {
+        // Matched — create round trip
         const open = openPos[sym][openIdx];
         openPos[sym].splice(openIdx, 1);
         const pts = dir === 'long'
-          ? fill.price - open.price   // long: exit - entry
-          : open.price - fill.price;  // short: entry - exit
+          ? fill.price - open.price
+          : open.price - fill.price;
         roundTrips.push({
           symbol: sym, direction: dir,
           entry_dt: open.dt.toISOString(),
@@ -197,6 +198,8 @@ function parseTOS(csvText) {
           comm: 0,
         });
       }
+      // If no matching open — this closes a position from a prior statement period
+      // Simply ignore it — do NOT create a phantom open position
     }
   }
 
