@@ -43,53 +43,144 @@ function detectAccount(csvText) {
 }
 
 // ─── Parse TOS account statement CSV ─────────────────────────────────────────
+// Handles both old format (single Futures Statements section)
+// and new format (Cash Balance + Futures Statements sections)
 function parseTOS(csvText) {
-  const lines  = csvText.split('\n');
-  const futIdx = lines.findIndex(l => l.includes('Futures Statements'));
-  const ordIdx = lines.findIndex(l => l.includes('Account Order History'));
-  const trdIdx = lines.findIndex(l => l.includes('Account Trade History'));
-  const plIdx  = lines.findIndex(l => l.includes('Profits and Losses'));
+  const rawLines = csvText.split('\n');
 
-  // 1. Fills + ADJ rows
-  const fills = [], adjRows = [];
-  for (const line of lines.slice(futIdx + 1)) {
-    if (line.includes('Forex Statements') || line.includes('Account Order')) break;
-    if (!line.includes(',TRD,') && !line.includes(',ADJ,')) continue;
-    const p = parseCSVLine(line);
-    if (p.length < 9) continue;
+  // ── helpers ──────────────────────────────────────────────────────────────
+  function parseCSVLine(line) {
+    const result = [], len = line.length;
+    let cur = '', inQ = false;
+    for (let i = 0; i < len; i++) {
+      const ch = line[i];
+      if (ch === '"') { inQ = !inQ; }
+      else if (ch === ',' && !inQ) { result.push(cur.trim()); cur = ''; }
+      else cur += ch;
+    }
+    result.push(cur.trim());
+    return result;
+  }
 
-    if (line.includes(',TRD,')) {
-      const m = p[5].match(/^(BOT|SOLD)\s+([+-]?\d+)\s+\/(\w+)(?::\w+)?\s+@([\d.]+)/);
-      if (!m || !p[1] || p[1] === '--') continue;
-      try {
-        fills.push({ dt: parseDt(p[1], p[2]), side: m[1],
-          qty: Math.abs(parseInt(m[2])), symbol: normSym(m[3]), price: parseFloat(m[4]) });
-      } catch {}
-    } else if (line.includes(',ADJ,')) {
-      const m = p[5].match(/\/(\w+).*@([\d.]+)/);
-      if (!m || !p[1] || p[1] === '--') continue;
-      try {
-        adjRows.push({ dt: parseDt(p[1], p[2]), symbol: normSym(m[1]),
-          settle: parseFloat(m[2]),
-          change: parseFloat((p[8] || '').replace(/[$,"]/g,'')) || 0 });
-      } catch {}
+  function cleanNum(s) {
+    if (!s || s === '--' || s === '—') return null;
+    // Strip Excel formula =".." wrapper
+    const m = s.match(/^="?([^"]+)"?$/);
+    const v = m ? m[1] : s;
+    return parseFloat(v.replace(/[$,"]/g, '')) || null;
+  }
+
+  function parseDate(d, t) {
+    if (!d || d === '--') return null;
+    try {
+      const [mo, day, yr] = d.split('/');
+      const year = yr.length === 2 ? '20' + yr : yr;
+      return new Date(`${year}-${mo.padStart(2,'0')}-${day.padStart(2,'0')}T${t || '00:00:00'}`);
+    } catch { return null; }
+  }
+
+  const MULT = { MGC:10, MNQ:2, MYM:0.5, MCL:100 };
+  const SYM_MAP = {
+    MGCM26:'MGC',MGCN26:'MGC',MGCQ26:'MGC',MGCG26:'MGC',MGCJ26:'MGC',MGCZ26:'MGC',
+    MNQM26:'MNQ',MNQN26:'MNQ',MNQH26:'MNQ',MNQU26:'MNQ',MNQZ26:'MNQ',
+    MYMM26:'MYM',MYMN26:'MYM',MYMU26:'MYM',
+    MCLJ26:'MCL',MCLM26:'MCL',MCLN26:'MCL',
+  };
+  function normSym(raw) {
+    const s = raw.replace('/','').split(':')[0];
+    return SYM_MAP[s] || s.slice(0,3);
+  }
+
+  // ── detect format ─────────────────────────────────────────────────────────
+  const hasFuturesSection = rawLines.some(l => l.trim().startsWith('Futures Statements'));
+  const hasCashSection    = rawLines.some(l => l.trim() === 'Cash Balance');
+
+  // ── parse fills ───────────────────────────────────────────────────────────
+  const fills = [];
+  const adjRows = [];
+  const cashBalances = [];
+
+  if (hasFuturesSection) {
+    // NEW FORMAT: find Futures Statements section
+    let inFutures = false, inCash = false;
+    for (const line of rawLines) {
+      const t = line.trim();
+      if (t === 'Futures Statements') { inFutures = true; inCash = false; continue; }
+      if (t === 'Cash Balance') { inCash = true; inFutures = false; continue; }
+      if (!t || t.startsWith('Trade Date') || t.startsWith('DATE')) continue;
+
+      const p = parseCSVLine(line);
+      if (p.length < 6) continue;
+
+      if (inFutures) {
+        // Cols: Trade Date, Exec Date, Exec Time, Type, Ref#, Description, Misc, Comm, Amount, Balance
+        const [tradeDate, execDate, execTime, type, , desc, , comm, amount, balance] = p;
+        if (type === 'TRD') {
+          const m = desc.match(/^(BOT|SOLD)\s+([+-]?\d+)\s+\/([\w]+)(?::[\w]+)?\s+@([\d.]+)/);
+          if (!m) continue;
+          const [, side, qty, symRaw, price] = m;
+          const dt = parseDate(execDate || tradeDate, execTime);
+          if (!dt) continue;
+          fills.push({ dt, side, qty: Math.abs(parseInt(qty)), symbol: normSym(symRaw), price: parseFloat(price), comm: Math.abs(cleanNum(comm) || 0) });
+        } else if (type === 'ADJ') {
+          const m = desc.match(/\/([\w]+).*@([\d.]+)/);
+          if (!m) continue;
+          const dt = parseDate(execDate || tradeDate, execTime);
+          const amt = cleanNum(amount);
+          if (dt) adjRows.push({ dt, symbol: normSym(m[1]), settle: parseFloat(m[2]), change: amt || 0 });
+        } else if (type === 'BAL') {
+          const bal = cleanNum(balance);
+          if (bal != null && execDate) cashBalances.push({ date: execDate || tradeDate, balance: bal });
+        }
+      } else if (inCash) {
+        // Cols: DATE, TIME, TYPE, REF#, DESC, Misc, Comm, Amount, Balance
+        const [date, , type2, , , , , , balance] = p;
+        if (type2 === 'BAL') {
+          const bal = cleanNum(balance);
+          if (bal != null && date) cashBalances.push({ date, balance: bal });
+        }
+      }
+    }
+  } else {
+    // OLD FORMAT: single section with DATE,TIME,TYPE
+    let inFut = false;
+    for (const line of rawLines) {
+      if (line.includes('Futures Statements')) { inFut = true; continue; }
+      if (line.includes('Forex Statements') || line.includes('Account Order')) break;
+      if (!inFut) continue;
+      if (!line.includes(',TRD,') && !line.includes(',ADJ,') && !line.includes(',BAL,')) continue;
+      const p = parseCSVLine(line);
+      if (p.length < 9) continue;
+      const [date, time, type, , desc] = p;
+      const amount = p[8]?.replace(/[$,"]/g,'');
+      const balance = p[9]?.replace(/[$,"]/g,'');
+      if (type === 'TRD') {
+        const m = desc.match(/^(BOT|SOLD)\s+([+-]?\d+)\s+\/(\w+)(?::\w+)?\s+@([\d.]+)/);
+        if (!m) continue;
+        const [, side, qty, symRaw, price] = m;
+        const dt = parseDate(date, time);
+        if (!dt) continue;
+        fills.push({ dt, side, qty: Math.abs(parseInt(qty)), symbol: normSym(symRaw), price: parseFloat(price), comm: 0 });
+      } else if (type === 'ADJ') {
+        const m = desc.match(/\/(\w+).*@([\d.]+)/);
+        if (!m) continue;
+        const dt = parseDate(date, time);
+        const amt = amount ? parseFloat(amount) : 0;
+        if (dt) adjRows.push({ dt, symbol: normSym(m[1]), settle: parseFloat(m[2]), change: amt });
+      } else if (type === 'BAL' && balance) {
+        cashBalances.push({ date, balance: parseFloat(balance.replace(/,/g,'')) });
+      }
     }
   }
 
-  // 2. OCO stop prices
-  const ocoStops = {};
-  const ohEnd = trdIdx > ordIdx ? trdIdx : lines.length;
-  for (const line of lines.slice(ordIdx, ohEnd)) {
-    const p = parseCSVLine(line);
-    if (!p[3]?.startsWith('OCO #')) continue;
-    const price = parseFloat((p[11] || '').replace(/[$,"]/g,''));
-    if (!isNaN(price) && p[12]?.trim() === 'STP') ocoStops[p[3].trim()] = price;
-  }
+  // ── match fills into round trips ──────────────────────────────────────────
+  const openPos = {};
+  const roundTrips = [];
+  const round2 = n => Math.round(n * 100) / 100;
 
-  // 3. Round trips
-  const openPos = {}, roundTrips = [];
-  for (const f of [...fills].sort((a,b) => a.dt - b.dt)) {
-    const sym = f.symbol, mult = MULT[sym] || 1;
+  for (const f of [...fills].sort((a, b) => a.dt - b.dt)) {
+    const sym = f.symbol;
+    const mult = MULT[sym] || 1;
     if (!openPos[sym]) openPos[sym] = [];
     const opens = openPos[sym];
 
@@ -97,113 +188,63 @@ function parseTOS(csvText) {
       const short = opens.find(o => o.direction === 'short');
       if (short) {
         opens.splice(opens.indexOf(short), 1);
-        roundTrips.push({ symbol: sym, direction: 'short',
-          entry_dt: short.dt, exit_dt: f.dt, entry: short.price, exit: f.price,
-          qty: short.qty, pnl: round2((short.price - f.price) * mult * short.qty),
-          duration_hrs: round2((f.dt - short.dt) / 3600000) });
-      } else { opens.push({ dt: f.dt, price: f.price, qty: f.qty, direction: 'long' }); }
-
-    } else if (f.side === 'SOLD') {
+        const pts = round2(short.price - f.price);
+        roundTrips.push({ symbol: sym, direction: 'short', entry_dt: short.dt.toISOString(), exit_dt: f.dt.toISOString(), entry: short.price, exit: f.price, qty: short.qty, pnl: round2(pts * mult * short.qty), duration_hrs: (f.dt - short.dt) / 3600000, comm: (f.comm || 0) + (short.comm || 0) });
+      } else {
+        opens.push({ dt: f.dt, price: f.price, qty: f.qty, direction: 'long', comm: f.comm });
+      }
+    } else {
       const long = opens.find(o => o.direction === 'long');
       if (long) {
         opens.splice(opens.indexOf(long), 1);
-        roundTrips.push({ symbol: sym, direction: 'long',
-          entry_dt: long.dt, exit_dt: f.dt, entry: long.price, exit: f.price,
-          qty: long.qty, pnl: round2((f.price - long.price) * mult * long.qty),
-          duration_hrs: round2((f.dt - long.dt) / 3600000) });
-      } else { opens.push({ dt: f.dt, price: f.price, qty: f.qty, direction: 'short' }); }
+        const pts = round2(f.price - long.price);
+        roundTrips.push({ symbol: sym, direction: 'long', entry_dt: long.dt.toISOString(), exit_dt: f.dt.toISOString(), entry: long.price, exit: f.price, qty: long.qty, pnl: round2(pts * mult * long.qty), duration_hrs: (f.dt - long.dt) / 3600000, comm: (f.comm || 0) + (long.comm || 0) });
+      } else {
+        opens.push({ dt: f.dt, price: f.price, qty: f.qty, direction: 'short', comm: f.comm });
+      }
     }
   }
 
-  // 4. Enrich with stops + checkpoints
-  const stopList = Object.values(ocoStops);
+  // ── enrich with checkpoints ───────────────────────────────────────────────
   for (const rt of roundTrips) {
     const mult = MULT[rt.symbol] || 1;
     const isLong = rt.direction === 'long';
-    const valid = stopList.filter(s => isLong ? s < rt.entry : s > rt.entry)
-      .sort((a,b) => Math.abs(a - rt.entry) - Math.abs(b - rt.entry));
-    rt.tos_stop  = valid[0] || null;
-    rt.stop_dist = rt.tos_stop ? Math.abs(rt.entry - rt.tos_stop) : 0;
-
     rt.checkpoints = adjRows
-      .filter(a => a.symbol === rt.symbol && a.dt >= rt.entry_dt && a.dt <= rt.exit_dt)
-      .map(a => ({ dt: a.dt, settle: a.settle,
-        running_pnl: round2((isLong ? a.settle - rt.entry : rt.entry - a.settle) * mult * rt.qty) }));
-
+      .filter(a => a.symbol === rt.symbol && new Date(a.dt) >= new Date(rt.entry_dt) && new Date(a.dt) <= new Date(rt.exit_dt))
+      .map(a => {
+        const pts = isLong ? a.settle - rt.entry : rt.entry - a.settle;
+        return { dt: a.dt, settle: a.settle, running_pnl: round2(pts * mult * rt.qty) };
+      });
     rt.pnl_points = [
       { dt: rt.entry_dt, pnl: 0, type: 'entry' },
       ...rt.checkpoints.map(c => ({ dt: c.dt, pnl: c.running_pnl, type: 'settle' })),
       { dt: rt.exit_dt, pnl: rt.pnl, type: 'exit' },
     ];
-
     const pnls = rt.pnl_points.map(p => p.pnl);
     rt.mfe = Math.max(...pnls, 0);
     rt.mae = Math.min(...pnls, 0);
   }
 
-  // 5. P&L rows
-  const plRows = [];
-  if (plIdx >= 0) {
-    for (const line of lines.slice(plIdx + 2)) {
-      if (!line.trim() || line.startsWith('Account')) break;
-      const p = parseCSVLine(line);
-      if (p[0]?.startsWith('/')) {
-        const ytd = (p[5] || '').replace(/[$,"()]/g,'');
-        plRows.push({ symbol: normSym(p[0].slice(1)),
-          pl_ytd: ytd ? parseFloat(ytd) * ((p[5]||'').includes('(') ? -1 : 1) : null });
-      }
-    }
-  }
-
-  // Parse cash balance section for equity curve
-  const cashBalances = [];
-  const cashIdx = lines.findIndex(l => l.trim() === 'Cash Balance');
-  if (cashIdx >= 0) {
-    for (const line of lines.slice(cashIdx + 2)) {
-      if (!line.trim()) break;
-      const p = parseCSVLine(line);
-      if (p.length < 9 || !p[0] || p[2] !== 'BAL') continue;
-      try {
-        const bal = parseFloat((p[8] || '').replace(/[$,"]/g, ''));
-        if (!isNaN(bal)) cashBalances.push({ date: p[0].trim(), balance: bal });
-      } catch {}
-    }
-  }
-
-  // Scrub account number from header before storing
-  const scrubbedHeader = (lines[0] || '').replace(/\b\d{6,}SCHW\b/g, '***SCHW');
-  const periodMatch = scrubbedHeader.match(/since (.+?) through (.+)/);
-  let period = periodMatch ? periodMatch[1].trim() + ' – ' + periodMatch[2].trim() : '';
-  if (!period) {
-    const allDates = [];
-    for (const line of lines.slice(1, 500)) {
-      const m = line.match(/^(\d{1,2}\/\d{1,2}\/\d{2,4})/);
-      if (m) allDates.push(m[1]);
-    }
-    if (allDates.length) period = allDates[0] + ' – ' + allDates[allDates.length - 1];
-  }
+  // ── period from data ──────────────────────────────────────────────────────
+  const allDates = rawLines.map(l => { const m = l.match(/^(\d{1,2}\/\d{1,2}\/\d{2,4})/); return m?.[1]; }).filter(Boolean);
+  const period = allDates.length ? allDates[0] + ' \u2013 ' + allDates[allDates.length-1] : '';
 
   return {
     account: detectAccount(csvText),
-    roundTrips, adjRows, plRows, cashBalances, period,
-    summary: {
-      total:  roundTrips.length,
-      wins:   roundTrips.filter(r => r.pnl > 0).length,
-      losses: roundTrips.filter(r => r.pnl < 0).length,
-      net:    round2(roundTrips.reduce((s,r) => s + r.pnl, 0)),
-    },
+    roundTrips, adjRows, cashBalances, period,
+    summary: { total: roundTrips.length, wins: roundTrips.filter(r=>r.pnl>0).length, losses: roundTrips.filter(r=>r.pnl<0).length, net: round2(roundTrips.reduce((s,r)=>s+r.pnl,0)) },
   };
 }
 
-// ─── Match TOS trades to journal ──────────────────────────────────────────────
 function matchToJournal(parsed, journalTrades) {
   return parsed.roundTrips.map(rt => {
+    const entryDt = new Date(rt.entry_dt);
     const jt = journalTrades.find(t => {
       if (!t.entry || !t.date) return false;
       return (t.symbol||'').toUpperCase() === rt.symbol &&
              (t.direction||'').toLowerCase() === rt.direction &&
              Math.abs(parseFloat(t.entry) - rt.entry) < 5 &&
-             Math.abs(new Date(t.date + 'T12:00:00') - rt.entry_dt) / 86400000 < 2;
+             Math.abs(new Date(t.date + 'T12:00:00') - entryDt) / 86400000 < 2;
     });
     return { tos: rt, journal: jt || null, matched: !!jt };
   });
