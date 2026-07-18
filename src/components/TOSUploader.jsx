@@ -31,15 +31,15 @@ function parseDt(d, t) {
 
 // ─── Detect account label from file header ────────────────────────────────────
 function detectAccount(csvText) {
-  const first = csvText.split('\n')[0];
-  const m = first.match(/for (\w+)/);
-  if (!m) return 'Unknown';
-  const num = m[1];
-  if (num.includes('7454')) return 'A1';
-  if (num.includes('9962')) return 'A2';
-  // fallback: try to make it readable
-  if (num.includes('SCHW')) return num.replace('SCHW','').slice(-6);
-  return num;
+  // Check all lines for account number (handles both CSV and tab-separated formats)
+  const lines = csvText.split('\n').slice(0, 20);
+  for (const line of lines) {
+    if (line.includes('7454')) return 'A1';
+    if (line.includes('9962')) return 'A2';
+    const m = line.match(/for (\w+SCHW)/);
+    if (m) return m[1].replace('SCHW','').slice(-4) === '7454' ? 'A1' : m[1].replace('SCHW','').slice(-4) === '9962' ? 'A2' : 'A?';
+  }
+  return 'Unknown';
 }
 
 // ─── Parse TOS account statement CSV ─────────────────────────────────────────
@@ -170,11 +170,18 @@ function parseTOS(csvText) {
     }
   }
 
-  // Period from first line
   // Scrub account number from header before storing
   const scrubbedHeader = (lines[0] || '').replace(/\b\d{6,}SCHW\b/g, '***SCHW');
   const periodMatch = scrubbedHeader.match(/since (.+?) through (.+)/);
-  const period = periodMatch ? periodMatch[1] + ' – ' + periodMatch[2] : '';
+  let period = periodMatch ? periodMatch[1].trim() + ' – ' + periodMatch[2].trim() : '';
+  if (!period) {
+    const allDates = [];
+    for (const line of lines.slice(1, 500)) {
+      const m = line.match(/^(\d{1,2}\/\d{1,2}\/\d{2,4})/);
+      if (m) allDates.push(m[1]);
+    }
+    if (allDates.length) period = allDates[0] + ' – ' + allDates[allDates.length - 1];
+  }
 
   return {
     account: detectAccount(csvText),
