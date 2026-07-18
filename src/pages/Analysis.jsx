@@ -151,9 +151,9 @@ function TOSDayPanel({ day, month, year, items, onClose, onStrategyUpdate }) {
   }, [items, net]);
 
   return (
-    <div ref={overlayRef} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 2000, display: 'flex', alignItems: 'flex-start', justifyContent: 'flex-end' }}>
-      <div style={{ width: 720, height: '100vh', background: '#111', borderLeft: '1px solid #2a2a2a', display: 'flex', flexDirection: 'column', overflowY: 'auto', animation: 'slideIn 0.2s ease' }}>
-        <style>{`@keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }`}</style>
+    <div ref={overlayRef} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+      <div style={{ width: '92vw', maxWidth: 1100, maxHeight: '90vh', background: '#111', border: '1px solid #2a2a2a', borderRadius: 14, display: 'flex', flexDirection: 'column', overflowY: 'auto', animation: 'fadeUp 0.2s ease', boxShadow: '0 24px 80px rgba(0,0,0,0.8)' }}>
+        <style>{`@keyframes fadeUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }`}</style>
 
         {/* Header */}
         <div style={{ padding: '16px 20px', borderBottom: '1px solid #1e1e1e', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
@@ -187,8 +187,8 @@ function TOSDayPanel({ day, month, year, items, onClose, onStrategyUpdate }) {
         </div>
 
         {/* Trade table */}
-        <div style={{ flex: 1, overflowY: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+        <div style={{ flex: 1, overflowY: 'auto', overflowX: 'auto' }}>
+          <table style={{ width: '100%', minWidth: 900, borderCollapse: 'collapse', fontSize: 12 }}>
             <thead>
               <tr style={{ borderBottom: '1px solid #1e1e1e' }}>
                 {['Time','Acct','Symbol','Dir','Entry','Exit','P&L','Hold','MFE','MAE','Strategy'].map(h => (
