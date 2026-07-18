@@ -171,7 +171,9 @@ function parseTOS(csvText) {
   }
 
   // Period from first line
-  const periodMatch = lines[0]?.match(/since (.+?) through (.+)/);
+  // Scrub account number from header before storing
+  const scrubbedHeader = (lines[0] || '').replace(/\b\d{6,}SCHW\b/g, '***SCHW');
+  const periodMatch = scrubbedHeader.match(/since (.+?) through (.+)/);
   const period = periodMatch ? periodMatch[1] + ' – ' + periodMatch[2] : '';
 
   return {
@@ -284,9 +286,8 @@ export default function TOSUploader({ trades, onComplete }) {
 
       {/* Drop zone — always visible, accepts multiple files */}
       <div
-        onDragOver={e => { e.preventDefault(); e.stopPropagation(); setDragging(true); }}
-        onDragEnter={e => { e.preventDefault(); setDragging(true); }}
-        onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget)) setDragging(false); }}
+        onDragOver={e => { e.preventDefault(); setDragging(true); }}
+        onDragLeave={() => setDragging(false)}
         onDrop={onDrop}
         onClick={() => document.getElementById('tos-multi-input').click()}
         style={{
@@ -320,7 +321,7 @@ export default function TOSUploader({ trades, onComplete }) {
           <div style={{ fontSize: 10, color: '#4a5568', marginTop: 2 }}>
             {state === 'done'
               ? `✅ ${accts.map(a => a.account).join(' + ')} imported — drop again to refresh`
-              : 'Drop or select CSV files · A1 (acct …7454) and A2 (acct …9962) auto-detected'}
+              : 'Drop or select CSV files · A1 and A2 accounts auto-detected'}
           </div>
           {state === 'error' && <div style={{ fontSize: 11, color: '#ef4444', marginTop: 3 }}>{errMsg}</div>}
         </div>
