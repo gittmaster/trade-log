@@ -115,9 +115,6 @@ function parseTOS(csvText) {
     if (!dt) continue;
     tradeHistory.push({ dt, side, posEffect: posEff, symbol: normSym(symRaw.replace('/','')), price });
   }
-  console.log('Trade history rows found:', tradeHistory.length);
-  // Log round trips after matching
-  console.log('All history sorted:', tradeHistory.sort((a,b)=>a.dt-b.dt).map(t => `${t.dt.toISOString().slice(0,16)} ${t.posEffect} ${t.side} ${t.symbol} @${t.price}`).join(' | '));
 
   // ── 2. Parse Futures Statements for ADJ rows and cash balances ─────────────
   const adjRows = [];
@@ -206,8 +203,6 @@ function parseTOS(csvText) {
       // Simply ignore it — do NOT create a phantom open position
     }
   }
-
-  console.log('Round trips built:', roundTrips.map(r => `${r.direction} ${r.symbol} ${r.entry}->${r.exit} ${r.pnl>=0?'+':''}$${Math.round(r.pnl)}`).join(' | '));
 
   // Fallback: if no Account Trade History, use old BOT/SOLD logic
   if (roundTrips.length === 0) {
