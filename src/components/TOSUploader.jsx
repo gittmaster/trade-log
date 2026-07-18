@@ -178,11 +178,14 @@ function parseTOS(csvText) {
   const roundTrips = [];
   const round2 = n => Math.round(n * 100) / 100;
 
-  for (const f of [...fills].sort((a, b) => a.dt - b.dt)) {
+  const sortedFills = [...fills].sort((a, b) => a.dt - b.dt);
+  console.log('Sorted fills:', sortedFills.map(f => `${f.dt.toISOString().slice(0,16)} ${f.side} ${f.symbol} @${f.price}`));
+  for (const f of sortedFills) {
     const sym = f.symbol;
     const mult = MULT[sym] || 1;
     if (!openPos[sym]) openPos[sym] = [];
     const opens = openPos[sym];
+    console.log(`Processing: ${f.side} ${sym} @${f.price} | openPos:`, opens.map(o => `${o.direction}@${o.price}`));
 
     if (f.side === 'BOT') {
       const short = opens.find(o => o.direction === 'short');
