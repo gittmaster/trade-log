@@ -94,21 +94,28 @@ function parseTOS(csvText) {
   const tradeHistory = []; // { dt, side, posEffect, symbol, price }
   let inHistory = false;
   for (const line of rawLines) {
-    if (line.includes('Account Trade History')) { inHistory = true; continue; }
-    if (inHistory && (line.includes('Account Order History') || line.includes('Profits and Losses'))) break;
+    const trimmed = line.trim();
+    if (trimmed === 'Account Trade History' || trimmed.startsWith('Account Trade History,')) { inHistory = true; continue; }
+    if (inHistory && (trimmed.startsWith('Account Order History') || trimmed.startsWith('Profits and Losses'))) break;
     if (!inHistory) continue;
     const p = parseCSVLine(line);
-    if (p.length < 10 || !p[1] || p[1] === 'Exec Time') continue;
-    const execTime = p[1].trim(); // "7/16/26 15:47:32"
-    const side     = p[3].trim(); // BUY or SELL
-    const posEff   = p[5].trim(); // TO OPEN or TO CLOSE
-    const symRaw   = p[6].trim(); // /MGCQ26
+    // Header row detection
+    if (p.some(c => c === 'Exec Time' || c === 'Side' || c === 'Pos Effect')) continue;
+    if (p.length < 10) continue;
+    // Format: ,Exec Time,Spread,Side,Qty,Pos Effect,Symbol,Exp,Strike,Type,Price,...
+    // p[0]=blank, p[1]=execTime, p[2]=spread, p[3]=side, p[4]=qty, p[5]=posEffect, p[6]=symbol, p[10]=price
+    const execTime = p[1]?.trim();
+    const side     = p[3]?.trim();
+    const posEff   = p[5]?.trim();
+    const symRaw   = p[6]?.trim();
     const price    = parseFloat(p[10]);
     if (!execTime || !side || !symRaw || isNaN(price)) continue;
+    if (posEff !== 'TO OPEN' && posEff !== 'TO CLOSE') continue;
     const dt = parseDate(execTime);
     if (!dt) continue;
     tradeHistory.push({ dt, side, posEffect: posEff, symbol: normSym(symRaw.replace('/','')), price });
   }
+  console.log('Trade history rows found:', tradeHistory.length, tradeHistory.slice(0,3).map(t => `${t.posEffect} ${t.side} ${t.symbol} @${t.price}`));
 
   // ── 2. Parse Futures Statements for ADJ rows and cash balances ─────────────
   const adjRows = [];
