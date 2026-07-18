@@ -922,6 +922,34 @@ ${tosContext}`;
     return () => { if (btn) btn.style.display = ''; };
   }, []);
 
+
+  // ─── Save strategy/MFE/MAE to Supabase tos_statements ────────────────────
+  const handleTOSStrategyUpdate = useCallback(async (trip, stratId, mfePrice = null, maePrice = null) => {
+    if (!savedStatements?.length) return;
+    const matchKey = (t) => `${t.account}|${t.symbol}|${t.direction}|${t.entry}`;
+    const tripMK = matchKey(trip);
+    const stmt = savedStatements.find(s =>
+      (s.data?.trips || []).some(t => matchKey(t) === tripMK && Math.abs(new Date(t.entry_dt) - new Date(trip.entry_dt)) < 60000)
+    );
+    if (!stmt) return;
+    const updatedTrips = (stmt.data.trips || []).map(t =>
+      matchKey(t) === tripMK && Math.abs(new Date(t.entry_dt) - new Date(trip.entry_dt)) < 60000
+        ? { ...t, strategy_id: stratId, ...(mfePrice != null ? { mfe_price: mfePrice } : {}), ...(maePrice != null ? { mae_price: maePrice } : {}) }
+        : t
+    );
+    const updatedData = { ...stmt.data, trips: updatedTrips };
+    await supabase.from('tos_statements').update({ data: updatedData }).eq('id', stmt.id);
+    setSavedStatements(prev => prev.map(s => s.id === stmt.id ? { ...s, data: updatedData } : s));
+    setTosData(prev => ({
+      ...prev,
+      trips: (prev?.trips || []).map(t =>
+        matchKey(t) === tripMK && Math.abs(new Date(t.entry_dt) - new Date(trip.entry_dt)) < 60000
+          ? { ...t, strategy_id: stratId, ...(mfePrice != null ? { mfe_price: mfePrice } : {}), ...(maePrice != null ? { mae_price: maePrice } : {}) }
+          : t
+      )
+    }));
+  }, [savedStatements, setTosData]);
+
   return (
     <div style={{ padding: '16px 20px' }}>
       {/* Header + Tab bar */}
