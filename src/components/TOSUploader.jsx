@@ -325,7 +325,12 @@ export default function TOSUploader({ trades, onComplete }) {
         }));
 
         if (upserts.length > 0) {
-          const { error } = await supabase.from('tos_trade_data').upsert(upserts, { onConflict: 'trade_id' });
+          // Upsert one at a time to avoid ON CONFLICT affecting same row twice in batch
+          let error = null;
+          for (const u of upserts) {
+            const { error: e } = await supabase.from('tos_trade_data').upsert(u, { onConflict: 'trade_id' });
+            if (e) { error = e; break; }
+          }
           if (error) console.warn('Supabase save failed, using localStorage:', error.message);
           // always save to localStorage as backup
           const local = JSON.parse(localStorage.getItem('tos_trade_data') || '{}');
