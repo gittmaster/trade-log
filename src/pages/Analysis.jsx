@@ -1086,13 +1086,74 @@ ${tosContext}`;
       {activeTab === 'calendar' && (
         <div>
           {!tosData && <div style={{ textAlign:'center', padding:'40px 20px', color:'#444', fontSize:13 }}>Upload a TOS statement above to see the calendar</div>}
-          {tosData && (
-            <>
-              <div style={{ background:'#111', border:'1px solid #222', borderRadius:8, padding:'14px 16px', marginBottom:12 }}>
-                <TOSCalendar trips={filteredTrips} onStrategyUpdate={handleTOSStrategyUpdate} />
-              </div>
-            </>
-          )}
+          {tosData && (() => {
+            const STRAT_LABELS = { 'strat-aplus-prime':'A+ Prime','strat-strong-al-weak-sl':'Strong AL / Weak SL','strat-weak-al-strong-sl':'Weak AL / Strong SL','strat-both-weak':'Both Weak' };
+            const STRAT_COLORS = { 'strat-aplus-prime':'#f59e0b','strat-strong-al-weak-sl':'#185FA5','strat-weak-al-strong-sl':'#7c3aed','strat-both-weak':'#E24B4A' };
+            const tagged = filteredTrips.filter(t => t.strategy_id && t.strategy_id !== 'strat-unassigned');
+            const untagged = filteredTrips.filter(t => !t.strategy_id || t.strategy_id === 'strat-unassigned');
+            const stratMap = {};
+            tagged.forEach(t => {
+              const s = t.strategy_id;
+              if (!stratMap[s]) stratMap[s] = { trades:0, wins:0, net:0, winners:[], losers:[] };
+              stratMap[s].trades++; stratMap[s].net += t.pnl;
+              if (t.pnl > 0) { stratMap[s].wins++; stratMap[s].winners.push(t.pnl); } else stratMap[s].losers.push(t.pnl);
+            });
+            const rows = Object.entries(stratMap).sort((a,b) => b[1].net - a[1].net);
+            const maxAbs = Math.max(...rows.map(([,v]) => Math.abs(v.net)), 1);
+            const fmtP = v => (v>=0?'+$':'-$') + Math.abs(Math.round(v)).toLocaleString();
+            return (
+              <>
+                {/* By Strategy */}
+                <div style={{ background:'#111', border:'1px solid #222', borderRadius:8, padding:'14px 16px', marginBottom:12 }}>
+                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12 }}>
+                    <div style={{ fontSize:11, color:'#bbb', textTransform:'uppercase', letterSpacing:'0.05em', fontWeight:700 }}>By Strategy — TOS Broker Data</div>
+                    <div style={{ fontSize:11, color:'#555' }}>
+                      {tagged.length}/{filteredTrips.length} tagged
+                      {untagged.length > 0 && <span style={{color:'#f59e0b', marginLeft:8}}>⚠ {untagged.length} untagged</span>}
+                    </div>
+                  </div>
+                  {rows.length === 0 ? (
+                    <div style={{ fontSize:12, color:'#444', padding:'12px 0' }}>No strategies tagged yet — click any day below to assign strategies to trades</div>
+                  ) : (<>
+                    <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:8, marginBottom:14 }}>
+                      {Object.keys(STRAT_LABELS).map(sid => {
+                        const d = stratMap[sid]; const color = STRAT_COLORS[sid];
+                        const wr = d ? Math.round(d.wins/d.trades*100) : null;
+                        return (
+                          <div key={sid} style={{ background:'#0d0d0d', border:`1px solid ${color}33`, borderTop:`2px solid ${color}`, borderRadius:6, padding:'10px 12px' }}>
+                            <div style={{ fontSize:11, color, fontWeight:700, marginBottom:6 }}>{STRAT_LABELS[sid]}</div>
+                            {d ? (<>
+                              <div style={{ fontSize:18, fontWeight:700, color:d.net>=0?'#1D9E75':'#E24B4A', marginBottom:4 }}>{fmtP(d.net)}</div>
+                              <div style={{ fontSize:11, color:'#555' }}>{d.trades} trades · {wr}% WR</div>
+                              <div style={{ fontSize:11, color:'#444', marginTop:2 }}>
+                                {d.winners.length>0 && <span style={{color:'#1D9E75'}}>avg +${Math.round(d.winners.reduce((s,v)=>s+v,0)/d.winners.length)}</span>}
+                                {d.losers.length>0 && <span style={{color:'#E24B4A',marginLeft:6}}>avg -${Math.abs(Math.round(d.losers.reduce((s,v)=>s+v,0)/d.losers.length))}</span>}
+                              </div>
+                            </>) : <div style={{ fontSize:12, color:'#333' }}>No trades</div>}
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div style={{ fontSize:11, color:'#555', marginBottom:8 }}>Net P&L by strategy</div>
+                    {rows.map(([sid,d]) => (
+                      <div key={sid} style={{ display:'flex', alignItems:'center', gap:10, marginBottom:6 }}>
+                        <div style={{ width:160, fontSize:11, color:'#888', textAlign:'right', flexShrink:0 }}>{STRAT_LABELS[sid]||sid}</div>
+                        <div style={{ flex:1, height:22, background:'#0d0d0d', borderRadius:4, overflow:'hidden' }}>
+                          <div style={{ width:(Math.abs(d.net)/maxAbs*100)+'%', height:'100%', background:d.net>=0?'#1D9E75':'#E24B4A', borderRadius:4 }} />
+                        </div>
+                        <div style={{ width:80, fontSize:12, fontWeight:700, color:d.net>=0?'#1D9E75':'#E24B4A', flexShrink:0 }}>{fmtP(d.net)}</div>
+                        <div style={{ width:50, fontSize:11, color:'#555', flexShrink:0 }}>{Math.round(d.wins/d.trades*100)}% WR</div>
+                      </div>
+                    ))}
+                  </>)}
+                </div>
+                {/* Calendar */}
+                <div style={{ background:'#111', border:'1px solid #222', borderRadius:8, padding:'12px 14px' }}>
+                  <TOSCalendar trips={filteredTrips} onStrategyUpdate={handleTOSStrategyUpdate} />
+                </div>
+              </>
+            );
+          })()}
         </div>
       )}
 
