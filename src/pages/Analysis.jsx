@@ -76,7 +76,7 @@ const STRAT_OPTIONS = [
   { value: 'strat-both-weak',         label: 'Both Weak' },
 ];
 
-function TOSDayPanel({ day, month, year, items, onClose, onStrategyUpdate }) {
+function TOSDayPanel({ day, month, year, items, onClose, onStrategyUpdate, onChartUpload }) {
   const dow = new Date(year, month, day).toLocaleDateString('en-US', { weekday: 'long' });
   const net = items.reduce((s, t) => s + t.pnl, 0);
   const wins = items.filter(t => t.pnl > 0).length;
@@ -98,6 +98,12 @@ function TOSDayPanel({ day, month, year, items, onClose, onStrategyUpdate }) {
     return m;
   });
   const [saving, setSaving] = useState({});
+  const [chartUploading, setChartUploading] = useState({});
+  const [chartUrls, setChartUrls] = useState(() => {
+    const m = {};
+    items.forEach(t => { if (t.chart_url) m[tripKey(t)] = t.chart_url; });
+    return m;
+  });
   const handleStrategyChange = async (t, stratId) => {
     const key = tripKey(t);
     setStratMap(prev => ({ ...prev, [key]: stratId }));
@@ -113,6 +119,15 @@ function TOSDayPanel({ day, month, year, items, onClose, onStrategyUpdate }) {
     if (onStrategyUpdate) await onStrategyUpdate(t, stratMap[key] || t.strategy_id || '', mfe || null, mae || null);
     setSaving(prev => ({ ...prev, [key + '_mm']: false }));
   };
+  const handleChartUpload = async (t, file) => {
+    if (!file || !onChartUpload) return;
+    const key = tripKey(t);
+    setChartUploading(prev => ({ ...prev, [key]: true }));
+    const url = await onChartUpload(t, file);
+    if (url) setChartUrls(prev => ({ ...prev, [key]: url }));
+    setChartUploading(prev => ({ ...prev, [key]: false }));
+  };
+
   const fmt = v => (v >= 0 ? '+$' : '-$') + Math.abs(Math.round(v)).toLocaleString();
   const canvasRef = useRef(null);
   const overlayRef = useRef(null);
@@ -191,7 +206,7 @@ function TOSDayPanel({ day, month, year, items, onClose, onStrategyUpdate }) {
           <table style={{ width: '100%', minWidth: 900, borderCollapse: 'collapse', fontSize: 12 }}>
             <thead>
               <tr style={{ borderBottom: '1px solid #1e1e1e' }}>
-                {['Time','Acct','Symbol','Dir','Entry','Exit','P&L','Hold','MFE','MAE','Strategy'].map(h => (
+                {['Time','Acct','Symbol','Dir','Entry','Exit','P&L','Hold','MFE','MAE','Chart','Strategy'].map(h => (
                   <th key={h} style={{ padding: '8px 12px', textAlign: 'left', color: '#444', fontWeight: 500, fontSize: 10, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{h}</th>
                 ))}
               </tr>
@@ -230,6 +245,32 @@ function TOSDayPanel({ day, month, year, items, onClose, onStrategyUpdate }) {
                         placeholder="e.g. 4590"
                         style={{ width: 80, background: '#1a0a0a', border: '1px solid #3a1e1e', borderRadius: 4, color: '#ef4444', fontSize: 11, padding: '3px 6px', fontFamily: 'monospace' }} />
                     </td>
+                    <td style={{ padding: '6px 8px', minWidth: 100 }}>
+                      {chartUrls[tripKey(t)] ? (
+                        <div style={{ position: 'relative' }}>
+                          <img src={chartUrls[tripKey(t)]} alt="chart"
+                            style={{ width: 80, height: 50, objectFit: 'cover', borderRadius: 4, border: '1px solid #2a2a2a', cursor: 'pointer', display: 'block' }}
+                            onClick={() => window.open(chartUrls[tripKey(t)], '_blank')} />
+                          <label style={{ position: 'absolute', inset: 0, cursor: 'pointer', opacity: 0 }}>
+                            <input type="file" accept="image/*" style={{ display: 'none' }} onChange={e => { const f = e.target.files?.[0]; if (f) handleChartUpload(t, f); e.target.value=''; }} />
+                          </label>
+                        </div>
+                      ) : (
+                        <label style={{
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          width: 80, height: 50, borderRadius: 4, cursor: 'pointer',
+                          border: chartUploading[tripKey(t)] ? '1px solid #185FA5' : '1px dashed #2a2a2a',
+                          background: '#0d0d0d', fontSize: 10, color: '#444', flexDirection: 'column', gap: 2,
+                        }}
+                          onDragOver={e => { e.preventDefault(); e.currentTarget.style.borderColor = '#185FA5'; }}
+                          onDragLeave={e => { e.currentTarget.style.borderColor = '#2a2a2a'; }}
+                          onDrop={e => { e.preventDefault(); e.currentTarget.style.borderColor = '#2a2a2a'; const f = e.dataTransfer.files?.[0]; if (f) handleChartUpload(t, f); }}
+                        >
+                          <input type="file" accept="image/*" style={{ display: 'none' }} onChange={e => { const f = e.target.files?.[0]; if (f) handleChartUpload(t, f); e.target.value=''; }} />
+                          {chartUploading[tripKey(t)] ? <span style={{ color: '#185FA5' }}>uploading…</span> : <><span>📎</span><span>chart</span></>}
+                        </label>
+                      )}
+                    </td>
                     <td style={{ padding: '8px 12px', minWidth: 140 }}>
                       <select value={stratMap[tripKey(t)] || ''} onChange={e => handleStrategyChange(t, e.target.value)}
                         style={{ background: '#111', border: '1px solid #2a2a2a', borderRadius: 5, color: stratMap[tripKey(t)] ? '#85B7EB' : '#444', fontSize: 11, padding: '4px 6px', cursor: 'pointer', width: '100%' }}>
@@ -252,7 +293,7 @@ function TOSDayPanel({ day, month, year, items, onClose, onStrategyUpdate }) {
 const MONTH_NAMES_CAL = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 const DOW_SHORT = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 
-function TOSCalendar({ trips, onStrategyUpdate }) {
+function TOSCalendar({ trips, onStrategyUpdate, onChartUpload }) {
   const now = new Date();
   const [navYear,  setNavYear]  = useState(now.getFullYear());
   const [navMonth, setNavMonth] = useState(now.getMonth());
@@ -289,6 +330,15 @@ function TOSCalendar({ trips, onStrategyUpdate }) {
   const monthNet   = Object.values(dayMap).reduce((s, d) => s + d.pnl, 0);
   const tradeDays  = Object.keys(dayMap).length;
   const monthWins  = Object.values(dayMap).filter(d => d.pnl > 0).length;
+  const handleChartUpload = async (t, file) => {
+    if (!file || !onChartUpload) return;
+    const key = tripKey(t);
+    setChartUploading(prev => ({ ...prev, [key]: true }));
+    const url = await onChartUpload(t, file);
+    if (url) setChartUrls(prev => ({ ...prev, [key]: url }));
+    setChartUploading(prev => ({ ...prev, [key]: false }));
+  };
+
   const fmt = v => (v >= 0 ? '+$' : '-$') + Math.abs(Math.round(v)).toLocaleString();
   const fmtSmall = v => (v >= 0 ? '+$' : '-$') + Math.abs(Math.round(v)).toLocaleString();
 
@@ -403,6 +453,7 @@ function TOSCalendar({ trips, onStrategyUpdate }) {
           items={dayMap[selectedDay].items}
           onClose={() => setSelectedDay(null)}
           onStrategyUpdate={onStrategyUpdate}
+          onChartUpload={onChartUpload}
         />
       )}
     </div>
@@ -960,6 +1011,48 @@ ${tosContext}`;
     }));
   }, [savedStatements, setTosData]);
 
+  const handleTOSChartUpload = useCallback(async (trip, file) => {
+    if (!file || !savedStatements?.length) return null;
+    const matchKey = (t) => `${t.account}|${t.symbol}|${t.direction}|${t.entry}`;
+    const tripMK = matchKey(trip);
+    const stmt = savedStatements.find(s =>
+      (s.data?.trips || []).some(t => matchKey(t) === tripMK && Math.abs(new Date(t.entry_dt) - new Date(trip.entry_dt)) < 60000)
+    );
+    if (!stmt) return null;
+
+    // Upload to Supabase Storage
+    const ext = file.name.split('.').pop();
+    const path = `charts/${stmt.id}/${tripMK.replace(/[|]/g,'-')}-${Date.now()}.${ext}`;
+    const { error: upErr } = await supabase.storage.from('trade-charts').upload(path, file, { upsert: true });
+    if (upErr) { console.error('Upload error:', upErr.message); return null; }
+
+    // Generate signed URL (private bucket — valid 1 year)
+    const { data: signedData, error: signErr } = await supabase.storage
+      .from('trade-charts')
+      .createSignedUrl(path, 60 * 60 * 24 * 365);
+    if (signErr || !signedData?.signedUrl) { console.error('Signed URL error:', signErr?.message); return null; }
+    const chartUrl = signedData.signedUrl;
+
+    // Save URL to trip
+    const updatedTrips = (stmt.data.trips || []).map(t =>
+      matchKey(t) === tripMK && Math.abs(new Date(t.entry_dt) - new Date(trip.entry_dt)) < 60000
+        ? { ...t, chart_url: chartUrl }
+        : t
+    );
+    const updatedData = { ...stmt.data, trips: updatedTrips };
+    await supabase.from('tos_statements').update({ data: updatedData }).eq('id', stmt.id);
+    setSavedStatements(prev => prev.map(s => s.id === stmt.id ? { ...s, data: updatedData } : s));
+    setTosData(prev => ({
+      ...prev,
+      trips: (prev?.trips || []).map(t =>
+        matchKey(t) === tripMK && Math.abs(new Date(t.entry_dt) - new Date(trip.entry_dt)) < 60000
+          ? { ...t, chart_url: chartUrl }
+          : t
+      )
+    }));
+    return chartUrl;
+  }, [savedStatements, setTosData]);
+
   return (
     <div style={{ padding: '16px 20px' }}>
       {/* Header + Tab bar */}
@@ -1149,7 +1242,7 @@ ${tosContext}`;
                 </div>
                 {/* Calendar */}
                 <div style={{ background:'#111', border:'1px solid #222', borderRadius:8, padding:'12px 14px' }}>
-                  <TOSCalendar trips={filteredTrips} onStrategyUpdate={handleTOSStrategyUpdate} />
+                  <TOSCalendar trips={filteredTrips} onStrategyUpdate={handleTOSStrategyUpdate} onChartUpload={handleTOSChartUpload} />
                 </div>
               </>
             );
@@ -1213,7 +1306,7 @@ ${tosContext}`;
                   Daily P&L Calendar — TOS Broker Data
                 </div>
                 <div style={{ fontSize: 11, color: '#444', marginBottom: 8 }}>Click any day to see trade details</div>
-                <TOSCalendar trips={filteredTrips} onStrategyUpdate={handleTOSStrategyUpdate} />
+                <TOSCalendar trips={filteredTrips} onStrategyUpdate={handleTOSStrategyUpdate} onChartUpload={handleTOSChartUpload} />
               </div>
             </>
           )}
