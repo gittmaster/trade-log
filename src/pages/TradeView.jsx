@@ -9,6 +9,7 @@ const STRATEGIES = [
   { id: 'strat-strong-al-weak-sl', name: 'Strong AL / Weak SL',  icon: '📈', color: '#185FA5' },
   { id: 'strat-weak-al-strong-sl', name: 'Weak AL / Strong SL',  icon: '🛡️', color: '#BA7517' },
   { id: 'strat-both-weak',         name: 'Both Weak',            icon: '⚠️', color: '#E24B4A' },
+  { id: 'strat-bounce',             name: 'Bounce Setup',         icon: '↩️', color: '#7c3aed' },
   { id: 'strat-unassigned',        name: 'Unassigned',           icon: '📋', color: '#666' },
 ];
 
@@ -231,23 +232,6 @@ function TradeForm({ form, setForm, onSubmit, onCancel, uploading, isEdit }) {
         <div className="field"><label>Exit</label><input type="number" step="0.01" value={form.exit_price||''} onChange={e => setForm(f => ({ ...f, exit_price: e.target.value }))} /></div>
         <div id="stop-field" className="field"><label>Stop {errLabel('stop')}</label><input type="number" step="0.01" value={form.stop||''} onChange={e => { setForm(f => ({ ...f, stop: e.target.value })); setErrors(e => ({...e, stop: false})); }} style={errStyle('stop')} /></div>
         <div className="field"><label>Target</label><input type="number" step="0.01" value={form.target||''} onChange={e => setForm(f => ({ ...f, target: e.target.value }))} /></div>
-      </div>
-
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
-        <div className="field">
-          <label style={{ color: '#22c55e' }}>Best Price Reached (MFE) <span style={{ color: '#444', fontWeight: 400, textTransform: 'none', fontSize: 10 }}>optional</span></label>
-          <input type="number" step="0.01" value={form.mfe_price||''}
-            onChange={e => setForm(f => ({ ...f, mfe_price: e.target.value }))}
-            placeholder={form.direction === 'short' ? 'e.g. 4580 — lowest price reached' : 'e.g. 4720 — highest price reached'}
-            style={{ borderColor: '#1e3a1e', color: '#22c55e' }} />
-        </div>
-        <div className="field">
-          <label style={{ color: '#ef4444' }}>Worst Price Reached (MAE) <span style={{ color: '#444', fontWeight: 400, textTransform: 'none', fontSize: 10 }}>optional</span></label>
-          <input type="number" step="0.01" value={form.mae_price||''}
-            onChange={e => setForm(f => ({ ...f, mae_price: e.target.value }))}
-            placeholder={form.direction === 'short' ? 'e.g. 4640 — highest price against' : 'e.g. 4590 — lowest price against'}
-            style={{ borderColor: '#3a1e1e', color: '#ef4444' }} />
-        </div>
       </div>
 
       <div className="form-grid-2">

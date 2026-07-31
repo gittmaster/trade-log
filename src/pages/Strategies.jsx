@@ -46,6 +46,15 @@ const DEFAULT_STRATEGIES = [
     color: '#E24B4A',
     notes: 'Neither AL nor SL meets the 3-touch 1wk+ threshold. Historically net negative. These trades should be avoided or skipped entirely. If taken, size down significantly.',
   },
+  {
+    id: 'strat-bounce',
+    icon: '↩️',
+    name: 'Bounce Setup',
+    desc: 'Entry at strong HTF SL level without AL cross',
+    symbol: 'MGC / MNQ',
+    color: '#7c3aed',
+    notes: 'Buying/selling at a strong Higher Timeframe Safety Line expecting a bounce — no AL cross required. High conviction level plays only. Data shows 0% win rate across 4 attempts — track carefully to validate or eliminate.',
+  },
 ];
 
 // ─── Auto-assign logic ────────────────────────────────────────────────────────
