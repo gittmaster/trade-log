@@ -125,9 +125,10 @@ function TradeForm({ form, setForm, onSubmit, onCancel, uploading, isEdit }) {
     if (!form.contracts)    e.contracts     = true;
     if (!form.entry)        e.entry         = true;
     if (!form.stop)         e.stop          = true;
-    if (!form.al_strength)  e.al_strength   = true;
-    if (!form.al_touches)   e.al_touches    = true;
-    if (!form.al_age)       e.al_age        = true;
+    const isBounce = form.strategy_id === 'strat-bounce';
+    if (!isBounce && !form.al_strength)  e.al_strength   = true;
+    if (!isBounce && !form.al_touches)   e.al_touches    = true;
+    if (!isBounce && !form.al_age)       e.al_age        = true;
     if (!form.sl_quality)   e.sl_quality    = true;
     if (!form.sl_touches)   e.sl_touches    = true;
     if (!form.sl_age)       e.sl_age        = true;
@@ -253,6 +254,11 @@ function TradeForm({ form, setForm, onSubmit, onCancel, uploading, isEdit }) {
       <div style={{ background: '#111', border: '1px solid #222', borderRadius: 8, padding: '12px 14px', marginBottom: 12 }}>
         <div style={{ fontSize: 12, color: '#ccc', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Action Line</div>
         <div className="form-grid-3">
+          {form.strategy_id === 'strat-bounce' ? (
+            <div style={{ background: '#1a1a2a', border: '1px solid #2a2a3a', borderRadius: 6, padding: '8px 12px', fontSize: 12, color: '#7c3aed', gridColumn: '1 / -1' }}>
+              ↩️ Bounce Setup — no Action Line required. Only SL quality matters.
+            </div>
+          ) : (
           <div id="al_strength-field" className="field"><label>Strength {errLabel('al_strength')}</label>
             <div className="toggle-row" style={errors.al_strength?{outline:'1.5px solid #E24B4A',borderRadius:6}:{}}>
               <button className={`tog ${form.al_strength==='strong'?'tog-green':''}`} onClick={() => { setErrors(e=>({...e,al_strength:false})); setForm(f => { const u={...f,al_strength:'strong'}; return {...u,grade:autoGrade('strong',u.al_touches,u.al_age,u.sl_quality,u.sl_touches,u.sl_age)}; }); }}>★ Strong</button>
@@ -263,6 +269,7 @@ function TradeForm({ form, setForm, onSubmit, onCancel, uploading, isEdit }) {
           <div id="al_age-field" className="field"><label>Age {errLabel('al_age')}</label>
             <div className="toggle-row" style={errors.al_age?{outline:'1.5px solid #E24B4A',borderRadius:6}:{}}>{['<1day','<1wk','1wk+'].map(a => <button key={a} className={tog(form.al_age===a)} onClick={() => { setErrors(e=>({...e,al_age:false})); setForm(f => { const u={...f,al_age:a}; return {...u,grade:autoGrade(u.al_strength,u.al_touches,a,u.sl_quality,u.sl_touches,u.sl_age)}; }); }}>{a}</button>)}</div>
           </div>
+          )}
         </div>
         <div className="field" style={{ marginBottom: 0 }}><label>AL Tier</label>
           <div className="toggle-row">{TIERS.map(tier => <button key={tier} className="tog" style={form.al_tier===tier?{background:TIER_COLORS[tier]+'33',color:TIER_COLORS[tier],borderColor:TIER_COLORS[tier]}:{}} onClick={() => setForm(f => ({ ...f, al_tier: tier }))}>{tier}</button>)}</div>
