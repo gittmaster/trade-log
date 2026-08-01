@@ -417,10 +417,9 @@ function TOSCalendar({ trips, onStrategyUpdate, allTrips }) {
         <TOSDayPanel
           day={selectedDay} month={navMonth} year={navYear}
           items={dayMap[selectedDay].items}
-          allTrips={trips}
+          allTrips={allTrips || trips}
           onClose={() => setSelectedDay(null)}
           onStrategyUpdate={onStrategyUpdate}
-          allTrips={allTrips || trips}
         />
       )}
     </div>
@@ -785,6 +784,7 @@ ${tosContext}`;
       return true;
     });
   }, [tosData, account, dateRange?.start?.getTime(), dateRange?.end?.getTime()]);
+  console.log('tosData trips:', tosData?.trips?.length, 'with strat:', tosData?.trips?.filter(t=>t.strategy_id)?.length);
 
   const filteredEquity = useMemo(() => {
     if (!tosData?.equityCurve) return [];
