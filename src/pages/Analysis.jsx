@@ -502,6 +502,7 @@ export default function Analysis({ filteredTrades, dateLabel, acctLabel, dateRan
         if (data.length > 0 && !tosData) {
           const merged = mergeStatements(data);
           setTosData(merged);
+          console.log('Loaded trips with strategy_id:', merged.trips.filter(t => t.strategy_id).map(t => t.strategy_id + ' ' + t.symbol));
         }
       }
       setLoadingDB(false);
