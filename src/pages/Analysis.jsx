@@ -85,34 +85,34 @@ function TOSDayPanel({ day, month, year, items, allTrips, onClose, onStrategyUpd
   const tripKey = (t) => `${t.account}|${t.symbol}|${t.direction}|${t.entry}|${new Date(t.entry_dt).toISOString().slice(0,16)}`;
   // Loose key for matching across different entry_dt formats
   const looseKey = (t) => `${t.account}|${t.symbol}|${t.direction}|${t.entry}`;
-  const [stratMap, setStratMap] = useState(() => {
-    const m = {};
-    // Build lookup from allTrips using loose key
-    const source = allTrips || items;
-    const looseMap = {};
-    source.forEach(t => { if (t.strategy_id) looseMap[looseKey(t)] = t.strategy_id; });
-    // Apply to items using both exact and loose key
-    items.forEach(t => {
-      const exact = tripKey(t);
-      const loose = looseKey(t);
-      if (looseMap[loose]) m[exact] = looseMap[loose];
+  const buildMaps = (source) => {
+    const sm = {}, mfe = {}, mae = {};
+    const looseMap = {}, looseMfe = {}, looseMae = {};
+    source.forEach(t => {
+      const lk = looseKey(t);
+      if (t.strategy_id) looseMap[lk] = t.strategy_id;
+      const mv = t.mfe_price ?? t.mfe; if (mv != null) looseMfe[lk] = String(mv);
+      const av = t.mae_price ?? t.mae; if (av != null) looseMae[lk] = String(av);
     });
-    return m;
-  });
-  const [mfeMap, setMfeMap] = useState(() => {
-    const m = {};
-    const looseMfe = {};
-    (allTrips || items).forEach(t => { const v = t.mfe_price ?? t.mfe; if (v != null) looseMfe[looseKey(t)] = String(v); });
-    items.forEach(t => { if (looseMfe[looseKey(t)]) m[tripKey(t)] = looseMfe[looseKey(t)]; });
-    return m;
-  });
-  const [maeMap, setMaeMap] = useState(() => {
-    const m = {};
-    const looseMae = {};
-    (allTrips || items).forEach(t => { const v = t.mae_price ?? t.mae; if (v != null) looseMae[looseKey(t)] = String(v); });
-    items.forEach(t => { if (looseMae[looseKey(t)]) m[tripKey(t)] = looseMae[looseKey(t)]; });
-    return m;
-  });
+    items.forEach(t => {
+      const tk = tripKey(t); const lk = looseKey(t);
+      if (looseMap[lk]) sm[tk] = looseMap[lk];
+      if (looseMfe[lk]) mfe[tk] = looseMfe[lk];
+      if (looseMae[lk]) mae[tk] = looseMae[lk];
+    });
+    return { sm, mfe, mae };
+  };
+  const [stratMap, setStratMap] = useState(() => buildMaps(allTrips || items).sm);
+  const [mfeMap,   setMfeMap]   = useState(() => buildMaps(allTrips || items).mfe);
+  const [maeMap,   setMaeMap]   = useState(() => buildMaps(allTrips || items).mae);
+
+  useEffect(() => {
+    if (!allTrips?.length) return;
+    const { sm, mfe, mae } = buildMaps(allTrips);
+    setStratMap(prev => ({ ...sm, ...prev })); // merge: don't overwrite user changes this session
+    setMfeMap(prev => ({ ...mfe, ...prev }));
+    setMaeMap(prev => ({ ...mae, ...prev }));
+  }, [allTrips]);
   const [saving, setSaving] = useState({});
   const handleStrategyChange = async (t, stratId) => {
     const key = tripKey(t);
