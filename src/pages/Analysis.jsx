@@ -83,50 +83,19 @@ function TOSDayPanel({ day, month, year, items, allTrips, onClose, onStrategyUpd
   const wins = items.filter(t => t.pnl > 0).length;
   const wr = items.length ? Math.round(wins / items.length * 100) : 0;
   const tripKey = (t) => `${t.account}|${t.symbol}|${t.direction}|${t.entry}|${new Date(t.entry_dt).toISOString().slice(0,16)}`;
-  // Loose key for matching across different entry_dt formats
-  const looseKey = (t) => `${t.account}|${t.symbol}|${t.direction}|${t.entry}`;
-  // Compute base values from allTrips (DB) — always fresh
-  const baseStratMap = useMemo(() => {
-    const m = {};
-    (allTrips || items).forEach(t => { if (t.strategy_id) m[looseKey(t)] = t.strategy_id; });
-    return m;
-  }, [allTrips]);
-  const baseMfeMap = useMemo(() => {
-    const m = {};
-    (allTrips || items).forEach(t => { if (t.mfe_price != null) m[looseKey(t)] = String(t.mfe_price); });
-    return m;
-  }, [allTrips]);
-  const baseMaeMap = useMemo(() => {
-    const m = {};
-    (allTrips || items).forEach(t => { if (t.mae_price != null) m[looseKey(t)] = String(t.mae_price); });
-    return m;
-  }, [allTrips]);
-
-  // Local overrides for changes made this session
-  const [stratOverride, setStratOverride] = useState({});
-  const [mfeOverride,   setMfeOverride]   = useState({});
-  const [maeOverride,   setMaeOverride]   = useState({});
-
-  // Merged maps — session overrides win over DB values
-  const stratMap = useMemo(() => {
-    const m = {};
-    items.forEach(t => { const lk = looseKey(t); const tk = tripKey(t); if (baseStratMap[lk]) m[tk] = baseStratMap[lk]; });
-    return { ...m, ...stratOverride };
-  }, [baseStratMap, stratOverride, items]);
-  const mfeMap = useMemo(() => {
-    const m = {};
-    items.forEach(t => { const lk = looseKey(t); const tk = tripKey(t); if (baseMfeMap[lk]) m[tk] = baseMfeMap[lk]; });
-    return { ...m, ...mfeOverride };
-  }, [baseMfeMap, mfeOverride, items]);
-  const maeMap = useMemo(() => {
-    const m = {};
-    items.forEach(t => { const lk = looseKey(t); const tk = tripKey(t); if (baseMaeMap[lk]) m[tk] = baseMaeMap[lk]; });
-    return { ...m, ...maeOverride };
-  }, [baseMaeMap, maeOverride, items]);
-
-  const setStratMap = (fn) => setStratOverride(fn);
-  const setMfeMap   = (fn) => setMfeOverride(fn);
-  const setMaeMap   = (fn) => setMaeOverride(fn);
+  const lk = (t) => `${t.account}|${t.symbol}|${t.direction}|${t.entry}`;
+  const [stratMap, setStratMap] = useState(() => {
+    const fromDB = {}; (allTrips||[]).forEach(t => { if(t.strategy_id) fromDB[lk(t)] = t.strategy_id; });
+    const m = {}; items.forEach(t => { if(fromDB[lk(t)]) m[tripKey(t)] = fromDB[lk(t)]; }); return m;
+  });
+  const [mfeMap, setMfeMap] = useState(() => {
+    const fromDB = {}; (allTrips||[]).forEach(t => { if(t.mfe_price!=null) fromDB[lk(t)] = String(t.mfe_price); });
+    const m = {}; items.forEach(t => { if(fromDB[lk(t)]) m[tripKey(t)] = fromDB[lk(t)]; }); return m;
+  });
+  const [maeMap, setMaeMap] = useState(() => {
+    const fromDB = {}; (allTrips||[]).forEach(t => { if(t.mae_price!=null) fromDB[lk(t)] = String(t.mae_price); });
+    const m = {}; items.forEach(t => { if(fromDB[lk(t)]) m[tripKey(t)] = fromDB[lk(t)]; }); return m;
+  });
   const [saving, setSaving] = useState({});
   const handleStrategyChange = async (t, stratId) => {
     const key = tripKey(t);
@@ -282,7 +251,7 @@ function TOSDayPanel({ day, month, year, items, allTrips, onClose, onStrategyUpd
 const MONTH_NAMES_CAL = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 const DOW_SHORT = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 
-function TOSCalendar({ trips, onStrategyUpdate, allTrips }) {
+function TOSCalendar({ trips, allTrips, onStrategyUpdate }) {
   const now = new Date();
   const [navYear,  setNavYear]  = useState(now.getFullYear());
   const [navMonth, setNavMonth] = useState(now.getMonth());
@@ -431,8 +400,8 @@ function TOSCalendar({ trips, onStrategyUpdate, allTrips }) {
         <TOSDayPanel
           day={selectedDay} month={navMonth} year={navYear}
           items={dayMap[selectedDay].items}
-          allTrips={allTrips || trips}
           onClose={() => setSelectedDay(null)}
+          allTrips={allTrips || trips}
           onStrategyUpdate={onStrategyUpdate}
         />
       )}
@@ -613,7 +582,27 @@ export default function Analysis({ filteredTrades, dateLabel, acctLabel, dateRan
     }
     setTimeout(() => setSaveMsg(''), 3000);
 
-    // tosData already updated via mergeStatements(refreshed) above
+    // Also update local tosData immediately
+    setTosData(prev => {
+      const prevTrips  = prev?.trips || [];
+      const otherTrips = prevTrips.filter(t => t.account !== parsed.account);
+      const allTrips   = [...otherTrips, ...taggedTrips];
+      const prevEquity = (prev?.equityCurve || []).filter(e => e.account !== parsed.account);
+      const allEquity  = [...prevEquity, ...equityCurve].sort((a,b) => new Date(a.date) - new Date(b.date));
+      const symMap = {};
+      allTrips.forEach(t => { symMap[t.symbol] = (symMap[t.symbol] || 0) + t.pnl; });
+      return {
+        account:     allTrips.map(t => t.account).filter((v,i,a) => a.indexOf(v)===i).join('+'),
+        trips:       allTrips,
+        equityCurve: allEquity,
+        symMap,
+        totalComm:   allTrips.reduce((s, t) => s + (t.comm || 0), 0),
+        netPnl:      allTrips.reduce((s, t) => s + t.pnl, 0),
+        wins:        allTrips.filter(t => t.pnl > 0).length,
+        total:       allTrips.length,
+        avgHold:     allTrips.reduce((s, t) => s + (t.duration_hrs || 0), 0) / allTrips.length,
+      };
+    });
   }, [setTosData]);
 
   // ─── Toggle month selection in history panel ────────────────────────────────
@@ -955,7 +944,7 @@ ${tosContext}`;
     if (!stmt) return;
     const updatedTrips = (stmt.data.trips || []).map(t =>
       matchKey(t) === tripMK && Math.abs(new Date(t.entry_dt) - new Date(trip.entry_dt)) < 60000
-        ? { ...t, strategy_id: stratId, ...(mfePrice != null ? { mfe: mfePrice, mfe_price: mfePrice } : {}), ...(maePrice != null ? { mae: maePrice, mae_price: maePrice } : {}) }
+        ? { ...t, strategy_id: stratId, ...(mfePrice != null ? { mfe_price: mfePrice } : {}), ...(maePrice != null ? { mae_price: maePrice } : {}) }
         : t
     );
     const updatedData = { ...stmt.data, trips: updatedTrips };
@@ -965,7 +954,7 @@ ${tosContext}`;
       ...prev,
       trips: (prev?.trips || []).map(t =>
         matchKey(t) === tripMK && Math.abs(new Date(t.entry_dt) - new Date(trip.entry_dt)) < 60000
-          ? { ...t, strategy_id: stratId, ...(mfePrice != null ? { mfe: mfePrice, mfe_price: mfePrice } : {}), ...(maePrice != null ? { mae: maePrice, mae_price: maePrice } : {}) }
+          ? { ...t, strategy_id: stratId, ...(mfePrice != null ? { mfe_price: mfePrice } : {}), ...(maePrice != null ? { mae_price: maePrice } : {}) }
           : t
       )
     }));
@@ -1158,157 +1147,6 @@ ${tosContext}`;
                     ))}
                   </>)}
                 </div>
-
-                {/* ── MFE / MAE Analysis ── */}
-                {(() => {
-                  const STRAT_LABELS = { 'strat-aplus-prime':'A+ Prime','strat-strong-al-weak-sl':'Strong AL / Weak SL','strat-weak-al-strong-sl':'Weak AL / Strong SL','strat-both-weak':'Both Weak','strat-bounce':'Bounce Setup' };
-                  const STRAT_COLORS = { 'strat-aplus-prime':'#f59e0b','strat-strong-al-weak-sl':'#185FA5','strat-weak-al-strong-sl':'#7c3aed','strat-both-weak':'#E24B4A','strat-bounce':'#7c3aed' };
-                  const MULT = { MGC:10, MNQ:2, MYM:0.5, MCL:100 };
-
-                  const withMfe = filteredTrips.filter(t => t.mfe_price != null && t.mae_price != null && t.entry != null && t.exit != null);
-                  if (withMfe.length === 0) return (
-                    <div style={{ background:'#111', border:'1px solid #222', borderRadius:8, padding:'14px 16px', marginTop:12 }}>
-                      <div style={{ fontSize:11, color:'#bbb', textTransform:'uppercase', letterSpacing:'0.05em', fontWeight:700, marginBottom:8 }}>MFE / MAE Analysis</div>
-                      <div style={{ fontSize:12, color:'#444' }}>No MFE/MAE data yet — enter Best/Worst price in the trade rows above after closing each trade</div>
-                    </div>
-                  );
-
-                  // Compute per-trade metrics
-                  const tradeMetrics = withMfe.map(t => {
-                    const mult = MULT[t.symbol] || 10;
-                    const isLong = t.direction === 'long';
-                    const mfeVal = t.mfe_price;
-    const maeVal = t.mae_price;
-    const mfePnl = Math.round((isLong ? mfeVal - t.entry : t.entry - mfeVal) * mult);
-                    const maePnl = Math.round((isLong ? maeVal - t.entry : t.entry - maeVal) * mult);
-                    const exitPnl = Math.round(t.pnl);
-                    const capture = mfePnl > 0 ? Math.round(exitPnl / mfePnl * 100) : null;
-                    const leftOnTable = mfePnl > 0 && exitPnl < mfePnl ? mfePnl - exitPnl : 0;
-                    return { ...t, mfePnl, maePnl, exitPnl, capture, leftOnTable };
-                  });
-
-                  // By strategy
-                  const stratStats = {};
-                  tradeMetrics.forEach(t => {
-                    const s = t.strategy_id || 'untagged';
-                    if (!stratStats[s]) stratStats[s] = { trades:0, totalCapture:0, captureCount:0, totalLeft:0, mfePnls:[], maePnls:[], exitPnls:[], wins:0 };
-                    stratStats[s].trades++;
-                    stratStats[s].mfePnls.push(t.mfePnl);
-                    stratStats[s].maePnls.push(t.maePnl);
-                    stratStats[s].exitPnls.push(t.exitPnl);
-                    stratStats[s].totalLeft += t.leftOnTable;
-                    if (t.capture != null) { stratStats[s].totalCapture += t.capture; stratStats[s].captureCount++; }
-                    if (t.exitPnl > 0) stratStats[s].wins++;
-                  });
-
-                  const avg = arr => arr.length ? Math.round(arr.reduce((s,v)=>s+v,0)/arr.length) : 0;
-                  const fmtP = v => (v>=0?'+$':'-$') + Math.abs(v).toLocaleString();
-
-                  const stratRows = Object.entries(stratStats)
-                    .filter(([,v]) => v.trades > 0)
-                    .sort((a,b) => b[1].trades - a[1].trades);
-
-                  // Scatter data for MAE vs MFE
-                  const wins2 = tradeMetrics.filter(t => t.exitPnl > 0);
-                  const losses2 = tradeMetrics.filter(t => t.exitPnl <= 0);
-                  const maxMfe = Math.max(...tradeMetrics.map(t => t.mfePnl), 1);
-                  const minMae = Math.min(...tradeMetrics.map(t => t.maePnl), -1);
-                  const svgW = 400, svgH = 200, pad = 40;
-                  const scaleX = v => pad + (Math.abs(v) / Math.abs(minMae)) * (svgW - pad*2);
-                  const scaleY = v => svgH - pad - (v / maxMfe) * (svgH - pad*2);
-
-                  return (
-                    <div style={{ background:'#111', border:'1px solid #222', borderRadius:8, padding:'14px 16px', marginTop:12 }}>
-                      <div style={{ fontSize:11, color:'#bbb', textTransform:'uppercase', letterSpacing:'0.05em', fontWeight:700, marginBottom:14 }}>
-                        MFE / MAE Analysis <span style={{ fontSize:10, color:'#444', textTransform:'none', letterSpacing:0 }}>— {withMfe.length} trades with data</span>
-                      </div>
-
-                      {/* Overall summary */}
-                      <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:8, marginBottom:16 }}>
-                        {[
-                          { label:'Avg MFE', value: fmtP(avg(tradeMetrics.map(t=>t.mfePnl))), color:'#1D9E75' },
-                          { label:'Avg MAE', value: fmtP(avg(tradeMetrics.map(t=>t.maePnl))), color:'#E24B4A' },
-                          { label:'Avg Capture Rate', value: tradeMetrics.filter(t=>t.capture!=null).length ? Math.round(tradeMetrics.filter(t=>t.capture!=null).reduce((s,t)=>s+t.capture,0)/tradeMetrics.filter(t=>t.capture!=null).length)+'%' : '—',
-                            color: '#f59e0b' },
-                          { label:'Total Left on Table', value: '-$'+tradeMetrics.reduce((s,t)=>s+t.leftOnTable,0).toLocaleString(), color:'#E24B4A' },
-                        ].map(({ label, value, color }) => (
-                          <div key={label} style={{ background:'#0d0d0d', border:'1px solid #1e1e1e', borderRadius:6, padding:'10px 12px', textAlign:'center' }}>
-                            <div style={{ fontSize:10, color:'#555', marginBottom:4, textTransform:'uppercase', letterSpacing:'0.06em' }}>{label}</div>
-                            <div style={{ fontSize:18, fontWeight:700, color }}>{value}</div>
-                          </div>
-                        ))}
-                      </div>
-
-                      {/* By strategy table */}
-                      {stratRows.length > 1 && (
-                        <div style={{ marginBottom:16 }}>
-                          <div style={{ fontSize:11, color:'#555', marginBottom:8 }}>Capture Rate & Left on Table by Strategy</div>
-                          <table style={{ width:'100%', borderCollapse:'collapse', fontSize:12 }}>
-                            <thead>
-                              <tr>{['Strategy','Trades','Avg MFE','Avg MAE','Avg Exit','Capture %','Left/Trade'].map(h => (
-                                <th key={h} style={{ padding:'5px 8px', textAlign:'left', color:'#444', fontSize:10, textTransform:'uppercase', borderBottom:'1px solid #1e1e1e' }}>{h}</th>
-                              ))}</tr>
-                            </thead>
-                            <tbody>
-                              {stratRows.map(([sid, d]) => {
-                                const color = STRAT_COLORS[sid] || '#666';
-                                const capRate = d.captureCount ? Math.round(d.totalCapture/d.captureCount) : null;
-                                const avgLeft = d.trades ? Math.round(d.totalLeft/d.trades) : 0;
-                                return (
-                                  <tr key={sid} style={{ borderBottom:'1px solid #181818' }}>
-                                    <td style={{ padding:'7px 8px', color }}>{STRAT_LABELS[sid] || sid}</td>
-                                    <td style={{ padding:'7px 8px', color:'#ccc' }}>{d.trades}</td>
-                                    <td style={{ padding:'7px 8px', color:'#1D9E75' }}>{fmtP(avg(d.mfePnls))}</td>
-                                    <td style={{ padding:'7px 8px', color:'#E24B4A' }}>{fmtP(avg(d.maePnls))}</td>
-                                    <td style={{ padding:'7px 8px', color: avg(d.exitPnls)>=0?'#1D9E75':'#E24B4A' }}>{fmtP(avg(d.exitPnls))}</td>
-                                    <td style={{ padding:'7px 8px', color: capRate==null?'#444': capRate>=80?'#1D9E75': capRate>=50?'#f59e0b':'#E24B4A', fontWeight:700 }}>
-                                      {capRate != null ? capRate+'%' : '—'}
-                                    </td>
-                                    <td style={{ padding:'7px 8px', color:'#E24B4A' }}>{avgLeft > 0 ? '-$'+avgLeft : '✓'}</td>
-                                  </tr>
-                                );
-                              })}
-                            </tbody>
-                          </table>
-                        </div>
-                      )}
-
-                      {/* MAE vs MFE scatter */}
-                      <div>
-                        <div style={{ fontSize:11, color:'#555', marginBottom:8 }}>MAE vs MFE Scatter — each dot is a trade (top-left = good: small drawdown, big upside)</div>
-                        <div style={{ overflowX:'auto' }}>
-                          <svg width={svgW} height={svgH} style={{ display:'block', background:'#0a0a0a', borderRadius:6 }}>
-                            {/* Grid lines */}
-                            <line x1={pad} y1={pad} x2={pad} y2={svgH-pad} stroke="#1e1e1e" strokeWidth="1"/>
-                            <line x1={pad} y1={svgH-pad} x2={svgW-pad} y2={svgH-pad} stroke="#1e1e1e" strokeWidth="1"/>
-                            <text x={pad-2} y={svgH-pad+12} fontSize="9" fill="#444" textAnchor="middle">0</text>
-                            <text x={svgW/2} y={svgH-4} fontSize="9" fill="#444" textAnchor="middle">← MAE (drawdown against you)</text>
-                            <text x={8} y={svgH/2} fontSize="9" fill="#444" textAnchor="middle" transform={`rotate(-90,8,${svgH/2})`}>MFE (best reached) ↑</text>
-                            {/* Win dots */}
-                            {wins2.map((t,i) => (
-                              <circle key={'w'+i} cx={scaleX(t.maePnl)} cy={scaleY(t.mfePnl)} r="5"
-                                fill="#1D9E75" opacity="0.8">
-                                <title>{t.symbol} {t.direction} Entry:{t.entry} MFE:+${t.mfePnl} MAE:-${Math.abs(t.maePnl)} Exit:{t.exitPnl>=0?'+':''}${t.exitPnl}</title>
-                              </circle>
-                            ))}
-                            {/* Loss dots */}
-                            {losses2.map((t,i) => (
-                              <circle key={'l'+i} cx={scaleX(t.maePnl)} cy={scaleY(t.mfePnl)} r="5"
-                                fill="#E24B4A" opacity="0.8">
-                                <title>{t.symbol} {t.direction} Entry:{t.entry} MFE:+${t.mfePnl} MAE:-${Math.abs(t.maePnl)} Exit:{t.exitPnl>=0?'+':''}${t.exitPnl}</title>
-                              </circle>
-                            ))}
-                            {/* Legend */}
-                            <circle cx={svgW-80} cy={16} r="4" fill="#1D9E75"/>
-                            <text x={svgW-73} y={19} fontSize="9" fill="#666">Win</text>
-                            <circle cx={svgW-50} cy={16} r="4" fill="#E24B4A"/>
-                            <text x={svgW-43} y={19} fontSize="9" fill="#666">Loss</text>
-                          </svg>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })()}
                 {/* Calendar */}
                 <div style={{ background:'#111', border:'1px solid #222', borderRadius:8, padding:'12px 14px' }}>
                   <TOSCalendar trips={filteredTrips} allTrips={filteredTrips} onStrategyUpdate={handleTOSStrategyUpdate} />
