@@ -83,23 +83,34 @@ function TOSDayPanel({ day, month, year, items, allTrips, onClose, onStrategyUpd
   const wins = items.filter(t => t.pnl > 0).length;
   const wr = items.length ? Math.round(wins / items.length * 100) : 0;
   const tripKey = (t) => `${t.account}|${t.symbol}|${t.direction}|${t.entry}|${new Date(t.entry_dt).toISOString().slice(0,16)}`;
+  // Loose key for matching across different entry_dt formats
+  const looseKey = (t) => `${t.account}|${t.symbol}|${t.direction}|${t.entry}`;
   const [stratMap, setStratMap] = useState(() => {
     const m = {};
-    // Use allTrips (current tosData) if available for up-to-date strategy values
+    // Build lookup from allTrips using loose key
     const source = allTrips || items;
-    source.forEach(t => { if (t.strategy_id) m[tripKey(t)] = t.strategy_id; });
+    const looseMap = {};
+    source.forEach(t => { if (t.strategy_id) looseMap[looseKey(t)] = t.strategy_id; });
+    // Apply to items using both exact and loose key
+    items.forEach(t => {
+      const exact = tripKey(t);
+      const loose = looseKey(t);
+      if (looseMap[loose]) m[exact] = looseMap[loose];
+    });
     return m;
   });
   const [mfeMap, setMfeMap] = useState(() => {
     const m = {};
-    const source2 = allTrips || items;
-    source2.forEach(t => { const v = t.mfe_price ?? t.mfe; if (v != null) m[tripKey(t)] = String(v); });
+    const looseMfe = {};
+    (allTrips || items).forEach(t => { const v = t.mfe_price ?? t.mfe; if (v != null) looseMfe[looseKey(t)] = String(v); });
+    items.forEach(t => { if (looseMfe[looseKey(t)]) m[tripKey(t)] = looseMfe[looseKey(t)]; });
     return m;
   });
   const [maeMap, setMaeMap] = useState(() => {
     const m = {};
-    const source3 = allTrips || items;
-    source3.forEach(t => { const v = t.mae_price ?? t.mae; if (v != null) m[tripKey(t)] = String(v); });
+    const looseMae = {};
+    (allTrips || items).forEach(t => { const v = t.mae_price ?? t.mae; if (v != null) looseMae[looseKey(t)] = String(v); });
+    items.forEach(t => { if (looseMae[looseKey(t)]) m[tripKey(t)] = looseMae[looseKey(t)]; });
     return m;
   });
   const [saving, setSaving] = useState({});
@@ -502,7 +513,6 @@ export default function Analysis({ filteredTrades, dateLabel, acctLabel, dateRan
         if (data.length > 0 && !tosData) {
           const merged = mergeStatements(data);
           setTosData(merged);
-          console.log('Loaded trips with strategy_id:', merged.trips.filter(t => t.strategy_id).map(t => t.strategy_id + ' ' + t.symbol));
         }
       }
       setLoadingDB(false);
@@ -955,7 +965,6 @@ ${tosContext}`;
         : t
     );
     const updatedData = { ...stmt.data, trips: updatedTrips };
-    console.log('Saving strategy:', stratId, 'to stmt', stmt.id, 'trips updated:', updatedTrips.filter(t => t.strategy_id).length);
     await supabase.from('tos_statements').update({ data: updatedData }).eq('id', stmt.id);
     setSavedStatements(prev => prev.map(s => s.id === stmt.id ? { ...s, data: updatedData } : s));
     setTosData(prev => ({
