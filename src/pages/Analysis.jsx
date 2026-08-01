@@ -949,6 +949,7 @@ ${tosContext}`;
         : t
     );
     const updatedData = { ...stmt.data, trips: updatedTrips };
+    console.log('Saving strategy:', stratId, 'to stmt', stmt.id, 'trips updated:', updatedTrips.filter(t => t.strategy_id).length);
     await supabase.from('tos_statements').update({ data: updatedData }).eq('id', stmt.id);
     setSavedStatements(prev => prev.map(s => s.id === stmt.id ? { ...s, data: updatedData } : s));
     setTosData(prev => ({
