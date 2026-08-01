@@ -90,12 +90,12 @@ function TOSDayPanel({ day, month, year, items, onClose, onStrategyUpdate }) {
   });
   const [mfeMap, setMfeMap] = useState(() => {
     const m = {};
-    items.forEach(t => { if (t.mfe_price != null) m[tripKey(t)] = String(t.mfe_price); });
+    items.forEach(t => { const v = t.mfe_price ?? t.mfe; if (v != null) m[tripKey(t)] = String(v); });
     return m;
   });
   const [maeMap, setMaeMap] = useState(() => {
     const m = {};
-    items.forEach(t => { if (t.mae_price != null) m[tripKey(t)] = String(t.mae_price); });
+    items.forEach(t => { const v = t.mae_price ?? t.mae; if (v != null) m[tripKey(t)] = String(v); });
     return m;
   });
   const [saving, setSaving] = useState({});
@@ -945,7 +945,7 @@ ${tosContext}`;
     if (!stmt) return;
     const updatedTrips = (stmt.data.trips || []).map(t =>
       matchKey(t) === tripMK && Math.abs(new Date(t.entry_dt) - new Date(trip.entry_dt)) < 60000
-        ? { ...t, strategy_id: stratId, ...(mfePrice != null ? { mfe_price: mfePrice } : {}), ...(maePrice != null ? { mae_price: maePrice } : {}) }
+        ? { ...t, strategy_id: stratId, ...(mfePrice != null ? { mfe: mfePrice, mfe_price: mfePrice } : {}), ...(maePrice != null ? { mae: maePrice, mae_price: maePrice } : {}) }
         : t
     );
     const updatedData = { ...stmt.data, trips: updatedTrips };
@@ -955,7 +955,7 @@ ${tosContext}`;
       ...prev,
       trips: (prev?.trips || []).map(t =>
         matchKey(t) === tripMK && Math.abs(new Date(t.entry_dt) - new Date(trip.entry_dt)) < 60000
-          ? { ...t, strategy_id: stratId, ...(mfePrice != null ? { mfe_price: mfePrice } : {}), ...(maePrice != null ? { mae_price: maePrice } : {}) }
+          ? { ...t, strategy_id: stratId, ...(mfePrice != null ? { mfe: mfePrice, mfe_price: mfePrice } : {}), ...(maePrice != null ? { mae: maePrice, mae_price: maePrice } : {}) }
           : t
       )
     }));
@@ -1155,7 +1155,7 @@ ${tosContext}`;
                   const STRAT_COLORS = { 'strat-aplus-prime':'#f59e0b','strat-strong-al-weak-sl':'#185FA5','strat-weak-al-strong-sl':'#7c3aed','strat-both-weak':'#E24B4A','strat-bounce':'#7c3aed' };
                   const MULT = { MGC:10, MNQ:2, MYM:0.5, MCL:100 };
 
-                  const withMfe = filteredTrips.filter(t => t.mfe_price != null && t.mae_price != null && t.entry != null && t.exit != null);
+                  const withMfe = filteredTrips.filter(t => (t.mfe_price != null || t.mfe != null) && (t.mae_price != null || t.mae != null) && t.entry != null && t.exit != null);
                   if (withMfe.length === 0) return (
                     <div style={{ background:'#111', border:'1px solid #222', borderRadius:8, padding:'14px 16px', marginTop:12 }}>
                       <div style={{ fontSize:11, color:'#bbb', textTransform:'uppercase', letterSpacing:'0.05em', fontWeight:700, marginBottom:8 }}>MFE / MAE Analysis</div>
@@ -1167,8 +1167,10 @@ ${tosContext}`;
                   const tradeMetrics = withMfe.map(t => {
                     const mult = MULT[t.symbol] || 10;
                     const isLong = t.direction === 'long';
-                    const mfePnl = Math.round((isLong ? t.mfe_price - t.entry : t.entry - t.mfe_price) * mult);
-                    const maePnl = Math.round((isLong ? t.mae_price - t.entry : t.entry - t.mae_price) * mult);
+                    const mfeVal = t.mfe_price ?? t.mfe;
+    const maeVal = t.mae_price ?? t.mae;
+    const mfePnl = Math.round((isLong ? mfeVal - t.entry : t.entry - mfeVal) * mult);
+                    const maePnl = Math.round((isLong ? maeVal - t.entry : t.entry - maeVal) * mult);
                     const exitPnl = Math.round(t.pnl);
                     const capture = mfePnl > 0 ? Math.round(exitPnl / mfePnl * 100) : null;
                     const leftOnTable = mfePnl > 0 && exitPnl < mfePnl ? mfePnl - exitPnl : 0;
