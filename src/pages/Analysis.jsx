@@ -60,7 +60,7 @@ function baseOpts(extraPlugins) {
 
 // ΓöÇΓöÇΓöÇ Month label helper ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 function fmtMonth(iso) {
-  if (!iso) return 'ΓÇö';
+  if (!iso) return '—';
   const d = new Date(iso + 'T12:00:00');
   return d.toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
 }
@@ -69,7 +69,7 @@ function fmtMonth(iso) {
 
 // ΓöÇΓöÇΓöÇ TOS Day Side Panel ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 const STRAT_OPTIONS = [
-  { value: '',                        label: 'ΓÇö unassigned ΓÇö' },
+  { value: '',                        label: '— unassigned —' },
   { value: 'strat-aplus-prime',       label: 'A+ Prime' },
   { value: 'strat-strong-al-weak-sl', label: 'Strong AL / Weak SL' },
   { value: 'strat-weak-al-strong-sl', label: 'Weak AL / Strong SL' },
@@ -173,8 +173,8 @@ function TOSDayPanel({ day, month, year, items, allTrips, onClose, onStrategyUpd
               { label: 'Net P&L', value: fmt(net), color: net >= 0 ? '#1D9E75' : '#E24B4A' },
               { label: 'Win Rate', value: wr + '%', color: wr >= 50 ? '#1D9E75' : '#E24B4A' },
               { label: 'Winners / Losers', value: `${wins} / ${items.length - wins}` },
-              { label: 'Avg Winner', value: wins ? fmt(items.filter(t=>t.pnl>0).reduce((s,t)=>s+t.pnl,0)/wins) : 'ΓÇö', color: '#1D9E75' },
-              { label: 'Avg Loser', value: (items.length-wins) ? fmt(items.filter(t=>t.pnl<0).reduce((s,t)=>s+t.pnl,0)/(items.length-wins)) : 'ΓÇö', color: '#E24B4A' },
+              { label: 'Avg Winner', value: wins ? fmt(items.filter(t=>t.pnl>0).reduce((s,t)=>s+t.pnl,0)/wins) : '—', color: '#1D9E75' },
+              { label: 'Avg Loser', value: (items.length-wins) ? fmt(items.filter(t=>t.pnl<0).reduce((s,t)=>s+t.pnl,0)/(items.length-wins)) : '—', color: '#E24B4A' },
             ].map(({ label, value, color }) => (
               <div key={label}>
                 <div style={{ fontSize: 10, color: '#555', marginBottom: 3 }}>{label}</div>
@@ -196,8 +196,8 @@ function TOSDayPanel({ day, month, year, items, allTrips, onClose, onStrategyUpd
             </thead>
             <tbody>
               {[...items].sort((a,b) => new Date(a.entry_dt) - new Date(b.entry_dt)).map((t, i) => {
-                const entryTime = t.entry_dt ? new Date(t.entry_dt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }) : 'ΓÇö';
-                const holdStr = t.duration_hrs > 0 ? (t.duration_hrs < 1 ? Math.round(t.duration_hrs * 60) + 'm' : (Math.round(t.duration_hrs * 10)/10) + 'h') : 'ΓÇö';
+                const entryTime = t.entry_dt ? new Date(t.entry_dt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }) : '—';
+                const holdStr = t.duration_hrs > 0 ? (t.duration_hrs < 1 ? Math.round(t.duration_hrs * 60) + 'm' : (Math.round(t.duration_hrs * 10)/10) + 'h') : '—';
                 const cpCount = t.checkpoints?.length || 0;
                 return (
                   <tr key={i} style={{ borderBottom: '1px solid #181818' }}
@@ -208,7 +208,7 @@ function TOSDayPanel({ day, month, year, items, allTrips, onClose, onStrategyUpd
                     <td style={{ padding: '10px 12px', color: '#ccc', fontWeight: 700 }}>{t.symbol}</td>
                     <td style={{ padding: '10px 12px', color: t.direction === 'long' ? '#1D9E75' : '#E24B4A', fontWeight: 700, textTransform: 'uppercase', fontSize: 11 }}>{t.direction}</td>
                     <td style={{ padding: '10px 12px', color: '#ccc', fontFamily: 'monospace' }}>{t.entry}</td>
-                    <td style={{ padding: '10px 12px', color: '#ccc', fontFamily: 'monospace' }}>{t.exit || 'ΓÇö'}</td>
+                    <td style={{ padding: '10px 12px', color: '#ccc', fontFamily: 'monospace' }}>{t.exit || '—'}</td>
                     <td style={{ padding: '10px 12px', fontWeight: 700, color: t.pnl > 0 ? '#1D9E75' : '#E24B4A', fontFamily: 'monospace' }}>{t.pnl >= 0 ? '+$' : '-$'}{Math.abs(Math.round(t.pnl)).toLocaleString()}</td>
                     <td style={{ padding: '10px 12px', color: '#666' }}>{holdStr}</td>
                     <td style={{ padding: '6px 8px' }}>
@@ -387,7 +387,7 @@ function TOSCalendar({ trips, allTrips, onStrategyUpdate }) {
                 {wDays > 0 ? (<>
                   <span style={{ fontSize: 16, fontWeight: 700, color: wNet >= 0 ? '#1D9E75' : '#E24B4A' }}>{fmt(wNet)}</span>
                   <span style={{ fontSize: 11, color: '#555' }}>{wDays} day{wDays !== 1 ? 's' : ''}</span>
-                </>) : <span style={{ fontSize: 13, color: '#333' }}>ΓÇö</span>}
+                </>) : <span style={{ fontSize: 13, color: '#333' }}>—</span>}
               </div>
             );
           })}
@@ -464,7 +464,7 @@ export default function Analysis({ filteredTrades, dateLabel, acctLabel, dateRan
 
   // ΓöÇΓöÇΓöÇ AI Chat state ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
   const [chatMessages, setChatMessages] = useState([
-    { role: 'assistant', content: "Hi! I'm your TOS Analysis assistant. I have full access to your imported broker statements ΓÇö ask me anything about your equity curve, commissions, symbols, or month-over-month performance." }
+    { role: 'assistant', content: "Hi! I'm your TOS Analysis assistant. I have full access to your imported broker statements — ask me anything about your equity curve, commissions, symbols, or month-over-month performance." }
   ]);
   const [chatInput, setChatInput]   = useState('');
   const [chatLoading, setChatLoading] = useState(false);
@@ -522,7 +522,7 @@ export default function Analysis({ filteredTrades, dateLabel, acctLabel, dateRan
     };
   }
 
-  // ΓöÇΓöÇΓöÇ Handle new TOS import ΓÇö save to Supabase ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+  // ΓöÇΓöÇΓöÇ Handle new TOS import — save to Supabase ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
   const handleImport = useCallback(async (parsed) => {
     const trips = parsed.roundTrips || [];
     if (!trips.length) return;
@@ -560,7 +560,7 @@ export default function Analysis({ filteredTrades, dateLabel, acctLabel, dateRan
 
     setSaveMsg('SavingΓÇª');
 
-    // Upsert ΓÇö one row per account+month
+    // Upsert — one row per account+month
     await supabase.from('tos_statements').delete().eq('account', payload.account).eq('month', payload.month);
     const { error } = await supabase.from('tos_statements').insert(payload);
 
@@ -627,12 +627,12 @@ export default function Analysis({ filteredTrades, dateLabel, acctLabel, dateRan
     setSelectedMonths(prev => prev.filter(x => x !== id));
   };
 
-  // ΓöÇΓöÇΓöÇ AI Chat ΓÇö scroll to bottom ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+  // ΓöÇΓöÇΓöÇ AI Chat — scroll to bottom ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
   useEffect(() => {
     if (activeTab === 'aichat') chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chatMessages, activeTab]);
 
-  // ΓöÇΓöÇΓöÇ AI Chat ΓÇö send message with TOS context ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+  // ΓöÇΓöÇΓöÇ AI Chat — send message with TOS context ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
   const sendChat = useCallback(async () => {
     const text = chatInput.trim();
     if (!text || chatLoading) return;
@@ -663,7 +663,7 @@ export default function Analysis({ filteredTrades, dateLabel, acctLabel, dateRan
       const avgWinHold  = winHrs.length  ? winHrs.reduce((s,h)=>s+h,0)  / winHrs.length  : null;
       const avgLossHold = lossHrs.length ? lossHrs.reduce((s,h)=>s+h,0) / lossHrs.length : null;
       const holdSummary = (avgWinHold !== null && avgLossHold !== null)
-        ? `Avg hold ΓÇö Winners: ${fmtHrs(avgWinHold)}, Losers: ${fmtHrs(avgLossHold)}`
+        ? `Avg hold — Winners: ${fmtHrs(avgWinHold)}, Losers: ${fmtHrs(avgLossHold)}`
         : 'Hold time data available on individual trades';
 
       // Direction breakdown
@@ -692,8 +692,8 @@ export default function Analysis({ filteredTrades, dateLabel, acctLabel, dateRan
       const monthLines = Object.entries(monthMap)
         .sort((a, b) => a[0].localeCompare(b[0]))
         .map(([m, d]) => {
-          const mWH = d.holdWin.length  ? fmtHrs(d.holdWin.reduce((s,h)=>s+h,0)/d.holdWin.length)   : 'ΓÇö';
-          const mLH = d.holdLoss.length ? fmtHrs(d.holdLoss.reduce((s,h)=>s+h,0)/d.holdLoss.length) : 'ΓÇö';
+          const mWH = d.holdWin.length  ? fmtHrs(d.holdWin.reduce((s,h)=>s+h,0)/d.holdWin.length)   : '—';
+          const mLH = d.holdLoss.length ? fmtHrs(d.holdLoss.reduce((s,h)=>s+h,0)/d.holdLoss.length) : '—';
           return `  ${m}: ${d.pnl >= 0 ? '+' : ''}$${Math.round(d.pnl)}, ${d.total}t, ${Math.round(d.wins/d.total*100)}% WR, avg hold win=${mWH} loss=${mLH}`;
         })
         .join('\n');
@@ -707,7 +707,7 @@ export default function Analysis({ filteredTrades, dateLabel, acctLabel, dateRan
       // All individual trades (capped at 200 for context size)
       const tradeLines = trips.slice(0, 200).map(t => {
         const dt = t.entry_dt instanceof Date ? t.entry_dt.toISOString().slice(0,16) : String(t.entry_dt||'').slice(0,16);
-        const hold = t.duration_hrs > 0 ? fmtHrs(t.duration_hrs) : 'ΓÇö';
+        const hold = t.duration_hrs > 0 ? fmtHrs(t.duration_hrs) : '—';
         return `  ${dt} ${t.symbol} ${t.direction||''} P&L:${t.pnl>=0?'+':''}$${Math.round(t.pnl)} hold:${hold}`;
       }).join('\n');
 
@@ -740,7 +740,7 @@ IMPORTANT FORMATTING RULES:
 - Always use markdown tables (with | pipes and --- separator row) when showing comparisons, monthly breakdowns, or multi-column data.
 - Use **bold** for key metrics and section headers.
 - Use bullet points (- item) for lists.
-- Never apologize for not being able to show tables ΓÇö always use pipe-format markdown tables.
+- Never apologize for not being able to show tables — always use pipe-format markdown tables.
 - Always end your response with a follow-up suggestion (e.g. 'Want me to break this down by account?' or 'I can turn this into a checklist if you'd like.').
 
 ${tosContext}`;
@@ -1003,7 +1003,7 @@ ${tosContext}`;
         </div>
       </div>
 
-      {/* ΓöÇΓöÇ Import + History row ΓÇö always visible ΓöÇΓöÇ */}
+      {/* ΓöÇΓöÇ Import + History row — always visible ΓöÇΓöÇ */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20 }}>
 
         {/* Import panel */}
@@ -1026,7 +1026,7 @@ ${tosContext}`;
           </div>
 
           {!loadingDB && monthSummary.length === 0 && (
-            <div style={{ fontSize: 12, color: '#444', padding: '12px 0' }}>No statements saved yet ΓÇö import one above.</div>
+            <div style={{ fontSize: 12, color: '#444', padding: '12px 0' }}>No statements saved yet — import one above.</div>
           )}
 
           {monthSummary.length > 0 && (
@@ -1105,14 +1105,14 @@ ${tosContext}`;
                 {/* By Strategy */}
                 <div style={{ background:'#111', border:'1px solid #222', borderRadius:8, padding:'14px 16px', marginBottom:12 }}>
                   <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12 }}>
-                    <div style={{ fontSize:11, color:'#bbb', textTransform:'uppercase', letterSpacing:'0.05em', fontWeight:700 }}>By Strategy ΓÇö TOS Broker Data</div>
+                    <div style={{ fontSize:11, color:'#bbb', textTransform:'uppercase', letterSpacing:'0.05em', fontWeight:700 }}>By Strategy — TOS Broker Data</div>
                     <div style={{ fontSize:11, color:'#555' }}>
                       {tagged.length}/{filteredTrips.length} tagged
                       {untagged.length > 0 && <span style={{color:'#f59e0b', marginLeft:8}}>ΓÜá {untagged.length} untagged</span>}
                     </div>
                   </div>
                   {rows.length === 0 ? (
-                    <div style={{ fontSize:12, color:'#444', padding:'12px 0' }}>No strategies tagged yet ΓÇö click any day below to assign strategies to trades</div>
+                    <div style={{ fontSize:12, color:'#444', padding:'12px 0' }}>No strategies tagged yet — click any day below to assign strategies to trades</div>
                   ) : (<>
                     <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:8, marginBottom:14 }}>
                       {Object.keys(STRAT_LABELS).map(sid => {
@@ -1169,7 +1169,7 @@ ${tosContext}`;
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 8, marginBottom: 16 }}>
                 <StatCard label="Showing"   value={acctLabel} />
                 <StatCard label="Trades"    value={tt} />
-                <StatCard label="Win Rate"  value={tt ? Math.round(tw/tt*100)+'%' : 'ΓÇö'} color={tt && tw/tt>=0.5?'#1D9E75':'#E24B4A'} />
+                <StatCard label="Win Rate"  value={tt ? Math.round(tw/tt*100)+'%' : '—'} color={tt && tw/tt>=0.5?'#1D9E75':'#E24B4A'} />
                 <StatCard label="Net P&L"   value={fmtPnl(tn)} color={tn>=0?'#1D9E75':'#E24B4A'} />
                 <StatCard label="Comm paid" value={'-$'+Math.round(tc)} color="#E24B4A" />
               </div>
@@ -1196,12 +1196,12 @@ ${tosContext}`;
 
               <div style={{ background: '#111', border: '1px solid #222', borderRadius: 8, padding: '12px 14px' }}>
                 <div style={{ fontSize: 11, color: '#bbb', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>
-                  Multiday Trades ΓÇö Real P&L from Daily Settlements
+                  Multiday Trades — Real P&L from Daily Settlements
                 </div>
                 <div style={{ fontSize: 11, color: '#444', marginBottom: 8 }}>
                   Trades held 20h+ ┬╖ showing up to 5 longest
                   {filteredTrips.filter(t => (t.duration_hrs||0) >= 20).length === 0 &&
-                    <span style={{ color: '#666' }}> ΓÇö none found in current filter</span>}
+                    <span style={{ color: '#666' }}> — none found in current filter</span>}
                 </div>
                 <ChartCanvas id="md-chart" build={buildMultiday} />
               </div>
@@ -1209,7 +1209,7 @@ ${tosContext}`;
               {/* ΓöÇΓöÇ TOS Daily Calendar ΓöÇΓöÇ */}
               <div style={{ background: '#111', border: '1px solid #222', borderRadius: 8, padding: '12px 14px', marginTop: 12 }}>
                 <div style={{ fontSize: 11, color: '#bbb', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>
-                  Daily P&L Calendar ΓÇö TOS Broker Data
+                  Daily P&L Calendar — TOS Broker Data
                 </div>
                 <div style={{ fontSize: 11, color: '#444', marginBottom: 8 }}>Click any day to see trade details</div>
                 <TOSCalendar trips={filteredTrips} allTrips={filteredTrips} onStrategyUpdate={handleTOSStrategyUpdate} />
@@ -1226,11 +1226,11 @@ ${tosContext}`;
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, padding: '8px 12px', background: '#0d1a14', border: '1px solid #163d26', borderRadius: 8 }}>
             <span style={{ fontSize: 18 }}>≡ƒôê</span>
             <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 12, fontWeight: 600, color: '#1D9E75' }}>TOS Statement AI ΓÇö Context loaded</div>
+              <div style={{ fontSize: 12, fontWeight: 600, color: '#1D9E75' }}>TOS Statement AI — Context loaded</div>
               <div style={{ fontSize: 11, color: '#4a7a5e' }}>
                 {tosData?.trips?.length
                   ? `${tosData.trips.length} trades ┬╖ ${[...new Set(tosData.trips.map(t => t.account))].join(', ')} ┬╖ Net ${tosData.netPnl >= 0 ? '+' : ''}$${Math.round(tosData.netPnl || 0).toLocaleString()}`
-                  : 'No TOS data loaded ΓÇö import a statement above first'}
+                  : 'No TOS data loaded — import a statement above first'}
               </div>
             </div>
             <button
@@ -1272,7 +1272,7 @@ ${tosContext}`;
             <div ref={chatEndRef} />
           </div>
 
-          {/* Suggested prompts ΓÇö show only when no user messages yet */}
+          {/* Suggested prompts — show only when no user messages yet */}
           {chatMessages.filter(m => m.role === 'user').length === 0 && (
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
               {[
