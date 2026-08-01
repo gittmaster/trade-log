@@ -88,6 +88,9 @@ function TOSDayPanel({ day, month, year, items, allTrips, onClose, onStrategyUpd
   const buildMaps = (source) => {
     const sm = {}, mfe = {}, mae = {};
     const looseMap = {}, looseMfe = {}, looseMae = {};
+    console.log('buildMaps source:', source.length, 'items:', items.length);
+    console.log('sample source looseKey:', source.slice(0,2).map(t => `${t.account}|${t.symbol}|${t.direction}|${t.entry}|strat:${t.strategy_id}`));
+    console.log('sample items looseKey:', items.slice(0,2).map(t => `${t.account}|${t.symbol}|${t.direction}|${t.entry}`));
     source.forEach(t => {
       const lk = looseKey(t);
       if (t.strategy_id) looseMap[lk] = t.strategy_id;
