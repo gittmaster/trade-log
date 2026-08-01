@@ -85,34 +85,48 @@ function TOSDayPanel({ day, month, year, items, allTrips, onClose, onStrategyUpd
   const tripKey = (t) => `${t.account}|${t.symbol}|${t.direction}|${t.entry}|${new Date(t.entry_dt).toISOString().slice(0,16)}`;
   // Loose key for matching across different entry_dt formats
   const looseKey = (t) => `${t.account}|${t.symbol}|${t.direction}|${t.entry}`;
-  const buildMaps = (source) => {
-    const sm = {}, mfe = {}, mae = {};
-    const looseMap = {}, looseMfe = {}, looseMae = {};
-    source.forEach(t => {
-      const lk = looseKey(t);
-      if (t.strategy_id) looseMap[lk] = t.strategy_id;
-      const mv = t.mfe_price ?? t.mfe; if (mv != null) looseMfe[lk] = String(mv);
-      const av = t.mae_price ?? t.mae; if (av != null) looseMae[lk] = String(av);
-    });
-    items.forEach(t => {
-      const tk = tripKey(t); const lk = looseKey(t);
-      if (looseMap[lk]) sm[tk] = looseMap[lk];
-      if (looseMfe[lk]) mfe[tk] = looseMfe[lk];
-      if (looseMae[lk]) mae[tk] = looseMae[lk];
-    });
-    return { sm, mfe, mae };
-  };
-  const [stratMap, setStratMap] = useState(() => buildMaps(allTrips || items).sm);
-  const [mfeMap,   setMfeMap]   = useState(() => buildMaps(allTrips || items).mfe);
-  const [maeMap,   setMaeMap]   = useState(() => buildMaps(allTrips || items).mae);
-
-  useEffect(() => {
-    if (!allTrips?.length) return;
-    const { sm, mfe, mae } = buildMaps(allTrips);
-    setStratMap(prev => ({ ...sm, ...prev })); // merge: don't overwrite user changes this session
-    setMfeMap(prev => ({ ...mfe, ...prev }));
-    setMaeMap(prev => ({ ...mae, ...prev }));
+  // Compute base values from allTrips (DB) — always fresh
+  const baseStratMap = useMemo(() => {
+    const m = {};
+    (allTrips || items).forEach(t => { if (t.strategy_id) m[looseKey(t)] = t.strategy_id; });
+    return m;
   }, [allTrips]);
+  const baseMfeMap = useMemo(() => {
+    const m = {};
+    (allTrips || items).forEach(t => { if (t.mfe_price != null) m[looseKey(t)] = String(t.mfe_price); });
+    return m;
+  }, [allTrips]);
+  const baseMaeMap = useMemo(() => {
+    const m = {};
+    (allTrips || items).forEach(t => { if (t.mae_price != null) m[looseKey(t)] = String(t.mae_price); });
+    return m;
+  }, [allTrips]);
+
+  // Local overrides for changes made this session
+  const [stratOverride, setStratOverride] = useState({});
+  const [mfeOverride,   setMfeOverride]   = useState({});
+  const [maeOverride,   setMaeOverride]   = useState({});
+
+  // Merged maps — session overrides win over DB values
+  const stratMap = useMemo(() => {
+    const m = {};
+    items.forEach(t => { const lk = looseKey(t); const tk = tripKey(t); if (baseStratMap[lk]) m[tk] = baseStratMap[lk]; });
+    return { ...m, ...stratOverride };
+  }, [baseStratMap, stratOverride, items]);
+  const mfeMap = useMemo(() => {
+    const m = {};
+    items.forEach(t => { const lk = looseKey(t); const tk = tripKey(t); if (baseMfeMap[lk]) m[tk] = baseMfeMap[lk]; });
+    return { ...m, ...mfeOverride };
+  }, [baseMfeMap, mfeOverride, items]);
+  const maeMap = useMemo(() => {
+    const m = {};
+    items.forEach(t => { const lk = looseKey(t); const tk = tripKey(t); if (baseMaeMap[lk]) m[tk] = baseMaeMap[lk]; });
+    return { ...m, ...maeOverride };
+  }, [baseMaeMap, maeOverride, items]);
+
+  const setStratMap = (fn) => setStratOverride(fn);
+  const setMfeMap   = (fn) => setMfeOverride(fn);
+  const setMaeMap   = (fn) => setMaeOverride(fn);
   const [saving, setSaving] = useState({});
   const handleStrategyChange = async (t, stratId) => {
     const key = tripKey(t);
@@ -784,7 +798,6 @@ ${tosContext}`;
       return true;
     });
   }, [tosData, account, dateRange?.start?.getTime(), dateRange?.end?.getTime()]);
-  console.log('tosData trips:', tosData?.trips?.length, 'with strat:', tosData?.trips?.filter(t=>t.strategy_id)?.length);
 
   const filteredEquity = useMemo(() => {
     if (!tosData?.equityCurve) return [];
@@ -1152,7 +1165,7 @@ ${tosContext}`;
                   const STRAT_COLORS = { 'strat-aplus-prime':'#f59e0b','strat-strong-al-weak-sl':'#185FA5','strat-weak-al-strong-sl':'#7c3aed','strat-both-weak':'#E24B4A','strat-bounce':'#7c3aed' };
                   const MULT = { MGC:10, MNQ:2, MYM:0.5, MCL:100 };
 
-                  const withMfe = filteredTrips.filter(t => (t.mfe_price != null || t.mfe != null) && (t.mae_price != null || t.mae != null) && t.entry != null && t.exit != null);
+                  const withMfe = filteredTrips.filter(t => t.mfe_price != null && t.mae_price != null && t.entry != null && t.exit != null);
                   if (withMfe.length === 0) return (
                     <div style={{ background:'#111', border:'1px solid #222', borderRadius:8, padding:'14px 16px', marginTop:12 }}>
                       <div style={{ fontSize:11, color:'#bbb', textTransform:'uppercase', letterSpacing:'0.05em', fontWeight:700, marginBottom:8 }}>MFE / MAE Analysis</div>
@@ -1164,8 +1177,8 @@ ${tosContext}`;
                   const tradeMetrics = withMfe.map(t => {
                     const mult = MULT[t.symbol] || 10;
                     const isLong = t.direction === 'long';
-                    const mfeVal = t.mfe_price ?? t.mfe;
-    const maeVal = t.mae_price ?? t.mae;
+                    const mfeVal = t.mfe_price;
+    const maeVal = t.mae_price;
     const mfePnl = Math.round((isLong ? mfeVal - t.entry : t.entry - mfeVal) * mult);
                     const maePnl = Math.round((isLong ? maeVal - t.entry : t.entry - maeVal) * mult);
                     const exitPnl = Math.round(t.pnl);
