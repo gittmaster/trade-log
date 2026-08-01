@@ -84,18 +84,29 @@ function TOSDayPanel({ day, month, year, items, allTrips, onClose, onStrategyUpd
   const wr = items.length ? Math.round(wins / items.length * 100) : 0;
   const tripKey = (t) => `${t.account}|${t.symbol}|${t.direction}|${t.entry}|${new Date(t.entry_dt).toISOString().slice(0,16)}`;
   const lk = (t) => `${t.account}|${t.symbol}|${t.direction}|${t.entry}`;
-  const [stratMap, setStratMap] = useState(() => {
+  // Session overrides (changes made this session)
+  const [stratOvr, setStratOvr] = useState({});
+  const [mfeOvr,   setMfeOvr]   = useState({});
+  const [maeOvr,   setMaeOvr]   = useState({});
+  // Derived from DB — always fresh
+  const stratMap = useMemo(() => {
     const db = {}; (allTrips||items).forEach(t => { if (t.strategy_id) db[lk(t)] = t.strategy_id; });
-    const m = {}; items.forEach(t => { if (db[lk(t)]) m[tripKey(t)] = db[lk(t)]; }); return m;
-  });
-  const [mfeMap, setMfeMap] = useState(() => {
+    const m = {}; items.forEach(t => { if (db[lk(t)]) m[tripKey(t)] = db[lk(t)]; });
+    return { ...m, ...stratOvr };
+  }, [allTrips, items, stratOvr]);
+  const mfeMap = useMemo(() => {
     const db = {}; (allTrips||items).forEach(t => { if (t.mfe_price != null) db[lk(t)] = String(t.mfe_price); });
-    const m = {}; items.forEach(t => { if (db[lk(t)]) m[tripKey(t)] = db[lk(t)]; }); return m;
-  });
-  const [maeMap, setMaeMap] = useState(() => {
+    const m = {}; items.forEach(t => { if (db[lk(t)]) m[tripKey(t)] = db[lk(t)]; });
+    return { ...m, ...mfeOvr };
+  }, [allTrips, items, mfeOvr]);
+  const maeMap = useMemo(() => {
     const db = {}; (allTrips||items).forEach(t => { if (t.mae_price != null) db[lk(t)] = String(t.mae_price); });
-    const m = {}; items.forEach(t => { if (db[lk(t)]) m[tripKey(t)] = db[lk(t)]; }); return m;
-  });
+    const m = {}; items.forEach(t => { if (db[lk(t)]) m[tripKey(t)] = db[lk(t)]; });
+    return { ...m, ...maeOvr };
+  }, [allTrips, items, maeOvr]);
+  const setStratMap = (fn) => setStratOvr(fn);
+  const setMfeMap   = (fn) => setMfeOvr(fn);
+  const setMaeMap   = (fn) => setMaeOvr(fn);
   const [saving, setSaving] = useState({});
   const handleStrategyChange = async (t, stratId) => {
     const key = tripKey(t);
@@ -398,6 +409,7 @@ function TOSCalendar({ trips, allTrips, onStrategyUpdate }) {
       {/* Day side panel */}
       {selectedDay && dayMap[selectedDay] && (
         <TOSDayPanel
+          key={`${selectedDay}-${(allTrips||trips).length}`}
           day={selectedDay} month={navMonth} year={navYear}
           items={dayMap[selectedDay].items}
           onClose={() => setSelectedDay(null)}
