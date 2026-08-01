@@ -88,9 +88,6 @@ function TOSDayPanel({ day, month, year, items, allTrips, onClose, onStrategyUpd
   const buildMaps = (source) => {
     const sm = {}, mfe = {}, mae = {};
     const looseMap = {}, looseMfe = {}, looseMae = {};
-    console.log('buildMaps source:', source.length, 'items:', items.length);
-    console.log('sample source looseKey:', source.slice(0,2).map(t => `${t.account}|${t.symbol}|${t.direction}|${t.entry}|strat:${t.strategy_id}`));
-    console.log('sample items looseKey:', items.slice(0,2).map(t => `${t.account}|${t.symbol}|${t.direction}|${t.entry}`));
     source.forEach(t => {
       const lk = looseKey(t);
       if (t.strategy_id) looseMap[lk] = t.strategy_id;
@@ -603,25 +600,41 @@ export default function Analysis({ filteredTrades, dateLabel, acctLabel, dateRan
     }
     setTimeout(() => setSaveMsg(''), 3000);
 
-    // Also update local tosData immediately
+    // Update local tosData — preserve strategy_id/mfe/mae from existing trips
     setTosData(prev => {
       const prevTrips  = prev?.trips || [];
-      const otherTrips = prevTrips.filter(t => t.account !== parsed.account);
-      const allTrips   = [...otherTrips, ...taggedTrips];
+      // Build lookup of existing enrichment data by loose key
+      const enrichMap = {};
+      prevTrips.forEach(t => {
+        const lk = `${t.account}|${t.symbol}|${t.direction}|${t.entry}`;
+        enrichMap[lk] = { strategy_id: t.strategy_id, mfe: t.mfe, mae: t.mae, mfe_price: t.mfe_price, mae_price: t.mae_price, chart_url: t.chart_url };
+      });
+      const otherTrips = prevTrips.filter(t => {
+        if (t.account !== parsed.account) return true;
+        const d = new Date(t.entry_dt);
+        const tm = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+        return tm !== month;
+      });
+      // Merge taggedTrips with preserved enrichment
+      const mergedNew = taggedTrips.map(t => {
+        const lk = `${t.account}|${t.symbol}|${t.direction}|${t.entry}`;
+        return { ...t, ...(enrichMap[lk] || {}) };
+      });
+      const allTrips = [...otherTrips, ...mergedNew];
       const prevEquity = (prev?.equityCurve || []).filter(e => e.account !== parsed.account);
       const allEquity  = [...prevEquity, ...equityCurve].sort((a,b) => new Date(a.date) - new Date(b.date));
       const symMap = {};
       allTrips.forEach(t => { symMap[t.symbol] = (symMap[t.symbol] || 0) + t.pnl; });
       return {
-        account:     allTrips.map(t => t.account).filter((v,i,a) => a.indexOf(v)===i).join('+'),
-        trips:       allTrips,
+        account:   allTrips.map(t => t.account).filter((v,i,a) => a.indexOf(v)===i).join('+'),
+        trips:     allTrips,
         equityCurve: allEquity,
         symMap,
-        totalComm:   allTrips.reduce((s, t) => s + (t.comm || 0), 0),
-        netPnl:      allTrips.reduce((s, t) => s + t.pnl, 0),
-        wins:        allTrips.filter(t => t.pnl > 0).length,
-        total:       allTrips.length,
-        avgHold:     allTrips.reduce((s, t) => s + (t.duration_hrs || 0), 0) / allTrips.length,
+        totalComm: allTrips.reduce((s, t) => s + (t.comm || 0), 0),
+        netPnl:    allTrips.reduce((s, t) => s + t.pnl, 0),
+        wins:      allTrips.filter(t => t.pnl > 0).length,
+        total:     allTrips.length,
+        avgHold:   allTrips.length ? allTrips.reduce((s, t) => s + (t.duration_hrs || 0), 0) / allTrips.length : 0,
       };
     });
   }, [setTosData]);
