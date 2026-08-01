@@ -77,26 +77,24 @@ const STRAT_OPTIONS = [
   { value: 'strat-bounce',             label: 'Bounce Setup' },
 ];
 
-function TOSDayPanel({ day, month, year, items, onClose, onStrategyUpdate }) {
+function TOSDayPanel({ day, month, year, items, allTrips, onClose, onStrategyUpdate }) {
   const dow = new Date(year, month, day).toLocaleDateString('en-US', { weekday: 'long' });
   const net = items.reduce((s, t) => s + t.pnl, 0);
   const wins = items.filter(t => t.pnl > 0).length;
   const wr = items.length ? Math.round(wins / items.length * 100) : 0;
   const tripKey = (t) => `${t.account}|${t.symbol}|${t.direction}|${t.entry}|${new Date(t.entry_dt).toISOString().slice(0,16)}`;
+  const lk = (t) => `${t.account}|${t.symbol}|${t.direction}|${t.entry}`;
   const [stratMap, setStratMap] = useState(() => {
-    const m = {};
-    items.forEach(t => { if (t.strategy_id) m[tripKey(t)] = t.strategy_id; });
-    return m;
+    const db = {}; (allTrips||items).forEach(t => { if (t.strategy_id) db[lk(t)] = t.strategy_id; });
+    const m = {}; items.forEach(t => { if (db[lk(t)]) m[tripKey(t)] = db[lk(t)]; }); return m;
   });
   const [mfeMap, setMfeMap] = useState(() => {
-    const m = {};
-    items.forEach(t => { if (t.mfe_price != null) m[tripKey(t)] = String(t.mfe_price); });
-    return m;
+    const db = {}; (allTrips||items).forEach(t => { if (t.mfe_price != null) db[lk(t)] = String(t.mfe_price); });
+    const m = {}; items.forEach(t => { if (db[lk(t)]) m[tripKey(t)] = db[lk(t)]; }); return m;
   });
   const [maeMap, setMaeMap] = useState(() => {
-    const m = {};
-    items.forEach(t => { if (t.mae_price != null) m[tripKey(t)] = String(t.mae_price); });
-    return m;
+    const db = {}; (allTrips||items).forEach(t => { if (t.mae_price != null) db[lk(t)] = String(t.mae_price); });
+    const m = {}; items.forEach(t => { if (db[lk(t)]) m[tripKey(t)] = db[lk(t)]; }); return m;
   });
   const [saving, setSaving] = useState({});
   const handleStrategyChange = async (t, stratId) => {
@@ -253,7 +251,7 @@ function TOSDayPanel({ day, month, year, items, onClose, onStrategyUpdate }) {
 const MONTH_NAMES_CAL = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 const DOW_SHORT = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 
-function TOSCalendar({ trips, onStrategyUpdate }) {
+function TOSCalendar({ trips, allTrips, onStrategyUpdate }) {
   const now = new Date();
   const [navYear,  setNavYear]  = useState(now.getFullYear());
   const [navMonth, setNavMonth] = useState(now.getMonth());
@@ -403,6 +401,7 @@ function TOSCalendar({ trips, onStrategyUpdate }) {
           day={selectedDay} month={navMonth} year={navYear}
           items={dayMap[selectedDay].items}
           onClose={() => setSelectedDay(null)}
+          allTrips={allTrips||trips}
           onStrategyUpdate={onStrategyUpdate}
         />
       )}
@@ -1150,7 +1149,7 @@ ${tosContext}`;
                 </div>
                 {/* Calendar */}
                 <div style={{ background:'#111', border:'1px solid #222', borderRadius:8, padding:'12px 14px' }}>
-                  <TOSCalendar trips={filteredTrips} onStrategyUpdate={handleTOSStrategyUpdate} />
+                  <TOSCalendar trips={filteredTrips} allTrips={filteredTrips} onStrategyUpdate={handleTOSStrategyUpdate} />
                 </div>
               </>
             );
@@ -1214,7 +1213,7 @@ ${tosContext}`;
                   Daily P&L Calendar — TOS Broker Data
                 </div>
                 <div style={{ fontSize: 11, color: '#444', marginBottom: 8 }}>Click any day to see trade details</div>
-                <TOSCalendar trips={filteredTrips} onStrategyUpdate={handleTOSStrategyUpdate} />
+                <TOSCalendar trips={filteredTrips} allTrips={filteredTrips} onStrategyUpdate={handleTOSStrategyUpdate} />
               </div>
             </>
           )}
