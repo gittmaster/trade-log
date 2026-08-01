@@ -268,7 +268,7 @@ function TOSDayPanel({ day, month, year, items, allTrips, onClose, onStrategyUpd
 const MONTH_NAMES_CAL = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 const DOW_SHORT = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 
-function TOSCalendar({ trips, onStrategyUpdate }) {
+function TOSCalendar({ trips, onStrategyUpdate, allTrips }) {
   const now = new Date();
   const [navYear,  setNavYear]  = useState(now.getFullYear());
   const [navMonth, setNavMonth] = useState(now.getMonth());
@@ -420,6 +420,7 @@ function TOSCalendar({ trips, onStrategyUpdate }) {
           allTrips={trips}
           onClose={() => setSelectedDay(null)}
           onStrategyUpdate={onStrategyUpdate}
+          allTrips={allTrips || trips}
         />
       )}
     </div>
@@ -1317,7 +1318,7 @@ ${tosContext}`;
                 })()}
                 {/* Calendar */}
                 <div style={{ background:'#111', border:'1px solid #222', borderRadius:8, padding:'12px 14px' }}>
-                  <TOSCalendar trips={filteredTrips} onStrategyUpdate={handleTOSStrategyUpdate} />
+                  <TOSCalendar trips={filteredTrips} allTrips={filteredTrips} onStrategyUpdate={handleTOSStrategyUpdate} />
                 </div>
               </>
             );
@@ -1381,7 +1382,7 @@ ${tosContext}`;
                   Daily P&L Calendar — TOS Broker Data
                 </div>
                 <div style={{ fontSize: 11, color: '#444', marginBottom: 8 }}>Click any day to see trade details</div>
-                <TOSCalendar trips={filteredTrips} onStrategyUpdate={handleTOSStrategyUpdate} />
+                <TOSCalendar trips={filteredTrips} allTrips={filteredTrips} onStrategyUpdate={handleTOSStrategyUpdate} />
               </div>
             </>
           )}
