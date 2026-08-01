@@ -58,7 +58,7 @@ function baseOpts(extraPlugins) {
   };
 }
 
-// ΓöÇΓöÇΓöÇ Month label helper ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+// ─── Month label helper ────────────────────────────────────────────────────────
 function fmtMonth(iso) {
   if (!iso) return '—';
   const d = new Date(iso + 'T12:00:00');
@@ -67,33 +67,36 @@ function fmtMonth(iso) {
 
 
 
-// ΓöÇΓöÇΓöÇ TOS Day Side Panel ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+// ─── TOS Day Side Panel ────────────────────────────────────────────────────────
 const STRAT_OPTIONS = [
   { value: '',                        label: '— unassigned —' },
   { value: 'strat-aplus-prime',       label: 'A+ Prime' },
   { value: 'strat-strong-al-weak-sl', label: 'Strong AL / Weak SL' },
   { value: 'strat-weak-al-strong-sl', label: 'Weak AL / Strong SL' },
   { value: 'strat-both-weak',         label: 'Both Weak' },
+  { value: 'strat-bounce',             label: 'Bounce Setup' },
 ];
 
-function TOSDayPanel({ day, month, year, items, allTrips, onClose, onStrategyUpdate }) {
+function TOSDayPanel({ day, month, year, items, onClose, onStrategyUpdate }) {
   const dow = new Date(year, month, day).toLocaleDateString('en-US', { weekday: 'long' });
   const net = items.reduce((s, t) => s + t.pnl, 0);
   const wins = items.filter(t => t.pnl > 0).length;
   const wr = items.length ? Math.round(wins / items.length * 100) : 0;
   const tripKey = (t) => `${t.account}|${t.symbol}|${t.direction}|${t.entry}|${new Date(t.entry_dt).toISOString().slice(0,16)}`;
-  const lk = (t) => `${t.account}|${t.symbol}|${t.direction}|${t.entry}`;
   const [stratMap, setStratMap] = useState(() => {
-    const db = {}; (allTrips||items).forEach(t => { if (t.strategy_id) db[lk(t)] = t.strategy_id; });
-    const m = {}; items.forEach(t => { if (db[lk(t)]) m[tripKey(t)] = db[lk(t)]; }); return m;
+    const m = {};
+    items.forEach(t => { if (t.strategy_id) m[tripKey(t)] = t.strategy_id; });
+    return m;
   });
   const [mfeMap, setMfeMap] = useState(() => {
-    const db = {}; (allTrips||items).forEach(t => { if (t.mfe_price != null) db[lk(t)] = String(t.mfe_price); });
-    const m = {}; items.forEach(t => { if (db[lk(t)]) m[tripKey(t)] = db[lk(t)]; }); return m;
+    const m = {};
+    items.forEach(t => { if (t.mfe_price != null) m[tripKey(t)] = String(t.mfe_price); });
+    return m;
   });
   const [maeMap, setMaeMap] = useState(() => {
-    const db = {}; (allTrips||items).forEach(t => { if (t.mae_price != null) db[lk(t)] = String(t.mae_price); });
-    const m = {}; items.forEach(t => { if (db[lk(t)]) m[tripKey(t)] = db[lk(t)]; }); return m;
+    const m = {};
+    items.forEach(t => { if (t.mae_price != null) m[tripKey(t)] = String(t.mae_price); });
+    return m;
   });
   const [saving, setSaving] = useState({});
   const handleStrategyChange = async (t, stratId) => {
@@ -159,7 +162,7 @@ function TOSDayPanel({ day, month, year, items, allTrips, onClose, onStrategyUpd
             <div style={{ fontSize: 16, fontWeight: 700, color: '#fff' }}>{dow}, {MONTH_NAMES_CAL[month]} {day}, {year}</div>
             <div style={{ fontSize: 13, color: net >= 0 ? '#1D9E75' : '#E24B4A', fontWeight: 700, marginTop: 2 }}>Net P&L {fmt(net)}</div>
           </div>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#666', fontSize: 22, cursor: 'pointer' }}>├ù</button>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#666', fontSize: 22, cursor: 'pointer' }}>×</button>
         </div>
 
         {/* Chart + stats */}
@@ -218,7 +221,7 @@ function TOSDayPanel({ day, month, year, items, allTrips, onClose, onStrategyUpd
                         onBlur={() => handleMfeMaeSave(t)}
                         placeholder="e.g. 4720"
                         style={{ width: 80, background: '#0a1a0a', border: '1px solid #1e3a1e', borderRadius: 4, color: '#22c55e', fontSize: 11, padding: '3px 6px', fontFamily: 'monospace' }} />
-                      {saving[tripKey(t) + '_mm'] && <div style={{ fontSize: 9, color: '#555' }}>savingΓÇª</div>}
+                      {saving[tripKey(t) + '_mm'] && <div style={{ fontSize: 9, color: '#555' }}>saving…</div>}
                     </td>
                     <td style={{ padding: '6px 8px' }}>
                       <input type="number" step="0.1"
@@ -233,7 +236,7 @@ function TOSDayPanel({ day, month, year, items, allTrips, onClose, onStrategyUpd
                         style={{ background: '#111', border: '1px solid #2a2a2a', borderRadius: 5, color: stratMap[tripKey(t)] ? '#85B7EB' : '#444', fontSize: 11, padding: '4px 6px', cursor: 'pointer', width: '100%' }}>
                         {STRAT_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                       </select>
-                      {saving[tripKey(t)] && <div style={{ fontSize: 9, color: '#555', marginTop: 2 }}>savingΓÇª</div>}
+                      {saving[tripKey(t)] && <div style={{ fontSize: 9, color: '#555', marginTop: 2 }}>saving…</div>}
                     </td>
                   </tr>
                 );
@@ -246,11 +249,11 @@ function TOSDayPanel({ day, month, year, items, allTrips, onClose, onStrategyUpd
   );
 }
 
-// ΓöÇΓöÇΓöÇ TOS Daily Calendar ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+// ─── TOS Daily Calendar ────────────────────────────────────────────────────────
 const MONTH_NAMES_CAL = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 const DOW_SHORT = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 
-function TOSCalendar({ trips, allTrips, onStrategyUpdate }) {
+function TOSCalendar({ trips, onStrategyUpdate }) {
   const now = new Date();
   const [navYear,  setNavYear]  = useState(now.getFullYear());
   const [navMonth, setNavMonth] = useState(now.getMonth());
@@ -305,9 +308,9 @@ function TOSCalendar({ trips, allTrips, onStrategyUpdate }) {
     <div style={{ background: '#111', border: '1px solid #222', borderRadius: 8, padding: '14px 16px', marginTop: 12 }}>
       {/* Header row */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>
-        <button onClick={() => goMonth(-1)} style={{ background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 6, color: '#888', fontSize: 16, cursor: 'pointer', width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>ΓÇ╣</button>
+        <button onClick={() => goMonth(-1)} style={{ background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 6, color: '#888', fontSize: 16, cursor: 'pointer', width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>‹</button>
         <span style={{ fontSize: 15, fontWeight: 700, color: '#ccc', minWidth: 130, textAlign: 'center' }}>{MONTH_NAMES_CAL[navMonth]} {navYear}</span>
-        <button onClick={() => goMonth(1)} style={{ background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 6, color: '#888', fontSize: 16, cursor: 'pointer', width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>ΓÇ║</button>
+        <button onClick={() => goMonth(1)} style={{ background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 6, color: '#888', fontSize: 16, cursor: 'pointer', width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>›</button>
         <button onClick={() => { setNavMonth(now.getMonth()); setNavYear(now.getFullYear()); }} style={{ background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 6, color: '#888', fontSize: 12, cursor: 'pointer', padding: '4px 12px', fontWeight: 600 }}>This month</button>
 
         {/* Account filter */}
@@ -400,7 +403,6 @@ function TOSCalendar({ trips, allTrips, onStrategyUpdate }) {
           day={selectedDay} month={navMonth} year={navYear}
           items={dayMap[selectedDay].items}
           onClose={() => setSelectedDay(null)}
-          allTrips={allTrips||trips}
           onStrategyUpdate={onStrategyUpdate}
         />
       )}
@@ -409,7 +411,7 @@ function TOSCalendar({ trips, allTrips, onStrategyUpdate }) {
 }
 
 
-// ΓöÇΓöÇΓöÇ Markdown renderer ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+// ─── Markdown renderer ────────────────────────────────────────────────────────
 function renderMarkdown(text) {
   if (!text) return null;
   const lines = text.split('\n');
@@ -443,7 +445,7 @@ function renderMarkdown(text) {
       continue;
     }
     if (line.match(/^#{1,3}\s/)) { elements.push(<div key={i} style={{ fontWeight: 700, color: '#ccc', marginTop: 10, marginBottom: 4, fontSize: 13 }}>{line.replace(/^#{1,3}\s/, '')}</div>); i++; continue; }
-    if (line.match(/^[\-\*]\s/)) { elements.push(<div key={i} style={{ paddingLeft: 12, color: '#bbb', fontSize: 13, lineHeight: 1.6 }}>ΓÇó {inlineFmt(line.slice(2))}</div>); i++; continue; }
+    if (line.match(/^[\-\*]\s/)) { elements.push(<div key={i} style={{ paddingLeft: 12, color: '#bbb', fontSize: 13, lineHeight: 1.6 }}>• {inlineFmt(line.slice(2))}</div>); i++; continue; }
     if (!line.trim()) { elements.push(<div key={i} style={{ height: 6 }} />); i++; continue; }
     elements.push(<div key={i} style={{ color: '#bbb', fontSize: 13, lineHeight: 1.6 }}>{inlineFmt(line)}</div>);
     i++;
@@ -462,7 +464,7 @@ export default function Analysis({ filteredTrades, dateLabel, acctLabel, dateRan
   const [selectedMonths, setSelectedMonths]   = useState([]); // months toggled on in history panel
   const [activeTab, setActiveTab]             = useState('calendar'); // 'charts' | 'aichat'
 
-  // ΓöÇΓöÇΓöÇ AI Chat state ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+  // ─── AI Chat state ──────────────────────────────────────────────────────────
   const [chatMessages, setChatMessages] = useState([
     { role: 'assistant', content: "Hi! I'm your TOS Analysis assistant. I have full access to your imported broker statements — ask me anything about your equity curve, commissions, symbols, or month-over-month performance." }
   ]);
@@ -470,7 +472,7 @@ export default function Analysis({ filteredTrades, dateLabel, acctLabel, dateRan
   const [chatLoading, setChatLoading] = useState(false);
   const chatEndRef = useRef(null);
 
-  // ΓöÇΓöÇΓöÇ Load Chart.js ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+  // ─── Load Chart.js ─────────────────────────────────────────────────────────
   useEffect(() => {
     if (window.Chart) return;
     const existing = document.getElementById('chartjs-cdn');
@@ -481,7 +483,7 @@ export default function Analysis({ filteredTrades, dateLabel, acctLabel, dateRan
     document.head.appendChild(s);
   }, []);
 
-  // ΓöÇΓöÇΓöÇ Load saved statements from Supabase on mount ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+  // ─── Load saved statements from Supabase on mount ──────────────────────────
   useEffect(() => {
     async function load() {
       setLoadingDB(true);
@@ -502,7 +504,7 @@ export default function Analysis({ filteredTrades, dateLabel, acctLabel, dateRan
     load();
   }, []);
 
-  // ΓöÇΓöÇΓöÇ Merge multiple saved statement rows into one tosData object ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+  // ─── Merge multiple saved statement rows into one tosData object ────────────
   function mergeStatements(rows) {
     const allTrips    = rows.flatMap(r => r.data?.trips    || []);
     const allEquity   = rows.flatMap(r => r.data?.equityCurve || [])
@@ -522,7 +524,7 @@ export default function Analysis({ filteredTrades, dateLabel, acctLabel, dateRan
     };
   }
 
-  // ΓöÇΓöÇΓöÇ Handle new TOS import — save to Supabase ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+  // ─── Handle new TOS import — save to Supabase ──────────────────────────────
   const handleImport = useCallback(async (parsed) => {
     const trips = parsed.roundTrips || [];
     if (!trips.length) return;
@@ -536,7 +538,7 @@ export default function Analysis({ filteredTrades, dateLabel, acctLabel, dateRan
 
     // Derive month from statement period END date
     let month = 'unknown';
-    const periodEnd = parsed.period?.split('ΓÇô')[1]?.trim() || parsed.period?.split('-').pop()?.trim();
+    const periodEnd = parsed.period?.split('–')[1]?.trim() || parsed.period?.split('-').pop()?.trim();
     if (periodEnd) {
       try {
         const parts = periodEnd.split('/');
@@ -550,7 +552,7 @@ export default function Analysis({ filteredTrades, dateLabel, acctLabel, dateRan
       const d = new Date(last.entry_dt);
       if (!isNaN(d)) month = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
     }
-    console.log('≡ƒôà Statement period:', parsed.period, 'ΓåÆ month:', month);
+    console.log('📅 Statement period:', parsed.period, '→ month:', month);
 
     const payload = {
       account: parsed.account,
@@ -558,16 +560,16 @@ export default function Analysis({ filteredTrades, dateLabel, acctLabel, dateRan
       data: { trips: taggedTrips, equityCurve },
     };
 
-    setSaveMsg('SavingΓÇª');
+    setSaveMsg('Saving…');
 
     // Upsert — one row per account+month
     await supabase.from('tos_statements').delete().eq('account', payload.account).eq('month', payload.month);
     const { error } = await supabase.from('tos_statements').insert(payload);
 
     if (error) {
-      setSaveMsg('Γ¥î Save failed: ' + error.message);
+      setSaveMsg('❌ Save failed: ' + error.message);
     } else {
-      setSaveMsg('Γ£à Saved to Supabase');
+      setSaveMsg('✅ Saved to Supabase');
       // Refresh saved list
       const { data: refreshed } = await supabase
         .from('tos_statements')
@@ -604,7 +606,7 @@ export default function Analysis({ filteredTrades, dateLabel, acctLabel, dateRan
     });
   }, [setTosData]);
 
-  // ΓöÇΓöÇΓöÇ Toggle month selection in history panel ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+  // ─── Toggle month selection in history panel ────────────────────────────────
   const toggleMonth = (id) => {
     setSelectedMonths(prev => {
       const next = prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id];
@@ -617,7 +619,7 @@ export default function Analysis({ filteredTrades, dateLabel, acctLabel, dateRan
     });
   };
 
-  // ΓöÇΓöÇΓöÇ Delete a saved statement ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+  // ─── Delete a saved statement ───────────────────────────────────────────────
   const deleteStatement = async (id) => {
     if (!window.confirm('Delete this statement?')) return;
     await supabase.from('tos_statements').delete().eq('id', id);
@@ -627,12 +629,12 @@ export default function Analysis({ filteredTrades, dateLabel, acctLabel, dateRan
     setSelectedMonths(prev => prev.filter(x => x !== id));
   };
 
-  // ΓöÇΓöÇΓöÇ AI Chat — scroll to bottom ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+  // ─── AI Chat — scroll to bottom ────────────────────────────────────────────
   useEffect(() => {
     if (activeTab === 'aichat') chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chatMessages, activeTab]);
 
-  // ΓöÇΓöÇΓöÇ AI Chat — send message with TOS context ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+  // ─── AI Chat — send message with TOS context ────────────────────────────────
   const sendChat = useCallback(async () => {
     const text = chatInput.trim();
     if (!text || chatLoading) return;
@@ -767,12 +769,12 @@ ${tosContext}`;
       const reply = data.content?.find(b => b.type === 'text')?.text || 'No response.';
       setChatMessages(prev => [...prev, { role: 'assistant', content: reply }]);
     } catch (err) {
-      setChatMessages(prev => [...prev, { role: 'assistant', content: 'Γ¥î Error: ' + err.message }]);
+      setChatMessages(prev => [...prev, { role: 'assistant', content: '❌ Error: ' + err.message }]);
     }
     setChatLoading(false);
   }, [chatInput, chatLoading, chatMessages, tosData]);
 
-  // ΓöÇΓöÇΓöÇ Filter trips by date range + account ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+  // ─── Filter trips by date range + account ──────────────────────────────────
   const filteredTrips = useMemo(() => {
     if (!tosData?.trips) return [];
     return tosData.trips.filter(t => {
@@ -803,7 +805,7 @@ ${tosContext}`;
     });
   }, [tosData, account, dateRange?.start?.getTime(), dateRange?.end?.getTime()]);
 
-  // ΓöÇΓöÇΓöÇ Chart builders (unchanged) ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+  // ─── Chart builders (unchanged) ────────────────────────────────────────────
   const buildEquity = useCallback((canvas) => {
     if (!filteredEquity?.length) return null;
     const labels = filteredEquity.map(d => d.date);
@@ -911,7 +913,7 @@ ${tosContext}`;
   const tc = filteredTrips.reduce((s, t) => s + (t.comm || 0), 0);
   const loadedAccounts = tosData ? [...new Set((tosData.trips || []).map(t => t.account))].join(' + ') : null;
 
-  // ΓöÇΓöÇΓöÇ Month-over-month summary ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+  // ─── Month-over-month summary ───────────────────────────────────────────────
   const monthSummary = useMemo(() => {
     const map = {};
     savedStatements.forEach(row => {
@@ -932,7 +934,7 @@ ${tosContext}`;
   }, []);
 
 
-  // ΓöÇΓöÇΓöÇ Save strategy/MFE/MAE to Supabase tos_statements ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+  // ─── Save strategy/MFE/MAE to Supabase tos_statements ────────────────────
   const handleTOSStrategyUpdate = useCallback(async (trip, stratId, mfePrice = null, maePrice = null) => {
     if (!savedStatements?.length) return;
     const matchKey = (t) => `${t.account}|${t.symbol}|${t.direction}|${t.entry}`;
@@ -965,7 +967,7 @@ ${tosContext}`;
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
         <div>
           <div style={{ fontSize: 18, fontWeight: 500, color: '#ccc', marginBottom: 2 }}>Analysis</div>
-          <div style={{ fontSize: 12, color: '#555' }}>{dateLabel} ┬╖ {acctLabel}</div>
+          <div style={{ fontSize: 12, color: '#555' }}>{dateLabel} · {acctLabel}</div>
         </div>
         <div style={{ display: 'flex', gap: 4, background: '#111', border: '1px solid #222', borderRadius: 8, padding: 4 }}>
           <button
@@ -976,7 +978,7 @@ ${tosContext}`;
               color: activeTab === 'calendar' ? '#ccc' : '#555',
               transition: 'all 0.15s',
             }}>
-            ≡ƒôà Calendar
+            📅 Calendar
           </button>
           <button
             onClick={() => setActiveTab('charts')}
@@ -986,7 +988,7 @@ ${tosContext}`;
               color: activeTab === 'charts' ? '#ccc' : '#555',
               transition: 'all 0.15s',
             }}>
-            ≡ƒôè Charts
+            📊 Charts
           </button>
           <button
             onClick={() => setActiveTab('aichat')}
@@ -997,21 +999,21 @@ ${tosContext}`;
               transition: 'all 0.15s',
               display: 'flex', alignItems: 'center', gap: 6,
             }}>
-            ≡ƒôê AI Analysis
+            📈 AI Analysis
             {!tosData && <span style={{ fontSize: 10, color: '#444' }}>(no data)</span>}
           </button>
         </div>
       </div>
 
-      {/* ΓöÇΓöÇ Import + History row — always visible ΓöÇΓöÇ */}
+      {/* ── Import + History row — always visible ── */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20 }}>
 
         {/* Import panel */}
         <div style={{ background: '#111', border: '1px solid #222', borderRadius: 8, padding: '12px 14px' }}>
           <div style={{ fontSize: 12, fontWeight: 600, color: '#ccc', marginBottom: 8 }}>
-            ≡ƒôè Import TOS Account Statement
-            {loadedAccounts && <span style={{ marginLeft: 8, fontSize: 11, color: '#1D9E75' }}>Γ£à {loadedAccounts}</span>}
-            {saveMsg && <span style={{ marginLeft: 8, fontSize: 11, color: saveMsg.startsWith('Γ¥î') ? '#E24B4A' : '#1D9E75' }}>{saveMsg}</span>}
+            📊 Import TOS Account Statement
+            {loadedAccounts && <span style={{ marginLeft: 8, fontSize: 11, color: '#1D9E75' }}>✅ {loadedAccounts}</span>}
+            {saveMsg && <span style={{ marginLeft: 8, fontSize: 11, color: saveMsg.startsWith('❌') ? '#E24B4A' : '#1D9E75' }}>{saveMsg}</span>}
           </div>
           <TOSUploader trades={filteredTrades} onComplete={handleImport} />
           <div style={{ fontSize: 11, color: '#444', marginTop: 8 }}>Imports are saved to Supabase and persist across sessions.</div>
@@ -1020,9 +1022,9 @@ ${tosContext}`;
         {/* Month-over-month history panel */}
         <div style={{ background: '#111', border: '1px solid #222', borderRadius: 8, padding: '12px 14px' }}>
           <div style={{ fontSize: 12, fontWeight: 600, color: '#ccc', marginBottom: 8 }}>
-            ≡ƒôà Statement History
-            {loadingDB && <span style={{ marginLeft: 8, fontSize: 11, color: '#555' }}>LoadingΓÇª</span>}
-            {monthSummary.length > 0 && <span style={{ marginLeft: 8, fontSize: 11, color: '#555' }}>{monthSummary.length} months ┬╖ click to toggle</span>}
+            📅 Statement History
+            {loadingDB && <span style={{ marginLeft: 8, fontSize: 11, color: '#555' }}>Loading…</span>}
+            {monthSummary.length > 0 && <span style={{ marginLeft: 8, fontSize: 11, color: '#555' }}>{monthSummary.length} months · click to toggle</span>}
           </div>
 
           {!loadingDB && monthSummary.length === 0 && (
@@ -1052,7 +1054,7 @@ ${tosContext}`;
                     <button
                       onClick={e => { e.stopPropagation(); deleteStatement(row.id); }}
                       style={{ background: 'none', border: 'none', color: '#333', cursor: 'pointer', fontSize: 14, padding: '0 2px', lineHeight: 1 }}
-                      title="Delete">├ù</button>
+                      title="Delete">×</button>
                   </div>
                 );
               })}
@@ -1081,13 +1083,13 @@ ${tosContext}`;
         </div>
       </div>
 
-      {/* ΓöÇΓöÇ CHARTS TAB ΓöÇΓöÇ */}
+      {/* ── CHARTS TAB ── */}
       {activeTab === 'calendar' && (
         <div>
           {!tosData && <div style={{ textAlign:'center', padding:'40px 20px', color:'#444', fontSize:13 }}>Upload a TOS statement above to see the calendar</div>}
           {tosData && (() => {
-            const STRAT_LABELS = { 'strat-aplus-prime':'A+ Prime','strat-strong-al-weak-sl':'Strong AL / Weak SL','strat-weak-al-strong-sl':'Weak AL / Strong SL','strat-both-weak':'Both Weak' };
-            const STRAT_COLORS = { 'strat-aplus-prime':'#f59e0b','strat-strong-al-weak-sl':'#185FA5','strat-weak-al-strong-sl':'#7c3aed','strat-both-weak':'#E24B4A' };
+            const STRAT_LABELS = { 'strat-aplus-prime':'A+ Prime','strat-strong-al-weak-sl':'Strong AL / Weak SL','strat-weak-al-strong-sl':'Weak AL / Strong SL','strat-both-weak':'Both Weak','strat-bounce':'Bounce Setup' };
+            const STRAT_COLORS = { 'strat-aplus-prime':'#f59e0b','strat-strong-al-weak-sl':'#185FA5','strat-weak-al-strong-sl':'#7c3aed','strat-both-weak':'#E24B4A','strat-bounce':'#7c3aed' };
             const tagged = filteredTrips.filter(t => t.strategy_id && t.strategy_id !== 'strat-unassigned');
             const untagged = filteredTrips.filter(t => !t.strategy_id || t.strategy_id === 'strat-unassigned');
             const stratMap = {};
@@ -1108,7 +1110,7 @@ ${tosContext}`;
                     <div style={{ fontSize:11, color:'#bbb', textTransform:'uppercase', letterSpacing:'0.05em', fontWeight:700 }}>By Strategy — TOS Broker Data</div>
                     <div style={{ fontSize:11, color:'#555' }}>
                       {tagged.length}/{filteredTrips.length} tagged
-                      {untagged.length > 0 && <span style={{color:'#f59e0b', marginLeft:8}}>ΓÜá {untagged.length} untagged</span>}
+                      {untagged.length > 0 && <span style={{color:'#f59e0b', marginLeft:8}}>⚠ {untagged.length} untagged</span>}
                     </div>
                   </div>
                   {rows.length === 0 ? (
@@ -1123,7 +1125,7 @@ ${tosContext}`;
                             <div style={{ fontSize:11, color, fontWeight:700, marginBottom:6 }}>{STRAT_LABELS[sid]}</div>
                             {d ? (<>
                               <div style={{ fontSize:18, fontWeight:700, color:d.net>=0?'#1D9E75':'#E24B4A', marginBottom:4 }}>{fmtP(d.net)}</div>
-                              <div style={{ fontSize:11, color:'#555' }}>{d.trades} trades ┬╖ {wr}% WR</div>
+                              <div style={{ fontSize:11, color:'#555' }}>{d.trades} trades · {wr}% WR</div>
                               <div style={{ fontSize:11, color:'#444', marginTop:2 }}>
                                 {d.winners.length>0 && <span style={{color:'#1D9E75'}}>avg +${Math.round(d.winners.reduce((s,v)=>s+v,0)/d.winners.length)}</span>}
                                 {d.losers.length>0 && <span style={{color:'#E24B4A',marginLeft:6}}>avg -${Math.abs(Math.round(d.losers.reduce((s,v)=>s+v,0)/d.losers.length))}</span>}
@@ -1148,7 +1150,7 @@ ${tosContext}`;
                 </div>
                 {/* Calendar */}
                 <div style={{ background:'#111', border:'1px solid #222', borderRadius:8, padding:'12px 14px' }}>
-                  <TOSCalendar trips={filteredTrips} allTrips={filteredTrips} onStrategyUpdate={handleTOSStrategyUpdate} />
+                  <TOSCalendar trips={filteredTrips} onStrategyUpdate={handleTOSStrategyUpdate} />
                 </div>
               </>
             );
@@ -1160,7 +1162,7 @@ ${tosContext}`;
         <>
           {!tosData && (
             <div style={{ textAlign: 'center', padding: '40px 20px', color: '#444', fontSize: 13 }}>
-              {loadingDB ? 'Loading saved statementsΓÇª' : 'Upload a TOS account statement above to see charts'}
+              {loadingDB ? 'Loading saved statements…' : 'Upload a TOS account statement above to see charts'}
             </div>
           )}
 
@@ -1199,37 +1201,37 @@ ${tosContext}`;
                   Multiday Trades — Real P&L from Daily Settlements
                 </div>
                 <div style={{ fontSize: 11, color: '#444', marginBottom: 8 }}>
-                  Trades held 20h+ ┬╖ showing up to 5 longest
+                  Trades held 20h+ · showing up to 5 longest
                   {filteredTrips.filter(t => (t.duration_hrs||0) >= 20).length === 0 &&
                     <span style={{ color: '#666' }}> — none found in current filter</span>}
                 </div>
                 <ChartCanvas id="md-chart" build={buildMultiday} />
               </div>
 
-              {/* ΓöÇΓöÇ TOS Daily Calendar ΓöÇΓöÇ */}
+              {/* ── TOS Daily Calendar ── */}
               <div style={{ background: '#111', border: '1px solid #222', borderRadius: 8, padding: '12px 14px', marginTop: 12 }}>
                 <div style={{ fontSize: 11, color: '#bbb', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>
                   Daily P&L Calendar — TOS Broker Data
                 </div>
                 <div style={{ fontSize: 11, color: '#444', marginBottom: 8 }}>Click any day to see trade details</div>
-                <TOSCalendar trips={filteredTrips} allTrips={filteredTrips} onStrategyUpdate={handleTOSStrategyUpdate} />
+                <TOSCalendar trips={filteredTrips} onStrategyUpdate={handleTOSStrategyUpdate} />
               </div>
             </>
           )}
         </>
       )}
 
-      {/* ΓöÇΓöÇ AI CHAT TAB ΓöÇΓöÇ */}
+      {/* ── AI CHAT TAB ── */}
       {activeTab === 'aichat' && (
         <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 260px)', minHeight: 400 }}>
           {/* Context indicator */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, padding: '8px 12px', background: '#0d1a14', border: '1px solid #163d26', borderRadius: 8 }}>
-            <span style={{ fontSize: 18 }}>≡ƒôê</span>
+            <span style={{ fontSize: 18 }}>📈</span>
             <div style={{ flex: 1 }}>
               <div style={{ fontSize: 12, fontWeight: 600, color: '#1D9E75' }}>TOS Statement AI — Context loaded</div>
               <div style={{ fontSize: 11, color: '#4a7a5e' }}>
                 {tosData?.trips?.length
-                  ? `${tosData.trips.length} trades ┬╖ ${[...new Set(tosData.trips.map(t => t.account))].join(', ')} ┬╖ Net ${tosData.netPnl >= 0 ? '+' : ''}$${Math.round(tosData.netPnl || 0).toLocaleString()}`
+                  ? `${tosData.trips.length} trades · ${[...new Set(tosData.trips.map(t => t.account))].join(', ')} · Net ${tosData.netPnl >= 0 ? '+' : ''}$${Math.round(tosData.netPnl || 0).toLocaleString()}`
                   : 'No TOS data loaded — import a statement above first'}
               </div>
             </div>
@@ -1248,7 +1250,7 @@ ${tosContext}`;
                 justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start',
               }}>
                 {msg.role === 'assistant' && (
-                  <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#0d1a14', border: '1px solid #163d26', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0, marginRight: 8, marginTop: 2 }}>≡ƒôê</div>
+                  <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#0d1a14', border: '1px solid #163d26', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0, marginRight: 8, marginTop: 2 }}>📈</div>
                 )}
                 <div style={{
                   maxWidth: '75%', padding: '10px 14px', borderRadius: msg.role === 'user' ? '12px 12px 4px 12px' : '12px 12px 12px 4px',
@@ -1263,9 +1265,9 @@ ${tosContext}`;
             ))}
             {chatLoading && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#0d1a14', border: '1px solid #163d26', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14 }}>≡ƒôê</div>
+                <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#0d1a14', border: '1px solid #163d26', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14 }}>📈</div>
                 <div style={{ padding: '10px 14px', background: '#131313', border: '1px solid #222', borderRadius: '12px 12px 12px 4px', fontSize: 13, color: '#555' }}>
-                  Analyzing your dataΓÇª
+                  Analyzing your data…
                 </div>
               </div>
             )}
@@ -1295,7 +1297,7 @@ ${tosContext}`;
               value={chatInput}
               onChange={e => setChatInput(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChat(); } }}
-              placeholder={tosData ? 'Ask about your TOS dataΓÇª' : 'Import a TOS statement firstΓÇª'}
+              placeholder={tosData ? 'Ask about your TOS data…' : 'Import a TOS statement first…'}
               disabled={chatLoading}
               style={{
                 flex: 1, background: '#111', border: '1px solid #222', borderRadius: 8,
@@ -1311,7 +1313,7 @@ ${tosContext}`;
                 fontSize: 13, fontWeight: 600, cursor: chatLoading || !chatInput.trim() ? 'not-allowed' : 'pointer',
                 transition: 'all 0.15s',
               }}>
-              {chatLoading ? 'ΓÇª' : 'Send'}
+              {chatLoading ? '…' : 'Send'}
             </button>
           </div>
         </div>
