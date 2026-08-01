@@ -77,7 +77,7 @@ const STRAT_OPTIONS = [
   { value: 'strat-bounce',             label: 'Bounce Setup' },
 ];
 
-function TOSDayPanel({ day, month, year, items, onClose, onStrategyUpdate }) {
+function TOSDayPanel({ day, month, year, items, allTrips, onClose, onStrategyUpdate }) {
   const dow = new Date(year, month, day).toLocaleDateString('en-US', { weekday: 'long' });
   const net = items.reduce((s, t) => s + t.pnl, 0);
   const wins = items.filter(t => t.pnl > 0).length;
@@ -85,17 +85,21 @@ function TOSDayPanel({ day, month, year, items, onClose, onStrategyUpdate }) {
   const tripKey = (t) => `${t.account}|${t.symbol}|${t.direction}|${t.entry}|${new Date(t.entry_dt).toISOString().slice(0,16)}`;
   const [stratMap, setStratMap] = useState(() => {
     const m = {};
-    items.forEach(t => { if (t.strategy_id) m[tripKey(t)] = t.strategy_id; });
+    // Use allTrips (current tosData) if available for up-to-date strategy values
+    const source = allTrips || items;
+    source.forEach(t => { if (t.strategy_id) m[tripKey(t)] = t.strategy_id; });
     return m;
   });
   const [mfeMap, setMfeMap] = useState(() => {
     const m = {};
-    items.forEach(t => { const v = t.mfe_price ?? t.mfe; if (v != null) m[tripKey(t)] = String(v); });
+    const source2 = allTrips || items;
+    source2.forEach(t => { const v = t.mfe_price ?? t.mfe; if (v != null) m[tripKey(t)] = String(v); });
     return m;
   });
   const [maeMap, setMaeMap] = useState(() => {
     const m = {};
-    items.forEach(t => { const v = t.mae_price ?? t.mae; if (v != null) m[tripKey(t)] = String(v); });
+    const source3 = allTrips || items;
+    source3.forEach(t => { const v = t.mae_price ?? t.mae; if (v != null) m[tripKey(t)] = String(v); });
     return m;
   });
   const [saving, setSaving] = useState({});
@@ -402,6 +406,7 @@ function TOSCalendar({ trips, onStrategyUpdate }) {
         <TOSDayPanel
           day={selectedDay} month={navMonth} year={navYear}
           items={dayMap[selectedDay].items}
+          allTrips={trips}
           onClose={() => setSelectedDay(null)}
           onStrategyUpdate={onStrategyUpdate}
         />
