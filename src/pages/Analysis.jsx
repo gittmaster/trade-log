@@ -77,7 +77,7 @@ const STRAT_OPTIONS = [
   { value: 'strat-bounce',             label: 'Bounce Setup' },
 ];
 
-function TOSDayPanel({ day, month, year, items, allTrips, onClose, onStrategyUpdate }) {
+function TOSDayPanel({ day, month, year, items, allTrips, onClose, onStrategyUpdate, onChartUpload }) {
   const dow = new Date(year, month, day).toLocaleDateString('en-US', { weekday: 'long' });
   const net = items.reduce((s, t) => s + t.pnl, 0);
   const wins = items.filter(t => t.pnl > 0).length;
@@ -108,6 +108,31 @@ function TOSDayPanel({ day, month, year, items, allTrips, onClose, onStrategyUpd
   const setMfeMap   = (fn) => setMfeOvr(fn);
   const setMaeMap   = (fn) => setMaeOvr(fn);
   const [saving, setSaving] = useState({});
+  // Chart screenshot per trade
+  const [chartOvr, setChartOvr]   = useState({});
+  const [chartBusy, setChartBusy] = useState({});
+  const chartMap = useMemo(() => {
+    const db = {}; (allTrips||items).forEach(t => { if (t.chart_url) db[lk(t)] = t.chart_url; });
+    const m = {}; items.forEach(t => { if (db[lk(t)]) m[tripKey(t)] = db[lk(t)]; });
+    return { ...m, ...chartOvr };
+  }, [allTrips, items, chartOvr]);
+  const handleChartFile = async (t, file) => {
+    if (!file || !file.type.startsWith('image/')) return;
+    const key = tripKey(t);
+    setChartBusy(prev => ({ ...prev, [key]: true }));
+    try {
+      const ext = file.name.split('.').pop() || 'png';
+      const path = `charts/tos-${(t.account||'x')}-${(t.symbol||'x')}-${Date.now()}-${Math.random().toString(36).slice(2,8)}.${ext}`;
+      const { error: upErr } = await supabase.storage.from('trade-charts').upload(path, file);
+      if (!upErr) {
+        const { data: urlData } = supabase.storage.from('trade-charts').getPublicUrl(path);
+        setChartOvr(prev => ({ ...prev, [key]: urlData.publicUrl }));
+        if (onChartUpload) await onChartUpload(t, urlData.publicUrl);
+      }
+    } finally {
+      setChartBusy(prev => ({ ...prev, [key]: false }));
+    }
+  };
   const handleStrategyChange = async (t, stratId) => {
     const key = tripKey(t);
     setStratMap(prev => ({ ...prev, [key]: stratId }));
@@ -201,7 +226,7 @@ function TOSDayPanel({ day, month, year, items, allTrips, onClose, onStrategyUpd
           <table style={{ width: '100%', minWidth: 900, borderCollapse: 'collapse', fontSize: 12 }}>
             <thead>
               <tr style={{ borderBottom: '1px solid #1e1e1e' }}>
-                {['Time','Acct','Symbol','Dir','Entry','Exit','P&L','Hold','MFE','MAE','Strategy'].map(h => (
+                {['Time','Acct','Symbol','Dir','Entry','Exit','P&L','Hold','MFE','MAE','Strategy','Chart'].map(h => (
                   <th key={h} style={{ padding: '8px 12px', textAlign: 'left', color: '#444', fontWeight: 500, fontSize: 10, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{h}</th>
                 ))}
               </tr>
@@ -247,6 +272,25 @@ function TOSDayPanel({ day, month, year, items, allTrips, onClose, onStrategyUpd
                       </select>
                       {saving[tripKey(t)] && <div style={{ fontSize: 9, color: '#555', marginTop: 2 }}>saving…</div>}
                     </td>
+                    <td style={{ padding: '8px 12px', whiteSpace: 'nowrap' }}>
+                      {chartMap[tripKey(t)] ? (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <button onClick={() => window.open(chartMap[tripKey(t)], '_blank')} title="View chart screenshot"
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 15, padding: 0 }}>🖼️</button>
+                          <label title="Replace screenshot" style={{ cursor: chartBusy[tripKey(t)] ? 'default' : 'pointer', fontSize: 11, color: '#555', textDecoration: 'underline' }}>
+                            {chartBusy[tripKey(t)] ? '…' : 'replace'}
+                            <input type="file" accept="image/*" style={{ display: 'none' }} disabled={chartBusy[tripKey(t)]}
+                              onChange={e => { handleChartFile(t, e.target.files[0]); e.target.value = ''; }} />
+                          </label>
+                        </div>
+                      ) : (
+                        <label title="Attach chart screenshot" style={{ cursor: chartBusy[tripKey(t)] ? 'default' : 'pointer', display: 'inline-flex', alignItems: 'center', fontSize: 15, color: '#555' }}>
+                          {chartBusy[tripKey(t)] ? '…' : '📎'}
+                          <input type="file" accept="image/*" style={{ display: 'none' }} disabled={chartBusy[tripKey(t)]}
+                            onChange={e => { handleChartFile(t, e.target.files[0]); e.target.value = ''; }} />
+                        </label>
+                      )}
+                    </td>
                   </tr>
                 );
               })}
@@ -262,7 +306,7 @@ function TOSDayPanel({ day, month, year, items, allTrips, onClose, onStrategyUpd
 const MONTH_NAMES_CAL = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 const DOW_SHORT = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 
-function TOSCalendar({ trips, allTrips, onStrategyUpdate }) {
+function TOSCalendar({ trips, allTrips, onStrategyUpdate, onChartUpload }) {
   const now = new Date();
   const [navYear,  setNavYear]  = useState(now.getFullYear());
   const [navMonth, setNavMonth] = useState(now.getMonth());
@@ -415,6 +459,7 @@ function TOSCalendar({ trips, allTrips, onStrategyUpdate }) {
           onClose={() => setSelectedDay(null)}
           allTrips={allTrips||trips}
           onStrategyUpdate={onStrategyUpdate}
+          onChartUpload={onChartUpload}
         />
       )}
     </div>
@@ -972,6 +1017,33 @@ ${tosContext}`;
     }));
   }, [savedStatements, setTosData]);
 
+  // ─── Save chart screenshot URL to Supabase tos_statements ────────────────
+  const handleTOSChartUpload = useCallback(async (trip, chartUrl) => {
+    if (!savedStatements?.length) return;
+    const matchKey = (t) => `${t.account}|${t.symbol}|${t.direction}|${t.entry}`;
+    const tripMK = matchKey(trip);
+    const stmt = savedStatements.find(s =>
+      (s.data?.trips || []).some(t => matchKey(t) === tripMK && Math.abs(new Date(t.entry_dt) - new Date(trip.entry_dt)) < 60000)
+    );
+    if (!stmt) return;
+    const updatedTrips = (stmt.data.trips || []).map(t =>
+      matchKey(t) === tripMK && Math.abs(new Date(t.entry_dt) - new Date(trip.entry_dt)) < 60000
+        ? { ...t, chart_url: chartUrl }
+        : t
+    );
+    const updatedData = { ...stmt.data, trips: updatedTrips };
+    await supabase.from('tos_statements').update({ data: updatedData }).eq('id', stmt.id);
+    setSavedStatements(prev => prev.map(s => s.id === stmt.id ? { ...s, data: updatedData } : s));
+    setTosData(prev => ({
+      ...prev,
+      trips: (prev?.trips || []).map(t =>
+        matchKey(t) === tripMK && Math.abs(new Date(t.entry_dt) - new Date(trip.entry_dt)) < 60000
+          ? { ...t, chart_url: chartUrl }
+          : t
+      )
+    }));
+  }, [savedStatements, setTosData]);
+
   return (
     <div style={{ padding: '16px 20px' }}>
       {/* Header + Tab bar */}
@@ -1161,7 +1233,7 @@ ${tosContext}`;
                 </div>
                 {/* Calendar */}
                 <div style={{ background:'#111', border:'1px solid #222', borderRadius:8, padding:'12px 14px' }}>
-                  <TOSCalendar trips={filteredTrips} allTrips={filteredTrips} onStrategyUpdate={handleTOSStrategyUpdate} />
+                  <TOSCalendar trips={filteredTrips} allTrips={filteredTrips} onStrategyUpdate={handleTOSStrategyUpdate} onChartUpload={handleTOSChartUpload} />
                 </div>
               </>
             );
@@ -1225,7 +1297,7 @@ ${tosContext}`;
                   Daily P&L Calendar — TOS Broker Data
                 </div>
                 <div style={{ fontSize: 11, color: '#444', marginBottom: 8 }}>Click any day to see trade details</div>
-                <TOSCalendar trips={filteredTrips} allTrips={filteredTrips} onStrategyUpdate={handleTOSStrategyUpdate} />
+                <TOSCalendar trips={filteredTrips} allTrips={filteredTrips} onStrategyUpdate={handleTOSStrategyUpdate} onChartUpload={handleTOSChartUpload} />
               </div>
             </>
           )}
