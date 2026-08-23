@@ -1,5 +1,5 @@
 # Trading Master Memory
-Last updated: June 07, 2026
+Last updated: August 23, 2026
 
 ---
 
@@ -108,9 +108,16 @@ None open as of end of session June 7, 2026.
 - **Reports** — cumulative + daily P&L charts, by strategy, by day of week
 - **Trade View** — full trade table, MFE/MAE fields in new trade form, strategy filter pills, Key Levels widget
 - **Strategies** — 4 AL/SL strategies, auto-assign
-- **Analysis** — TOS statement import, 5 charts, TOS daily P&L calendar, AI Analysis tab, strategy/MFE/MAE editable in day modal
+- **Analysis** — TOS statement import, 5 charts, TOS daily P&L calendar, AI Analysis tab, strategy/MFE/MAE editable in day modal, chart screenshot attach/view per trade row (saves to Supabase)
 - **Floating AI Chat** (💬) — on all pages except Analysis
 - **TradeReviewChart** — running P&L path chart, money left on table analysis
+
+---
+
+## Recent App Changes (August 2026)
+- Analysis TOS day panel (the modal that opens from the TOS Daily Calendar) → new "Chart" column per trade row: 📎 to upload a screenshot, 🖼️ to view it, "replace" to swap it
+- Screenshot uploads go to the existing `trade-charts` Supabase storage bucket; the public URL is written into `chart_url` on that trade inside `tos_statements.data.trips[]` — same save path already used for the Strategy/MFE/MAE fields on that panel, so it persists across reloads
+- Commit: `880b133` on `main`, file `src/pages/Analysis.jsx` only
 
 ---
 
