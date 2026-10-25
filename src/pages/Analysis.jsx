@@ -109,8 +109,9 @@ function TOSDayPanel({ day, month, year, items, allTrips, onClose, onStrategyUpd
   const setMaeMap   = (fn) => setMaeOvr(fn);
   const [saving, setSaving] = useState({});
   // Chart screenshot per trade
-  const [chartOvr, setChartOvr]   = useState({});
-  const [chartBusy, setChartBusy] = useState({});
+  const [chartOvr, setChartOvr]       = useState({});
+  const [chartBusy, setChartBusy]     = useState({});
+  const [chartDragOver, setChartDragOver] = useState({});
   const chartMap = useMemo(() => {
     const db = {}; (allTrips||items).forEach(t => { if (t.chart_url) db[lk(t)] = t.chart_url; });
     const m = {}; items.forEach(t => { if (db[lk(t)]) m[tripKey(t)] = db[lk(t)]; });
@@ -272,7 +273,21 @@ function TOSDayPanel({ day, month, year, items, allTrips, onClose, onStrategyUpd
                       </select>
                       {saving[tripKey(t)] && <div style={{ fontSize: 9, color: '#555', marginTop: 2 }}>saving…</div>}
                     </td>
-                    <td style={{ padding: '8px 12px', whiteSpace: 'nowrap' }}>
+                    <td style={{
+                        padding: '8px 12px', whiteSpace: 'nowrap', borderRadius: 4,
+                        background: chartDragOver[tripKey(t)] ? '#185FA522' : 'transparent',
+                        outline: chartDragOver[tripKey(t)] ? '1.5px dashed #185FA5' : 'none',
+                        outlineOffset: -2,
+                      }}
+                      onDragOver={e => { e.preventDefault(); setChartDragOver(prev => ({ ...prev, [tripKey(t)]: true })); }}
+                      onDragLeave={() => setChartDragOver(prev => ({ ...prev, [tripKey(t)]: false }))}
+                      onDrop={e => {
+                        e.preventDefault();
+                        setChartDragOver(prev => ({ ...prev, [tripKey(t)]: false }));
+                        const file = e.dataTransfer.files?.[0];
+                        if (file) handleChartFile(t, file);
+                      }}
+                    >
                       {chartMap[tripKey(t)] ? (
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                           <button onClick={() => window.open(chartMap[tripKey(t)], '_blank')} title="View chart screenshot"
