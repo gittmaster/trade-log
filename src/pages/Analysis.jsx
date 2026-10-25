@@ -333,10 +333,11 @@ function TOSCalendar({ trips, allTrips, onStrategyUpdate, onChartUpload }) {
     const d = new Date(t.entry_dt);
     if (d.getFullYear() !== navYear || d.getMonth() !== navMonth) return;
     const day = d.getDate();
-    if (!dayMap[day]) dayMap[day] = { pnl: 0, trades: 0, wins: 0, items: [] };
+    if (!dayMap[day]) dayMap[day] = { pnl: 0, trades: 0, wins: 0, items: [], hasChart: false };
     dayMap[day].pnl    += t.pnl;
     dayMap[day].trades += 1;
     if (t.pnl > 0) dayMap[day].wins += 1;
+    if (t.chart_url) dayMap[day].hasChart = true;
     dayMap[day].items.push(t);
   });
 
@@ -412,12 +413,15 @@ function TOSCalendar({ trips, allTrips, onStrategyUpdate, onChartUpload }) {
                       style={{
                         background: bg, border: `${isToday || isSelected ? '1.5px' : '1px'} solid ${borderColor}`,
                         borderRadius: 6, padding: '4px 6px', minHeight: 72,
-                        display: 'flex', flexDirection: 'column', gap: 2,
+                        display: 'flex', flexDirection: 'column', gap: 2, position: 'relative',
                         cursor: d ? 'pointer' : 'default', transition: 'all 0.1s',
                       }}
                       onMouseEnter={e => { if (d) e.currentTarget.style.borderColor = '#555'; }}
                       onMouseLeave={e => { if (d && !isSelected) e.currentTarget.style.borderColor = borderColor; }}
                     >
+                      {d?.hasChart && (
+                        <span title="Has chart screenshot attached" style={{ position: 'absolute', top: 4, left: 5, fontSize: 11, lineHeight: 1 }}>🖼️</span>
+                      )}
                       <span style={{ fontSize: 12, fontWeight: 700, color: '#555', textAlign: 'right' }}>{day}</span>
                       {d && (<>
                         <span style={{ fontSize: 13, fontWeight: 700, color: d.pnl >= 0 ? '#1D9E75' : '#E24B4A' }}>{fmtSmall(d.pnl)}</span>
