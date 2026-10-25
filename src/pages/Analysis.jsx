@@ -112,6 +112,7 @@ function TOSDayPanel({ day, month, year, items, allTrips, onClose, onStrategyUpd
   const [chartOvr, setChartOvr]       = useState({});
   const [chartBusy, setChartBusy]     = useState({});
   const [chartDragOver, setChartDragOver] = useState({});
+  const [chartFocus, setChartFocus]       = useState({});
   const chartMap = useMemo(() => {
     const db = {}; (allTrips||items).forEach(t => { if (t.chart_url) db[lk(t)] = t.chart_url; });
     const m = {}; items.forEach(t => { if (db[lk(t)]) m[tripKey(t)] = db[lk(t)]; });
@@ -273,10 +274,10 @@ function TOSDayPanel({ day, month, year, items, allTrips, onClose, onStrategyUpd
                       </select>
                       {saving[tripKey(t)] && <div style={{ fontSize: 9, color: '#555', marginTop: 2 }}>saving…</div>}
                     </td>
-                    <td style={{
+                    <td tabIndex={0} title="Drop an image, or click here and press Ctrl+V / ⌘V to paste a screenshot" style={{
                         padding: '8px 12px', whiteSpace: 'nowrap', borderRadius: 4,
-                        background: chartDragOver[tripKey(t)] ? '#185FA522' : 'transparent',
-                        outline: chartDragOver[tripKey(t)] ? '1.5px dashed #185FA5' : 'none',
+                        background: chartDragOver[tripKey(t)] ? '#185FA522' : chartFocus[tripKey(t)] ? '#185FA511' : 'transparent',
+                        outline: chartDragOver[tripKey(t)] ? '1.5px dashed #185FA5' : chartFocus[tripKey(t)] ? '1px dashed #2a4a6a' : 'none',
                         outlineOffset: -2,
                       }}
                       onDragOver={e => { e.preventDefault(); setChartDragOver(prev => ({ ...prev, [tripKey(t)]: true })); }}
@@ -286,6 +287,19 @@ function TOSDayPanel({ day, month, year, items, allTrips, onClose, onStrategyUpd
                         setChartDragOver(prev => ({ ...prev, [tripKey(t)]: false }));
                         const file = e.dataTransfer.files?.[0];
                         if (file) handleChartFile(t, file);
+                      }}
+                      onFocus={() => setChartFocus(prev => ({ ...prev, [tripKey(t)]: true }))}
+                      onBlur={() => setChartFocus(prev => ({ ...prev, [tripKey(t)]: false }))}
+                      onPaste={e => {
+                        const items = e.clipboardData?.items;
+                        if (!items) return;
+                        for (const item of items) {
+                          if (item.type.startsWith('image/')) {
+                            e.preventDefault();
+                            handleChartFile(t, item.getAsFile());
+                            return;
+                          }
+                        }
                       }}
                     >
                       {chartMap[tripKey(t)] ? (
